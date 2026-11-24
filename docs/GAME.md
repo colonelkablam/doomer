@@ -74,7 +74,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 
 | Thing | Blocks | Status |
 |---|---|---|
-| Desk pod (2x2 steel desks back to back, drawers on the sitters' side) | yes | [built] |
+| Desk pod (a row of back-to-back steel desk pairs, a terminal per sitter) | yes | [built] |
 | Executive desk (kneehole desk: drawer pedestals, open in the middle) | yes | [built] |
 | Reception counter (low block, wood, 1 m) | yes | [built] |
 | Beige PC terminal (stands on a desk pod or counter) | no | [built] |
@@ -109,7 +109,8 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | 9 | Mainframe cabinet (blinking lights) | Server room |
 | a (10) | Plain table: laminate slab on steel legs, open underneath (low block, height 2) | Spare: canteen, meeting rooms |
 | b (11) | Executive desk: kneehole between drawer pedestals at the front; solid wood modesty panel and sides (low block, height 2, uses [facing]) | Executive offices |
-| c (12) | 1980s steel desk: mahogany laminate top, grey steel frame and legs, one drawer pedestal at its left end; open underneath (low block, height 2, uses [facing]) | Open-plan desk pods, back to back |
+| c (12) | 1980s steel desk: mahogany laminate top, grey steel frame and legs, one drawer pedestal at its left end; open underneath (low block, height 2, uses [facing]) | Single desks |
+| d (13) | Two steel desks back to back in one cell, sitters facing each other: both long sides show a desk front (pedestal on the right), both ends are half pedestal panel, half open (low block, height 2; [facing] sets the axis) | Open-plan pods |
 
 ## Pickups [planned]
 

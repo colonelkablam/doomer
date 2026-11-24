@@ -1,18 +1,18 @@
 name: Ground Floor
 # [floor] values on wall cells make low blocks, in eighths of a wall:
 # 2 = desk (0.68 m), 3 = counter (1 m). Wall types: b = executive desk,
-# c = 1980s steel desk. [facing] says which way a desk's front (where you
-# sit) faces; see docs/GAME.md.
+# d = two 1980s steel desks back to back. [facing] says which way a desk's
+# front (where you sit) faces; see docs/GAME.md.
 
 [walls]
 144444441444444444444441
 4.......1..............4
-4...2...1.cc....cc.....4
-4...2...1.cc....cc.....4
+4...2...1.ddd...ddd....4
+4...2...1..............4
 4...2..................4
 4.......1..............4
-4.......1.cc....cc.....4
-222222222.cc....cc.....4
+4.......1.ddd...ddd....4
+222222222..............4
 4.......2..............4
 4.......2..............4
 4...b...1111.1111111.111
@@ -25,12 +25,12 @@ name: Ground Floor
 [floor]
 000000000000000000000000
 000000000000000000000000
-000030000022000022000000
-000030000022000022000000
+000030000022200022200000
+000030000000000000000000
 000030000000000000000000
 000000000000000000000000
-000000000022000022000000
-000000000022000022000000
+000000000022200022200000
+000000000000000000000000
 000000000000000000000000
 000000000000000000000000
 000020000000000000000000
@@ -43,12 +43,12 @@ name: Ground Floor
 [facing]
 ........................
 ........................
-..........nn....nn......
-..........ss....ss......
+..........nnn...nnn.....
 ........................
 ........................
-..........nn....nn......
-..........ss....ss......
+........................
+..........nnn...nnn.....
+........................
 ........................
 ........................
 ....n...................
@@ -69,15 +69,31 @@ water_cooler    7.5   6.5   0
 ceiling_light   2.5   3.5   0
 ceiling_light   6.5   3.5   0
 dm_spawn        2.5   5.5   0
-# Open plan: four desk pods, a terminal on each desk
-terminal        10.5  2.5   0
-terminal        11.5  3.5   0
-terminal        16.5  2.5   0
-terminal        17.5  3.5   0
-terminal        10.5  7.5   0
-terminal        11.5  6.5   0
-terminal        16.5  7.5   0
-terminal        17.5  6.5   0
+# Open plan: four pods of back-to-back steel desks, a terminal per sitter
+terminal        10.5  2.3   0
+terminal        10.5  2.7   0
+terminal        11.5  2.3   0
+terminal        11.5  2.7   0
+terminal        12.5  2.3   0
+terminal        12.5  2.7   0
+terminal        16.5  2.3   0
+terminal        16.5  2.7   0
+terminal        17.5  2.3   0
+terminal        17.5  2.7   0
+terminal        18.5  2.3   0
+terminal        18.5  2.7   0
+terminal        10.5  6.3   0
+terminal        10.5  6.7   0
+terminal        11.5  6.3   0
+terminal        11.5  6.7   0
+terminal        12.5  6.3   0
+terminal        12.5  6.7   0
+terminal        16.5  6.3   0
+terminal        16.5  6.7   0
+terminal        17.5  6.3   0
+terminal        17.5  6.7   0
+terminal        18.5  6.3   0
+terminal        18.5  6.7   0
 filing_cabinet  22.5  1.5   0
 filing_cabinet  22.5  2.5   0
 filing_cabinet  22.5  3.5   0

@@ -403,6 +403,29 @@ def steel_desk_open_side() -> tuple[U8Array, BoolArray]:
     return tex, opaque
 
 
+# --- a pair of steel desks back to back in one cell (wall type 'd') ---------------
+# The two sitters face each other across the pair. Both long sides look like a
+# single desk's front (each desk's pedestal is at its own left end, which from
+# either long side is the viewer's right), and both ends are half pedestal side
+# panel (one desk's pedestal end) and half open legs (the other desk's open end).
+
+
+def steel_desk_pair_end() -> tuple[U8Array, BoolArray]:
+    """End of a back-to-back pair: one desk's pedestal panel, the other's open end."""
+    tex, opaque, v, u = _steel_desk_base()
+    under = v >= STEEL_APRON[1]
+    # The two desks' back legs meet in the middle: legs at u 29..31 and 32..34.
+    for lo, hi in ((29, 32), (32, 35)):
+        leg = under & (u >= lo) & (u < hi)
+        shade = np.where(u == lo, 11.0, np.where(u == hi - 1, 6.0, 9.0))
+        tex = np.where(leg, indices(GREY, np.where(v == 63, 4.0, shade)), tex).astype(np.uint8)
+        opaque = opaque | leg
+    panel = under & (u >= 3) & (u < 29)  # the left-hand desk's pedestal end
+    tex = _steel_panel(tex, panel, 8.0)
+    tex = _steel_panel(tex, panel & (u == 15), 6.0)  # seam
+    return tex, opaque | panel
+
+
 # Colour of a low block's top surface, by wall type: a partition-fronted desk
 # pod has a beige laminate top, a panelled counter a wooden one. Types not
 # listed fall back to the commonest colour in the top of their texture.
@@ -412,6 +435,7 @@ TOP_COLOURS: dict[int, int] = {
     10: indices(SAND, 12.0).item(),  # office desk: beige laminate
     11: indices(WOOD, 10.0).item(),  # executive desk
     12: indices(WOOD, 6.0).item(),  # 1980s steel desk: dark mahogany laminate
+    13: indices(WOOD, 6.0).item(),  # pair of steel desks back to back
 }
 
 DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {
@@ -431,7 +455,7 @@ for _wall_type, _make in DEFAULT_WALL_TEXTURES.items():
 
 # Desks, per side (from the desk's own point of view; its front is where you
 # sit). Map characters: 'a' (10) office desk, 'b' (11) executive desk,
-# 'c' (12) 1980s steel desk.
+# 'c' (12) 1980s steel desk, 'd' (13) two steel desks back to back.
 DESK_TEXTURES: dict[int, dict[int, Callable[[], tuple[U8Array, BoolArray]]]] = {
     10: {FRONT: office_desk, RIGHT: office_desk, BACK: office_desk, LEFT: office_desk},
     11: {
@@ -445,6 +469,12 @@ DESK_TEXTURES: dict[int, dict[int, Callable[[], tuple[U8Array, BoolArray]]]] = {
         RIGHT: steel_desk_open_side,
         BACK: steel_desk_back,
         LEFT: steel_desk_pedestal_side,
+    },
+    13: {
+        FRONT: steel_desk_front,
+        RIGHT: steel_desk_pair_end,
+        BACK: steel_desk_front,
+        LEFT: steel_desk_pair_end,
     },
 }
 for _wall_type, _by_side in DESK_TEXTURES.items():

@@ -211,3 +211,22 @@ def test_executive_desk_is_solid_except_the_kneehole_at_the_front() -> None:
     assert not under_desk_is_open(room, Camera(4.5, 7.5, -math.pi / 2), 2.5)  # back
     assert not under_desk_is_open(room, Camera(7.5, 4.5, math.pi), 2.5)  # side
     assert not under_desk_is_open(room, Camera(1.5, 4.5, 0.0), 2.5)  # side
+
+
+def test_desk_pair_ends_are_half_pedestal_half_open_from_either_end() -> None:
+    pair = parse_map(
+        "[walls]\n#########\n#.......#\n#...d...#\n#.......#\n#########\n\n"
+        "[floor]\n000000000\n000000000\n000020000\n\n"
+        "[facing]\n.........\n.........\n....n....\n"
+    )
+    depth = 2.5
+    row = int(CFG.height // 2 + (EYE_HEIGHT - 0.06) * R.projection / depth)  # near the floor
+    for camera in (Camera(7.5, 2.5, math.pi), Camera(1.5, 2.5, 0.0)):  # east end, west end
+        R.render_indices(pair, camera)
+
+        def see_through(u: float) -> bool:
+            col = round(CFG.width / 2 + (u - 0.5) * R.projection / depth)
+            return bool(R.zbuffer[col, row] > depth + 0.5)
+
+        assert not see_through(0.25)  # left half: one desk's pedestal end panel
+        assert see_through(0.75)  # right half: the other desk's open end
