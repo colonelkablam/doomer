@@ -57,6 +57,7 @@ IntArray = npt.NDArray[np.intp]
 
 
 NEAR_PLANE = 0.05  # sprites closer than this (in cells) aren't drawn
+UNDER_DESK_SHADOW = 12  # colormap levels darker (of 32) for the floor under a desk
 
 
 @dataclass(frozen=True, slots=True)
@@ -313,6 +314,21 @@ class Renderer:
             level_far = light_level(shade)
             sub_frame = np.where(back, COLORMAP[level_far[:, None], texel_far], sub_frame)
             sub_z = np.where(back, far[:, None], sub_z)
+
+        # Contact shadow: floor seen through the gap under an open desk lies
+        # inside the desk's footprint (its distance along the ray is between
+        # where the ray enters and leaves the cell), so darken it. Grounds the
+        # furniture instead of leaving it floating on a bright floor.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            floor_depth = EYE_HEIGHT * self.projection / (py - self.horizon)
+        under = (
+            (base == 0.0)[:, None]
+            & (py > self.horizon)
+            & (floor_depth >= near[:, None])
+            & (floor_depth <= far[:, None])
+            & np.isinf(sub_z)  # still showing the floor: nothing drawn over it
+        )
+        sub_frame = np.where(under, COLORMAP[UNDER_DESK_SHADOW, sub_frame], sub_frame)
 
         # Top surface, if it's below eye level: rows whose distance lies in near..far.
         with np.errstate(divide="ignore", invalid="ignore"):

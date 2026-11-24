@@ -122,8 +122,8 @@ OPEN_DESK = parse_map(
 """
 )
 # Camera at x = 1.5 facing east: desk front face at x = 4 (2.5 away), back face
-# at x = 5 (3.5 away), wall at x = 8 (6.5 away). Office desk texture: legs at
-# u = 2..5 and 58..61 (of 64), open below the slab.
+# at x = 5 (3.5 away), wall at x = 8 (6.5 away). Office desk texture: legs
+# flush with the face edges at u = 0..2 and 61..63 (of 64), open below the slab.
 
 
 def column_for(y_at_x: float, x: float) -> int:
@@ -140,23 +140,27 @@ def test_open_desk_shows_the_floor_through_the_gap_under_it() -> None:
     # wall's base is higher up the screen, behind the desktop). Floor = nothing
     # drawn over the background, so the z-buffer is still infinite there.
     assert math.isinf(R.zbuffer[col, gap_row])
-    assert frame[col, gap_row] == R.background[col, gap_row]
+    # ...in the desk's contact shadow: same colour ramp as the open floor, darker.
+    floor = int(R.background[col, gap_row])
+    shadowed = int(frame[col, gap_row])
+    assert shadowed >> 4 == floor >> 4
+    assert (shadowed & 0x0F) < (floor & 0x0F)
     assert math.isclose(R.zbuffer[col, slab_row], 2.5, rel_tol=1e-6)  # the desk's edge
     assert frame[col, slab_row] >> 4 == SAND
 
 
 def test_open_desk_front_and_back_legs() -> None:
     frame = R.render_indices(OPEN_DESK, CAM)
-    # Front leg: u = 3.5/64 on the front face.
-    front = column_for(2.0 + 3.5 / 64, 4.0)
+    # Front leg: u = 1.5/64 on the front face.
+    front = column_for(2.0 + 1.5 / 64, 4.0)
     row = int(row_for(0.1, 2.5))
     assert frame[front, row] >> 4 == GREY
     assert math.isclose(R.zbuffer[front, row], 2.5, rel_tol=1e-6)
-    # Back leg: aim at u = 3.5/64 on the back face; the ray passes through the
-    # gap in the front face (u ~ 0.19 there) and hits the leg 3.5 away.
+    # Back leg: aim at u = 1.5/64 on the back face; the ray passes through the
+    # gap in the front face (u ~ 0.18 there) and hits the leg 3.5 away.
     # It's only visible below the front slab's underside (height 12/64 at 2.5
     # away) and above the back face's floor line (3.5 away): pick the middle.
-    back = column_for(2.0 + 3.5 / 64, 5.0)
+    back = column_for(2.0 + 1.5 / 64, 5.0)
     row = int((row_for(12 / 64, 2.5) + row_for(0.0, 3.5)) / 2)
     assert frame[back, row] >> 4 == GREY
     assert math.isclose(R.zbuffer[back, row], 3.5, rel_tol=1e-3)

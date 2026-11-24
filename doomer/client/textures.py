@@ -10,6 +10,12 @@ Adding a texture: write a generator returning a (64, 64) uint8 index array and
 register it against a wall type with `register_wall_texture`. The wall types
 are listed in docs/GAME.md.
 
+Tiling rule: anything framed (panels, trims, borders) must be split evenly
+between opposite edges of the 64x64 tile, e.g. 2 texels at each edge rather
+than 4 at one. Then the frame lines up with the edges of the wall block, and
+two blocks side by side make one full-width stile. Likewise desk legs sit
+flush with a face's edges, so the legs seen on two faces meet at the corner.
+
 Masked textures: a texture may come with an opacity mask. Transparent texels
 aren't drawn, so whatever is behind shows through. Only low-block faces
 (desks) honour it: a full-height wall stops the ray, so there's nothing
@@ -156,10 +162,14 @@ def wood_panelling(seed: int = 2) -> U8Array:
     grain = np.sin(u * 0.7 + noise(rng, 8) * 8) * 0.8
     shade = 7 + grain + noise(rng, 32) * 1.5
     pu, pv = u % 32, v % 32
-    frame = (pu < 4) | (pv < 4)
+    # The frame is split evenly between the edges of each 32-texel panel (2 on
+    # each side), so it lines up with the edges of the wall block and two blocks
+    # side by side make one 4-texel stile.
+    frame = (pu < 2) | (pu >= 30) | (pv < 2) | (pv >= 30)
     shade = np.where(frame, 6 + noise(rng, 16), shade)
-    shade = np.where(frame & ((pu == 3) | (pv == 3)), 4.0, shade)  # shadow line
-    shade = np.where(~frame & ((pu == 4) | (pv == 4)), 9.5, shade)  # highlight
+    lit = ~frame & ((pu == 2) | (pv == 2))  # raised panel, lit from the top left
+    shadowed = ~frame & ((pu == 29) | (pv == 29))
+    shade = np.where(lit, 9.5, np.where(shadowed, 4.0, shade))
     return indices(WOOD, shade)
 
 
@@ -170,7 +180,7 @@ def cubicle_partition(seed: int = 3) -> U8Array:
     weave = ((u + v) % 2) * 0.5
     shade = 7 + weave + (noise(rng, 32) - 0.5) * 1.5
     tex = indices(STEEL, shade)
-    trim = (v < 4) | ((u % 32) < 2)
+    trim = (v < 4) | ((u % 32) < 1) | ((u % 32) >= 31)  # split evenly between edges
     return np.where(trim, indices(GREY, np.where(v == 1, 13.0, 10.0)), tex).astype(np.uint8)
 
 
@@ -227,9 +237,10 @@ def steel_panels(seed: int = 8) -> U8Array:
     rng = np.random.default_rng(seed)
     v, u = grid()
     pu, pv = u % 32, v % 32
-    border = (pu < 2) | (pv < 2)
-    highlight = (pu == 2) | (pv == 2)
-    rivet = ((pu - 5) % 22 < 2) & ((pv - 5) % 22 < 2) & ~border
+    border = (pu < 1) | (pu >= 31) | (pv < 1) | (pv >= 31)  # split evenly between edges
+    highlight = (pu == 1) | (pv == 1)
+    corner = np.isin(pu, (4, 5, 26, 27)) & np.isin(pv, (4, 5, 26, 27))  # symmetric
+    rivet = corner & ~border
     streaks = noise(rng, 32)[0][None, :]
     shade = 8 + streaks * 3 + (noise(rng, 8) - 0.5) * 2
     shade = np.where(highlight, 12.0, shade)
@@ -267,8 +278,10 @@ def office_desk() -> tuple[U8Array, BoolArray]:
     """Beige laminate desktop on tubular steel legs, open underneath."""
     v, u = grid()
     tex = indices(SAND, np.where(v == 48, 13.0, np.where(v == 51, 8.0, 11.0)))
-    legs = ((u >= 2) & (u < 6)) | ((u >= 58) & (u < 62))
-    leg_shade = np.where((u == 2) | (u == 58), 11.0, np.where((u == 5) | (u == 61), 5.0, 8.0))
+    # Legs flush with each face's edges: at a corner, the leg seen on the front
+    # face and the one on the side face meet and read as one square post.
+    legs = (u < 3) | (u >= 61)
+    leg_shade = np.where((u == 0) | (u == 61), 11.0, np.where((u == 2) | (u == 63), 5.0, 8.0))
     tex = np.where(legs & (v >= DESK_SLAB[1]), indices(GREY, leg_shade), tex)
     foot = legs & (v >= 62)
     tex = np.where(foot, indices(GREY, 4.0), tex)
@@ -316,8 +329,10 @@ def executive_panel(seed: int = 13) -> tuple[U8Array, BoolArray]:
 # left: the right-hand end as you face the drawers). Open underneath otherwise.
 
 STEEL_APRON = (51, 54)  # texel rows of the steel rail under the top
-_STEEL_LEG_A = (1, 4)  # u ranges of the two square legs on a face
-_STEEL_LEG_B = (60, 63)
+# u ranges of the two square legs on a face: flush with its edges, so at each
+# corner the front and side views of a leg meet as one post.
+_STEEL_LEG_A = (0, 3)
+_STEEL_LEG_B = (61, 64)
 
 
 def _steel_desk_base() -> tuple[U8Array, BoolArray, npt.NDArray[np.int64], npt.NDArray[np.int64]]:
@@ -351,7 +366,7 @@ def steel_desk_front() -> tuple[U8Array, BoolArray]:
     """Facing the drawers: pencil drawer in the rail, pedestal on the right."""
     tex, opaque, v, u = _steel_desk_base()
     under = v >= STEEL_APRON[1]
-    pedestal = under & (u >= 38) & (u < 63)
+    pedestal = under & (u >= 38) & (u < 61)
     tex = _steel_panel(tex, pedestal)
     tex = _steel_panel(tex, pedestal & (u == 38), 6.0)  # pedestal edge in shadow
     for line in (57, 60):  # gaps between the three drawers
@@ -367,16 +382,16 @@ def steel_desk_front() -> tuple[U8Array, BoolArray]:
 def steel_desk_back() -> tuple[U8Array, BoolArray]:
     """From behind: the pedestal's plain back panel, now on the left."""
     tex, opaque, v, u = _steel_desk_base()
-    pedestal = (v >= STEEL_APRON[1]) & (u >= 1) & (u < 26)
+    pedestal = (v >= STEEL_APRON[1]) & (u >= 3) & (u < 27)
     tex = _steel_panel(tex, pedestal, 8.0)
-    tex = _steel_panel(tex, pedestal & (u == 25), 5.0)
+    tex = _steel_panel(tex, pedestal & (u == 26), 5.0)
     return tex, opaque | pedestal
 
 
 def steel_desk_pedestal_side() -> tuple[U8Array, BoolArray]:
     """The pedestal end: a solid steel side panel between the legs."""
     tex, opaque, v, u = _steel_desk_base()
-    panel = (v >= STEEL_APRON[1]) & (u >= 4) & (u < 60)
+    panel = (v >= STEEL_APRON[1]) & (u >= 3) & (u < 61)
     tex = _steel_panel(tex, panel, 8.0)
     tex = _steel_panel(tex, panel & (u == 31), 6.0)  # seam
     return tex, opaque | panel

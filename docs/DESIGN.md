@@ -181,6 +181,13 @@ dm_spawn      1.5   3.5   0
   another block of the pod. Full walls ignore masks: the ray stops at them, so
   there's nothing behind to show. Costs ~2-3 ms with desk pods filling the
   view (~8.5 ms/frame total): the first place to optimise if needed.
+- **Contact shadow**: floor seen through the gap under an open desk, at a
+  distance between where the ray enters and leaves the desk's cell, is
+  darkened by a fixed number of colormap levels, so desks sit on the floor
+  instead of floating.
+- **Texture tiling rule**: frames and trims are split evenly between opposite
+  edges of a tile, and desk legs are flush with face edges, so blocks line up
+  and corners meet (see `client/textures.py`).
 - **8-bit indexed colour.** Every pixel is a byte indexing a 256-colour palette
   (`client/palette.py`), laid out as `index = (ramp << 4) | shade`: 16 hue
   ramps x 16 brightness steps. Brightness is linear in the low nibble, so
