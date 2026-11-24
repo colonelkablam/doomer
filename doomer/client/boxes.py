@@ -760,7 +760,7 @@ def door_boxes(doors: Iterable[Door], passes: Collection[str] = ()) -> list[Plac
 # --- Reception desk (1980s, two levels) -------------------------------------------
 # A transaction ledge at the front (~1.15 m) for visitors to lean on and sign
 # in at, over a wood-slatted front panel on a recessed plinth with the
-# company's brass logo; behind it, a work surface at desk height (~0.73 m)
+# word WELCOME in brass letters; behind it, a work surface at desk height (~0.73 m)
 # over a steel drawer pedestal, with the switchboard phone; returns wrapping
 # both ends. Model x points to the visitors' side. Collision and the heights
 # things rest at (the ledge, the work surface): RECEPTION_FOOTPRINTS in
@@ -828,19 +828,6 @@ def pedestal_front() -> int:
     return _texture(c)
 
 
-def logo_plaque() -> int:
-    """The company's brass logo: OK, for OK Holdings plc."""
-    c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), OCHRE, 12.0)
-    c.paint(
-        c.rect(0, 64, 0, 3) | c.rect(0, 64, 61, 64) | c.rect(0, 3, 0, 64) | c.rect(61, 64, 0, 64),
-        OCHRE,
-        8.0,
-    )
-    c.text("OK", 17, 11, WOOD, 3.0, scale=6)
-    return _texture(c)
-
-
 def phone_top() -> int:
     """A switchboard phone from above: the handset along the back, a keypad,
     and a row of line lamps."""
@@ -894,10 +881,7 @@ def _reception_desk() -> tuple[Box, ...]:
             (0.0, _R_WORK - 0.015),
             (steel, steel, steel, steel, steel),
         ),
-        # The logo, the phone, the visitors' book.
-        Box(
-            (_R_FRONT[1], _R_FRONT[1] + 0.006), (-0.055, 0.055), (0.07, 0.18), (logo_plaque(),) * 5
-        ),
+        # The phone, the visitors' book.
         Box(
             (-0.12, -0.02),
             (-0.55, -0.42),
@@ -911,9 +895,9 @@ def _reception_desk() -> tuple[Box, ...]:
             (book_side,) * 4 + (book_top(),),
         ),
     ]
-    # "WELCOME" in brass letters across the front, above the logo; not lit
-    # like the wall sign, just polished (they take the room's light).
-    boxes += _letters("WELCOME", 0.0, 0.08, 0.09, 0.23, 0.025, face=_R_FRONT[1], glow=False)
+    # "WELCOME" in brass letters across the middle of the front; not lit like
+    # the wall sign, just polished (they take the room's light).
+    boxes += _letters("WELCOME", 0.0, 0.08, 0.09, 0.17, 0.025, face=_R_FRONT[1], glow=False)
     return tuple(boxes)
 
 
@@ -1002,13 +986,12 @@ _LETTERS: dict[str, int] = {}
 
 
 def _welcome_sign() -> tuple[Box, ...]:
-    """Lit brass letters (they glow, as if spotlit) on a dark panel. Sized
-    for the lobby: legible from the entrance, ~8 cells away."""
+    """ "Boomer Industries" in lit brass letters (they glow, as if spotlit) on
+    a dark panel, high on the wall: legible from the entrance, ~8 cells away."""
     panel, dark = sign_panel(), plinth()
-    letters = _letters("WELCOME TO", 0.0, 0.13, 0.14, 1.27, 0.04)
-    letters += _letters("BOOMER INDUSTRIES", 0.0, 0.19, 0.21, 0.98, 0.045)
+    letters = _letters("BOOMER INDUSTRIES", 0.0, 0.19, 0.21, 1.165, 0.045)
     half = (17 * 0.19 + 16 * 0.045) / 2 + 0.12
-    backing = Box((0.0, 0.012), (-half, half), (0.9, 1.48), (panel, dark, dark, dark, dark))
+    backing = Box((0.0, 0.012), (-half, half), (1.085, 1.455), (panel, dark, dark, dark, dark))
     return (backing, *letters)
 
 

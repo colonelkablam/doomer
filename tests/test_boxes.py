@@ -181,9 +181,12 @@ def test_glowing_boxes_ignore_lighting_and_others_dont() -> None:
     from doomer.client.config import LightingConfig
     from doomer.client.render import Renderer as _Renderer
 
-    room = parse_map("[walls]\n###########\n#.........#\n#.........#\n#.........#\n###########\n")
+    room = parse_map(  # two storeys high: the sign hangs above one
+        "[walls]\n###########\n#.........#\n#.........#\n#.........#\n###########\n"
+        "[ceiling]\n" + "ggggggggggg\n" * 5
+    )
     sign = SpriteInstance("welcome_sign", 9.99, 2.5, 0.0, math.pi)  # on the east wall
-    camera = Camera(4.0, 2.5, 0.0, pitch=0.35)
+    camera = Camera(4.0, 2.5, 0.0, pitch=0.43)
     frames = {}
     for name, ambient in (("dark", 0.1), ("bright", 1.0)):
         r = _Renderer(RenderConfig(), LightingConfig(ambient=ambient, panel_intensity=0.0))

@@ -94,7 +94,7 @@ RECEPTION_DESK = register_thing_type(
 # Signs: drawn by doomer/client/boxes.py. Stand it at a wall's face (just in
 # front of it, in the room); angle = the way it faces, out of the wall.
 WELCOME_SIGN = register_thing_type(
-    ThingType("welcome_sign", "Brass letters: Welcome to Boomer Industries")
+    ThingType("welcome_sign", "Lit brass letters: Boomer Industries")
 )
 
 # Doors (doomer/shared/doors.py): in a doorway cell; angle = the way it opens.
