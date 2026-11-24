@@ -1,0 +1,3 @@
+# Client and editor. The server needs only the standard library.
+pygame-ce==2.5.8
+numpy==2.5.5
