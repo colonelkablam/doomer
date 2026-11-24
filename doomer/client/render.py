@@ -48,7 +48,7 @@ import numpy as np
 import numpy.typing as npt
 import pygame
 
-from doomer.client.boxes import BOX_MODELS, BOX_TEXTURES, TOP
+from doomer.client.boxes import BOX_MODELS, BOX_TEXTURES, TOP, PlacedBox, stair_boxes
 from doomer.client.config import RenderConfig
 from doomer.client.palette import (
     COLORMAP,
@@ -97,7 +97,6 @@ BULKHEAD_TYPE = 1  # wall type whose upper texture faces a dropped ceiling
 NEAR_PLANE = 0.05  # sprites closer than this (in cells) aren't drawn
 MAX_BOX_DISTANCE = 16.0  # box models further than this (cells) aren't drawn: a few pixels
 UNDER_DESK_SHADOW = 12  # colormap levels darker (of 32) for the floor under a desk
-STAIR_NOSING_DARKEN = 10  # colormap levels darker for the edge line of each step
 STEP_HEIGHT = 0.125  # a rise up to this is a step, not a drop that needs a railing
 # Ceiling light panels: half-size in cells, and colours (diffuser is full-bright).
 LIGHT_HALF = (0.22, 0.11)
@@ -188,6 +187,8 @@ class Renderer:
         # could otherwise be served an old map's table.
         self._lights_map: GameMap | None = None
         self._slots_map: GameMap | None = None
+        self._stairs_map: GameMap | None = None
+        self._stairs: list[PlacedBox] = []
         self._cell_slots: list[list[list[int]]] = []
         self._light_list: list[tuple[float, float, float]] = []
         # Last frame's per-pixel perpendicular distances, and its horizon row.
@@ -376,7 +377,13 @@ class Renderer:
 
         self._draw_ceiling_lights(frame, zbuffer, game_map, camera, horizon, eye)
         sprites = list(sprites)
-        self._draw_boxes(frame, zbuffer, camera, sprites, horizon, eye)
+        boxes = self._stair_boxes_for(game_map) + [
+            PlacedBox(s.x, s.y, s.z, s.angle, box)
+            for s in sprites
+            for box in BOX_MODELS.get(s.name, ())
+            if (s.x - camera.x) ** 2 + (s.y - camera.y) ** 2 < MAX_BOX_DISTANCE**2
+        ]
+        self._draw_boxes(frame, zbuffer, camera, boxes, horizon, eye)
         self._draw_sprites(frame, zbuffer, camera, sprites, horizon, eye)
         self.zbuffer = zbuffer
         return frame
@@ -612,7 +619,13 @@ class Renderer:
 
         # Riser face (a desk front, a step): floor before .. this floor, at `near`.
         # Transparent texels (the space under a desk) keep what's behind.
-        face = (py >= y_top[:, None]) & (py < y_base[:, None]) & (near[:, None] < sub_z)
+        # (Not for stairs: their steps are drawn as boxes, see _draw_boxes.)
+        face = (
+            ~s.stairs[:, None]
+            & (py >= y_top[:, None])
+            & (py < y_base[:, None])
+            & (near[:, None] < sub_z)
+        )
         ci, ri = np.nonzero(face)
         if ci.size:
             which, vi = self._texel_at(rows_y[ri], near[ci], s.slot[ci], s.upper[ci], horizon, eye)
@@ -657,7 +670,7 @@ class Renderer:
             if s.block.any():
                 floor_depth = eye * self.projection / (py - horizon)
                 under = (
-                    (s.block & (s.base == 0.0))[:, None]
+                    (s.block & ~s.stairs & (s.base == 0.0))[:, None]
                     & (py > horizon)
                     & (floor_depth >= near[:, None])
                     & (floor_depth <= far[:, None])
@@ -673,7 +686,7 @@ class Renderer:
             # distance d; setting that equal to top + m (d - near) gives
             #   d = (eye - top + m near) / ((y - horizon) / projection + m),
             # which for a flat surface (m = 0) is the usual floor formula.
-            raised = (s.top > 0.0) | (exit_top > 0.0)
+            raised = ((s.top > 0.0) | (exit_top > 0.0)) & ~s.stairs
             if raised.any():
                 span_len = np.maximum(s.finite_far - near, 1e-9)
                 m = np.where(np.isfinite(s.far), (exit_top - s.top) / span_len, 0.0)
@@ -695,12 +708,6 @@ class Renderer:
                     depth = row_depth[ci, ri]
                     colour = np.where(s.block, self.top_colour[s.slot], self.floor_colour)[ci]
                     lit = self._dithered_at(colour, depth, cols[ci], r0 + ri)
-                    stairs = s.stairs[ci]
-                    if stairs.any():
-                        # Tread nosings every 1/16 of a storey (~17 cm, one step).
-                        height = s.top[ci] + m[ci] * (depth - near[ci])
-                        nosing = stairs & (np.mod(height * 16, 1.0) < 0.2)
-                        lit = np.where(nosing, COLORMAP[STAIR_NOSING_DARKEN, lit], lit)
                     sub_frame[ci, ri] = lit
                     sub_z[ci, ri] = depth
 
@@ -912,12 +919,19 @@ class Renderer:
         region[panel] = frame_colour[panel]
         region[diffuser] = LIGHT_DIFFUSER
 
+    def _stair_boxes_for(self, game_map: GameMap) -> list[PlacedBox]:
+        """The map's stairs as step boxes, built once per map."""
+        if self._stairs_map is not game_map:
+            self._stairs = stair_boxes(game_map)
+            self._stairs_map = game_map
+        return self._stairs
+
     def _draw_boxes(
         self,
         frame: U8Array,
         zbuffer: FloatArray,
         camera: Camera,
-        things: list[SpriteInstance],
+        boxes: list[PlacedBox],
         horizon: float,
         eye: float,
     ) -> None:
@@ -927,13 +941,8 @@ class Renderer:
         face is a vertical run of pixels at the entry depth (like a wall); the
         top (or bottom) is a stretch of rows between the entry and exit
         depths, cast back onto its plane (like a floor). Pixels from all boxes
-        are then z-tested together, nearest wins."""
-        boxes = [
-            (s, box)
-            for s in things
-            for box in BOX_MODELS.get(s.name, ())
-            if (s.x - camera.x) ** 2 + (s.y - camera.y) ** 2 < MAX_BOX_DISTANCE**2
-        ]
+        are then z-tested together, nearest wins. Used for box-model things
+        and for the steps of stairs."""
         if not boxes:
             return
         h = self.config.height
@@ -942,15 +951,17 @@ class Renderer:
         def per_box(values: list[float]) -> FloatArray:
             return np.array(values)[:, None]  # (B, 1), broadcasts over columns
 
-        ca = per_box([math.cos(s.angle) for s, _ in boxes])
-        sa = per_box([math.sin(s.angle) for s, _ in boxes])
-        rel_x = per_box([camera.x - s.x for s, _ in boxes])
-        rel_y = per_box([camera.y - s.y for s, _ in boxes])
-        x0, x1 = per_box([b.x[0] for _, b in boxes]), per_box([b.x[1] for _, b in boxes])
-        y0, y1 = per_box([b.y[0] for _, b in boxes]), per_box([b.y[1] for _, b in boxes])
-        z0 = per_box([s.z + b.z[0] for s, b in boxes])
-        z1 = per_box([s.z + b.z[1] for s, b in boxes])
-        faces = np.array([b.faces for _, b in boxes])  # (B, 5)
+        ca = per_box([math.cos(p.angle) for p in boxes])
+        sa = per_box([math.sin(p.angle) for p in boxes])
+        rel_x = per_box([camera.x - p.x for p in boxes])
+        rel_y = per_box([camera.y - p.y for p in boxes])
+        x0, x1 = per_box([p.box.x[0] for p in boxes]), per_box([p.box.x[1] for p in boxes])
+        y0, y1 = per_box([p.box.y[0] for p in boxes]), per_box([p.box.y[1] for p in boxes])
+        z0 = per_box([p.z + p.box.z[0] for p in boxes])
+        z1 = per_box([p.z + p.box.z[1] for p in boxes])
+        faces = np.array([p.box.faces for p in boxes])  # (B, 5)
+        tiled = np.array([p.box.tiled_sides for p in boxes])
+        riser = np.array([p.box.riser for p in boxes])
 
         # Camera and rays into each box's frame (rotate by -angle).
         ox, oy = rel_x * ca + rel_y * sa, -rel_x * sa + rel_y * ca
@@ -991,7 +1002,7 @@ class Renderer:
             ],
         )
         # World direction of the face's normal: north/south faces darker, as walls.
-        normal = np.array([s.angle for s, _ in boxes])[bi] + face * (math.pi / 2)
+        normal = np.array([p.angle for p in boxes])[bi] + face * (math.pi / 2)
         side_light = 1.0 - (1.0 - Y_SIDE_SHADE) * np.abs(np.sin(normal))
 
         cols: list[IntArray] = []
@@ -1001,21 +1012,32 @@ class Renderer:
         lights: list[FloatArray] = []
 
         # Sides: where the ray enters by one (not from inside the footprint).
+        # A riser (front/back of a step) is only its top slice.
         side = t_in[bi, ci] > NEAR_PLANE
+        short = (riser[bi] > 0) & (face % 2 == 0)
+        face_bottom = np.where(short, zt - riser[bi], zb)
         p, r = self._runs(
             horizon + (eye - zt[side]) * proj / d_near[side],
-            horizon + (eye - zb[side]) * proj / d_near[side],
+            horizon + (eye - face_bottom[side]) * proj / d_near[side],
         )
         if p.size:
             k = np.flatnonzero(side)[p]
             depth = d_near[k]
             height = eye - (r + 0.5 - horizon) * depth / proj
-            v = (zt[k] - height) / (zt[k] - zb[k])
+            v = (zt[k] - height) / (zt[k] - face_bottom[k])
             tex = faces[bi[k], face[k]]
+            tu, tv = _texel_clamped(across[k]), _texel_clamped(v)
+            # Tiled left/right faces: texels from position in the world, like walls.
+            world = tiled[bi[k]] & (face[k] % 2 == 1)
+            if world.any():
+                along = np.where(face[k] == 1, hx[k], -hx[k])
+                tu = np.where(world, np.floor(along * TEX_SIZE).astype(np.intp) & TEX_MASK, tu)
+                tile_v = np.floor((1.0 - height) * TEX_SIZE).astype(np.intp) & TEX_MASK
+                tv = np.where(world, tile_v, tv)
             cols.append(ci[k])
             rows.append(r)
             depths.append(depth)
-            texels.append(BOX_TEXTURES[tex, _texel_clamped(across[k]), _texel_clamped(v)])
+            texels.append(BOX_TEXTURES[tex, tu, tv])
             lights.append(side_light[k])
 
         # Top (seen from above) or bottom (from below): between entry and exit.

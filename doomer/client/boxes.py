@@ -18,7 +18,9 @@ Texture orientation: sides as seen from outside, upright; the top as seen
 from above with the front at the bottom of the image (v = 63).
 """
 
+import math
 from dataclasses import dataclass
+from typing import NamedTuple
 
 import numpy as np
 
@@ -30,10 +32,13 @@ from doomer.client.palette import (
     OCHRE,
     ORANGE,
     PURPLE,
+    SAND,
     WARM_GREY,
+    WOOD,
     U8Array,
 )
-from doomer.client.pixelart import Canvas
+from doomer.client.pixelart import Canvas, noise
+from doomer.shared.mapfile import STAIR_RISE, STAIRS_WALL_TYPE, WALL_UNITS, GameMap
 
 FRONT, RIGHT, BACK, LEFT, TOP = range(5)  # face order in Box.faces
 
@@ -44,6 +49,25 @@ class Box:
     y: tuple[float, float]  # cells, to its right
     z: tuple[float, float]  # walls, above its base
     faces: tuple[int, int, int, int, int]  # texture ids: front, right, back, left, top
+    # Left and right faces textured in world units (tiling 64 texels per cell
+    # and per storey, like walls) instead of stretched once over the face, so
+    # a row of boxes (a staircase's steps) reads as one continuous side.
+    tiled_sides: bool = False
+    # Front and back faces only this tall, at the top (0 = the whole face), with
+    # their texture over that height: a step's riser. Below it the step in
+    # front hides the face, so it isn't drawn at all.
+    riser: float = 0.0
+
+
+class PlacedBox(NamedTuple):
+    """A box in the world: at (x, y), its base at height z (walls), turned
+    to `angle` (radians, as map angles)."""
+
+    x: float
+    y: float
+    z: float
+    angle: float
+    box: Box
 
 
 _TEXTURES: list[U8Array] = []
@@ -201,6 +225,74 @@ def _mac_se30() -> tuple[Box, ...]:
         (case, case, case, case, mouse_top()),
     )
     return mac, keyboard, mouse
+
+
+# --- Stairs ----------------------------------------------------------------------
+# Stair cells (wall type 'h') slope smoothly for movement (doomer/shared), but
+# are drawn as real steps: one box per riser. A cell rises STAIR_RISE units
+# (half a storey) in 8 steps of 1/16 storey (~17 cm) with 1/8-cell (34 cm)
+# treads. Each step's top is level with the slope at the step's back edge, so
+# feet on the slope are at most one riser below the tread they're over.
+
+STEPS_PER_STOREY = 16
+
+
+def stair_tread() -> int:
+    """A tread from above: blue carpet, a metal nosing strip along the front
+    edge (the downhill side: the top of the image is a box's -x side)."""
+    rng = np.random.default_rng(31)
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), BLUE, 6.0 + (noise(rng, 16) - 0.5) * 1.2)
+    c.paint(c.rect(0, 6, 0, 64), GREY, 10.0)
+    c.paint(c.rect(0, 1, 0, 64), GREY, 13.0)
+    return _texture(c)
+
+
+def stair_riser() -> int:
+    """A riser: carpet, darker than the tread, under the nosing's lip."""
+    rng = np.random.default_rng(32)
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), BLUE, 4.5 + (noise(rng, 16) - 0.5) * 1.2)
+    c.paint(c.rect(0, 10, 0, 64), GREY, 7.0)
+    return _texture(c)
+
+
+def stair_side() -> int:
+    """The side of the staircase, tiled in world units: painted plaster with
+    skirting at the floor (as raised floors' edges)."""
+    rng = np.random.default_rng(14)
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), SAND, 8.5 + (noise(rng, 8) - 0.5))
+    c.paint(c.rect(60, 64, 0, 64), WOOD, 5.0)
+    return _texture(c)
+
+
+_TREAD, _RISER, _SIDE = stair_tread(), stair_riser(), stair_side()
+
+
+def stair_boxes(game_map: GameMap) -> list[PlacedBox]:
+    """The steps of every stair cell in the map. Box x points uphill (the
+    cell's facing), so each step's riser is its -x (back) face."""
+    out = []
+    for cy, row in enumerate(game_map.walls):
+        for cx, wall in enumerate(row):
+            if wall != STAIRS_WALL_TYPE or not game_map.is_low_block(cx, cy):
+                continue
+            top = game_map.floor[cy][cx] / WALL_UNITS
+            low = max(0, game_map.floor[cy][cx] - STAIR_RISE) / WALL_UNITS
+            steps = max(1, round((top - low) * STEPS_PER_STOREY))
+            angle = (game_map.facing_at(cx, cy) - 1) * math.pi / 2  # NORTH = 0 -> -y
+            for i in range(steps):
+                box = Box(
+                    (-0.5 + i / steps, -0.5 + (i + 1) / steps),
+                    (-0.5, 0.5),
+                    (0.0, low + (top - low) * (i + 1) / steps),
+                    (_SIDE, _SIDE, _RISER, _SIDE, _TREAD),
+                    tiled_sides=True,
+                    riser=(top - low) / steps,
+                )
+                out.append(PlacedBox(cx + 0.5, cy + 0.5, 0.0, angle, box))
+    return out
 
 
 # Keyed by thing type name, like SPRITES.

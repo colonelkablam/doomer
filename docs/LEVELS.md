@@ -96,7 +96,8 @@ and an `exit`; **deathmatch** needs at least 4 `dm_spawn`s.
 ## Performance budget
 
 60 fps means 16.7 ms per frame. Current costs on the office map: corridors
-~5 ms, desk pods ~10 ms, the two-storey lobby with stairs and balcony ~14 ms.
+~5 ms, desk pods with Macs ~10 ms, the two-storey lobby with stairs and
+balcony ~16 ms (on the cloud VM; faster desktops have more headroom).
 What costs:
 
 - **Changes along a ray.** Every time a ray crosses into a different kind of
@@ -108,7 +109,9 @@ What costs:
   sightlines with full walls.
 - **Map size**: no hard limit, but rays stop at 64 cells; keep maps within
   about 48 x 48.
-- Lights and sprites are cheap; dozens are fine.
+- Lights and sprites are cheap; dozens are fine. Box models (Macs) and
+  stairs (8 boxes per cell) cost per box per column: dozens of boxes in view
+  are fine, hundreds aren't.
 
 ## Checks a generator (or a hand-made map) must pass
 

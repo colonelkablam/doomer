@@ -198,21 +198,29 @@ STAIRS = parse_map(
 )
 
 
-def test_stair_surface_follows_its_slope_even_above_eye_level() -> None:
-    # Facing north up the flight from 1.6 before it: the slope rises from 0 at
-    # 1.6 away to 1.0 at 3.6 away, crossing eye level on the way.
-    camera = Camera(4.0, 5.6, -math.pi / 2, pitch=math.radians(10))
+def test_stairs_are_drawn_as_steps_even_above_eye_level() -> None:
+    # Facing north up the flight from 1.6 before it: 16 steps of 1/16 storey
+    # with 1/8-cell treads, rising from 0 to 1.0, past eye level (0.6).
+    camera = Camera(3.5, 5.6, -math.pi / 2, pitch=math.radians(10))
     R.render_indices(STAIRS, camera)
-    horizon = R.horizon
     checked = 0
-    for y in range(int(horizon) - 20, CFG.height, 4):
-        # Solve eye - (y - horizon) d / proj = slope height at d (0.5 per cell).
-        denom = (y + 0.5 - horizon) / R.projection + 0.5
-        d = (EYE_HEIGHT - 0.0 + 0.5 * 1.6) / denom
-        if 1.6 < d < 3.6:
-            assert math.isclose(R.zbuffer[COL, y], d, rel_tol=1e-6), y
+    for i in range(16):
+        riser = 1.6 + i / 8  # step i's riser (its near face) ...
+        row = int(R.horizon + (EYE_HEIGHT - (i + 0.5) / 16) * R.projection / riser)
+        if 0 <= row < CFG.height:
+            assert math.isclose(R.zbuffer[COL, row], riser, abs_tol=1e-6), i
             checked += 1
-    assert checked > 5
+        tread = (i + 1) / 16  # ... and its tread, seen from above, 1/8 cell deep
+        near_row = R.horizon + (EYE_HEIGHT - tread) * R.projection / riser
+        far_row = R.horizon + (EYE_HEIGHT - tread) * R.projection / (riser + 1 / 8)
+        if tread < EYE_HEIGHT and near_row - far_row >= 2:  # a few pixels deep on screen
+            row = int((near_row + far_row) / 2)
+            depth = (EYE_HEIGHT - tread) * R.projection / (row + 0.5 - R.horizon)
+            if 0 <= row < CFG.height:
+                assert math.isclose(R.zbuffer[COL, row], depth, abs_tol=1e-6), i
+                assert riser <= depth <= riser + 1 / 8
+                checked += 1
+    assert checked >= 15  # most risers and the nearer treads
 
 
 def test_no_railing_or_step_at_the_top_of_the_stairs_when_standing_on_them() -> None:

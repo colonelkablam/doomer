@@ -152,7 +152,8 @@ dm_spawn      1.5   3.5   0
 - **Stairs** (wall type `h`): a stair cell's floor slopes up across the cell
   towards its `[facing]`, by half a storey (`STAIR_RISE` = 4 units); its
   `[floor]` value is the height at the top edge. Two stair cells climb a full
-  storey. `GameMap.floor_at(x, y)` gives the floor at any point.
+  storey. `GameMap.floor_at(x, y)` gives the floor at any point. Movement
+  uses the smooth slope; the renderer draws real steps (see Rendering).
 - **Balconies** (wall type `i`): a raised floor with a 1.1 m railing along
   every edge that drops to a lower floor. Where stairs arrive level with it
   there's no railing, so the opening appears by itself. Railings stop you
@@ -258,9 +259,10 @@ dm_spawn      1.5   3.5   0
 - **Sloped floors**: hits carry the floor height where the ray enters and
   leaves a cell (`top`, `exit_top`); along a ray a slope's height is linear,
   so each pixel's distance is closed-form: `d = (eye - top + m near) /
-  ((y - horizon) / projection + m)` (m = 0 for flat floors). Tread lines
-  every 1/16 storey. Surfaces may be above the horizon (stairs rising above
-  eye level).
+  ((y - horizon) / projection + m)` (m = 0 for flat floors). Surfaces may be
+  above the horizon. Stair cells are not drawn this way any more (their span
+  draws nothing; it still carries heights for the spans around it): their
+  steps are box models, below.
 - **Railings** are drawn above balcony edges where the ray climbs onto the
   balcony (from below) or leaves it over a drop (from on top), as a masked
   texture.
@@ -305,6 +307,13 @@ dm_spawn      1.5   3.5   0
   sprites can't do; the cost is per box per column, so keep models to a few
   boxes, only within 16 cells. The Mac SE/30 (`mac`, with keyboard and
   mouse) is the first. Big furniture stays as map cells.
+- **Stairs as steps** (`boxes.stair_boxes`): each stair cell is drawn as 8
+  step boxes (1/16-storey risers, 1/8-cell treads), built once per map and
+  never distance-culled. Each step's top is level with the slope at its back
+  edge, so feet following the slope are at most a riser below the tread.
+  Step sides are textured in world units (`tiled_sides`) so the 8 read as one
+  wall; a step's front and back faces are drawn only one riser tall at the
+  top (`riser`), since the step in front hides the rest. ~2 ms in the lobby.
 - **Blocking things** (`ThingType.blocking`, `radius`) are square footprints
   that the shared collision code treats like walls.
 
