@@ -110,7 +110,7 @@ door_lift       6.5   7.5   270
 ceiling_light   2.5   8.5   0
 ceiling_light   4.5   8.5   0
 ceiling_light   6.5   8.5   0
-mac             4.65  3.6   0
+mac             4.65  3.6   355.2
 ficus           1.5   1.5   0
 ficus           5.5   5.5   0
 ficus           1.5   6.5   0
@@ -121,30 +121,30 @@ dm_spawn        4.5   1.5   0
 # its screen facing them (north half 270, south half 90), near the front of
 # the desk, centred over the
 # sitter's knee space (the drawer pedestal is at each sitter's right)
-mac             10.68 2.25  270
-mac             10.32 2.75  90
-mac             11.68 2.25  270
-mac             11.32 2.75  90
-mac             12.68 2.25  270
-mac             12.32 2.75  90
-mac             16.68 2.25  270
-mac             16.32 2.75  90
-mac             17.68 2.25  270
-mac             17.32 2.75  90
-mac             18.68 2.25  270
-mac             18.32 2.75  90
-mac             10.68 6.25  270
-mac             10.32 6.75  90
-mac             11.68 6.25  270
-mac             11.32 6.75  90
-mac             12.68 6.25  270
-mac             12.32 6.75  90
-mac             16.68 6.25  270
-mac             16.32 6.75  90
-mac             17.68 6.25  270
-mac             17.32 6.75  90
-mac             18.68 6.25  270
-mac             18.32 6.75  90
+mac             10.68 2.25  278.8
+mac             10.32 2.75  96.6
+mac             11.68 2.25  273.6
+mac             11.32 2.75  81.1
+mac             12.68 2.25  278
+mac             12.32 2.75  82.7
+mac             16.68 2.25  279.4
+mac             16.32 2.75  94
+mac             17.68 2.25  276.7
+mac             17.32 2.75  96.4
+mac             18.68 2.25  265.9
+mac             18.32 2.75  84.4
+mac             10.68 6.25  275.5
+mac             10.32 6.75  84
+mac             11.68 6.25  275.1
+mac             11.32 6.75  95.1
+mac             12.68 6.25  274.4
+mac             12.32 6.75  84.3
+mac             16.68 6.25  265.7
+mac             16.32 6.75  85.1
+mac             17.68 6.25  273.1
+mac             17.32 6.75  85.6
+mac             18.68 6.25  261.6
+mac             18.32 6.75  84.4
 filing_cabinet  22.84 1.23  180
 filing_cabinet  22.84 1.57  180
 filing_cabinet  22.84 2.33  180
@@ -157,7 +157,7 @@ ficus           22.5  9.5   0
 ficus           14.5  4.5   0
 dm_spawn        21.5  6.5   180
 # Boss office: executive desk
-mac             4.5   10.5  270
+mac             4.5   10.5  262.2
 filing_cabinet  1.28  10.16 90
 filing_cabinet  1.62  10.16 90
 filing_cabinet  2.38  10.16 90
