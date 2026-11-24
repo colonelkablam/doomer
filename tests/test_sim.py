@@ -169,12 +169,12 @@ def test_config_rejects_bad_input(data: dict[str, object]) -> None:
 
 # --- blocking things -------------------------------------------------------------
 
-OB = Obstacle(4.0, 2.5, 0.25)
+OB = Obstacle.square(4.0, 2.5, 0.25)
 OPEN = parse_map("[walls]\n########\n#......#\n#......#\n#......#\n########\n")
 
 
 def test_obstacle_stops_movement_on_each_side() -> None:
-    reach = R + OB.radius
+    reach = R + OB.half_x
     assert move_box(OPEN, 2.0, 2.5, 3.0, 0.0, R, [OB])[0] == pytest.approx(OB.x - reach)
     assert move_box(OPEN, 5.5, 2.5, -3.0, 0.0, R, [OB])[0] == pytest.approx(OB.x + reach)
     assert move_box(OPEN, 4.0, 1.4, 0.0, 3.0, R, [OB])[1] == pytest.approx(OB.y - reach)
@@ -182,7 +182,7 @@ def test_obstacle_stops_movement_on_each_side() -> None:
 
 def test_slides_past_obstacle_and_misses_when_not_lined_up() -> None:
     x, y = move_box(OPEN, 3.0, 2.5, 0.5, 0.5, R, [OB])  # diagonal into its west face
-    assert x == pytest.approx(OB.x - R - OB.radius)
+    assert x == pytest.approx(OB.x - R - OB.half_x)
     assert y == pytest.approx(3.0)
     # Passing well to the north: no effect.
     assert move_box(OPEN, 2.0, 1.4, 3.0, 0.0, R, [OB]) == pytest.approx((5.0, 1.4))
@@ -199,7 +199,7 @@ def test_world_builds_obstacles_from_blocking_things() -> None:
         "coop_start 1.5 1.5 0\nexit 4.5 1.5 0\ndesk 3.5 1.5 0\nceiling_light 2.5 1.5 0\n"
     )
     world = new_world(m, "coop")
-    assert world.obstacles == (Obstacle(3.5, 1.5, THING_TYPES["desk"].radius),)
+    assert world.obstacles == (Obstacle.square(3.5, 1.5, THING_TYPES["desk"].radius),)
     player = spawn_player(world, 1, "p")
     for _ in range(60):
         step(world, {1: PlayerInput(forward=1.0, angle=0.0)})

@@ -10,6 +10,7 @@ own it.
 import math
 from dataclasses import dataclass
 
+from doomer.shared.furniture import resting_height
 from doomer.shared.mapfile import GameMap
 
 PASS_PREFIX = "pass_"
@@ -38,9 +39,7 @@ def pickups_from_map(game_map: GameMap) -> list[Pickup]:
     out: list[Pickup] = []
     for t in game_map.things:
         if t.type.startswith(PASS_PREFIX):
-            cx, cy = math.floor(t.x), math.floor(t.y)
-            z = game_map.floor_at(t.x, t.y) if game_map.is_low_block(cx, cy) else 0.0
-            out.append(Pickup(len(out), t.type, t.x, t.y, z))
+            out.append(Pickup(len(out), t.type, t.x, t.y, resting_height(game_map, t)))
     return out
 
 

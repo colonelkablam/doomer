@@ -84,6 +84,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Office door: wood veneer, lever handle, kick plate; swings open on use (E) | yes, until opened | [built] (prototype) |
 | Double office doors: two such leaves meeting in the middle, for full-width doorways | yes, until opened | [built] (prototype) |
 | Sliding glass doors: aluminium frame, frosted band, push bar; open by themselves | yes, until open | [built] (prototype) |
+| Reception desk (box model): a cream laminate transaction ledge with a chrome edge over a slatted wood front, recessed plinth and a brass "OK" logo; behind, a grey work surface at desk height over a drawer pedestal, the switchboard phone; returns at both ends; the visitors' book on the ledge | yes | [built] |
 | Card readers by locked doors: stripe in the pass colour, red/green lamp | no | [built] |
 | Water cooler (box model: cream cabinet, hot and cold taps, upturned octagonal bottle; faces its map angle) | yes | [built] |
 | Filing cabinet (box model: five steel drawers with pulls and label cards; faces its map angle) | yes | [built] |

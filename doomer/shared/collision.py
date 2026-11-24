@@ -16,9 +16,16 @@ _EPS = 1e-9
 
 
 class Obstacle(NamedTuple):
+    """A blocking rectangle (a thing's footprint): centre and half-widths."""
+
     x: float
     y: float
-    radius: float  # half-width of its square footprint
+    half_x: float
+    half_y: float
+
+    @classmethod
+    def square(cls, x: float, y: float, radius: float) -> "Obstacle":
+        return cls(x, y, radius, radius)
 
 
 class ThinWall(NamedTuple):
@@ -76,8 +83,9 @@ def _clamp_to_obstacles(
     """
     for ob in obstacles:
         o_pos, o_other = (ob.x, ob.y) if axis == 0 else (ob.y, ob.x)
-        reach = r + ob.radius
-        if abs(other - o_other) >= reach - _EPS:
+        half, half_other = (ob.half_x, ob.half_y) if axis == 0 else (ob.half_y, ob.half_x)
+        reach = r + half
+        if abs(other - o_other) >= r + half_other - _EPS:
             continue  # not lined up on the other axis
         if new > pos and pos <= o_pos - reach + _EPS:
             new = min(new, o_pos - reach)

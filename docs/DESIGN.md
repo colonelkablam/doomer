@@ -347,6 +347,15 @@ dm_spawn      1.5   3.5   0
   bulkhead drawing; with lighting on, a ceiling lower than a storey (the
   lintel's soffit) takes the plain light times `soffit_shade` (0.85), not
   the square root other ceilings get, so it sits in shadow like the walls.
+- **Furniture footprints** (`things.Footprint`, `shared/furniture.py`): a
+  blocking thing type can give its floor plan as rectangles in its own frame,
+  each with a top height, instead of the square `radius`. Placed at the
+  thing's angle (snapped to quarter turns), they are its collision
+  (`collision.Obstacle` is a rectangle) and the surfaces other things rest
+  on: a thing inside another's footprint stands on its top
+  (`resting_height`, used for sprites, box models and pickups). The
+  reception desk is the first: a ledge at the front (~1.15 m), a work
+  surface behind it (~0.73 m).
 - **ID passes and locks** (`shared/pickups.py`, `door lock=`): passes are
   pickups (walk within 0.75 cells, about an arm's reach beyond your box, at
   most 0.5 storeys above or below your feet); the team shares them

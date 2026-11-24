@@ -754,12 +754,168 @@ def door_boxes(doors: Iterable[Door], passes: Collection[str] = ()) -> list[Plac
     return out
 
 
+# --- Reception desk (1980s, two levels) -------------------------------------------
+# A transaction ledge at the front (~1.15 m) for visitors to lean on and sign
+# in at, over a wood-slatted front panel on a recessed plinth with the
+# company's brass logo; behind it, a work surface at desk height (~0.73 m)
+# over a steel drawer pedestal, with the switchboard phone; returns wrapping
+# both ends. Model x points to the visitors' side. Collision and the heights
+# things rest at (the ledge, the work surface): RECEPTION_FOOTPRINTS in
+# doomer/shared/things.py, which these dimensions match.
+
+_R_LEN = 0.92  # half-length along the desk, cells
+_R_FRONT = (0.18, 0.26)  # the front panel, across the desk
+_R_LEDGE = (0.14, 0.31)
+_R_BACK = -0.30  # the work surface's back edge (the receptionist's side)
+_R_PANEL_TOP, _R_LEDGE_TOP, _R_WORK = 0.40, 0.425, 0.27  # walls
+
+
+def slatted_wood() -> int:
+    rng = np.random.default_rng(91)
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 8.5 + (noise(rng, 16) - 0.5) * 1.2)
+    c.paint(c.rect(0, 64, 0, 64) & (c.u % 6 == 0), WOOD, 5.5)  # vertical slats
+    c.paint(c.rect(0, 4, 0, 64), WOOD, 5.0)  # in the ledge's shadow
+    return _texture(c)
+
+
+def plinth() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 3.0)
+    return _texture(c)
+
+
+def ledge_top() -> int:
+    """Cream laminate, faintly mottled, with a chrome strip along the front."""
+    rng = np.random.default_rng(92)
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), CREAM, 11.0 + (noise(rng, 16) - 0.5) * 0.8)
+    c.paint(c.rect(58, 64, 0, 64), GREY, 13.0)
+    return _texture(c)
+
+
+def ledge_edge() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 12.0)
+    c.paint(c.rect(0, 16, 0, 64), GREY, 14.0)  # catches the light
+    c.paint(c.rect(56, 64, 0, 64), GREY, 6.0)
+    return _texture(c)
+
+
+def work_top() -> int:
+    rng = np.random.default_rng(93)
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WARM_GREY, 10.0 + (noise(rng, 16) - 0.5) * 0.8)
+    return _texture(c)
+
+
+def work_edge() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WARM_GREY, 8.0)
+    return _texture(c)
+
+
+def pedestal_front() -> int:
+    """Three steel drawers, seen from the receptionist's chair."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 8.0)
+    for top in (0, 21, 42):
+        c.paint(c.rect(top, top + 1, 0, 64), GREY, 3.0)
+        c.paint(c.rect(top + 8, top + 11, 22, 42), GREY, 13.0)  # pull
+    return _texture(c)
+
+
+def logo_plaque() -> int:
+    """The company's brass logo: OK, for OK Holdings plc."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), OCHRE, 12.0)
+    c.paint(
+        c.rect(0, 64, 0, 3) | c.rect(0, 64, 61, 64) | c.rect(0, 3, 0, 64) | c.rect(61, 64, 0, 64),
+        OCHRE,
+        8.0,
+    )
+    c.text("OK", 17, 11, WOOD, 3.0, scale=6)
+    return _texture(c)
+
+
+def phone_top() -> int:
+    """A switchboard phone from above: the handset along the back, a keypad,
+    and a row of line lamps."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), CREAM, 10.0)
+    c.paint(c.rect(4, 18, 6, 58), GREY, 4.0)  # handset
+    for v0 in (26, 36, 46):
+        for u0 in (14, 26, 38):
+            c.paint(c.rect(v0, v0 + 6, u0, u0 + 8), GREY, 9.0)  # keys
+    for u0 in range(8, 56, 8):
+        c.paint(c.rect(56, 60, u0, u0 + 4), BRICK, 12.0)  # line lamps
+    return _texture(c)
+
+
+def book_top() -> int:
+    """The visitors' book, open: ruled pages either side of the spine."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), BLUE, 5.0)  # cover
+    c.paint(c.rect(4, 60, 4, 60), CREAM, 14.0)
+    c.paint(c.rect(4, 60, 31, 33), CREAM, 10.0)  # spine
+    c.paint(c.rect(4, 60, 4, 60) & (c.v % 6 == 0), BLUE, 10.0)  # rules
+    return _texture(c)
+
+
+def book_edge() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), BLUE, 5.0)
+    return _texture(c)
+
+
+def _reception_desk() -> tuple[Box, ...]:
+    wood, dark, edge = slatted_wood(), plinth(), ledge_edge()
+    work, work_side = work_top(), work_edge()
+    steel = pedestal_front()
+    length = (-_R_LEN, _R_LEN)
+    inner = (-_R_LEN + 0.06, _R_LEN - 0.06)  # between the returns
+    book_side = book_edge()
+    boxes = [
+        # The front: slatted panel on a recessed plinth, the ledge above it.
+        Box(_R_FRONT, inner, (0.03, _R_PANEL_TOP), (wood, wood, wood, wood, wood)),
+        Box((0.17, 0.235), inner, (0.0, 0.03), (dark,) * 5),
+        Box(_R_LEDGE, length, (_R_PANEL_TOP, _R_LEDGE_TOP), (edge, edge, edge, edge, ledge_top())),
+        # Returns at both ends, from the back of the work surface to the front.
+        Box((_R_BACK, _R_FRONT[1]), (-_R_LEN, -_R_LEN + 0.06), (0.0, _R_PANEL_TOP), (wood,) * 5),
+        Box((_R_BACK, _R_FRONT[1]), (_R_LEN - 0.06, _R_LEN), (0.0, _R_PANEL_TOP), (wood,) * 5),
+        # The work surface, and a drawer pedestal under its right-hand end.
+        Box((_R_BACK, _R_FRONT[0]), inner, (_R_WORK - 0.015, _R_WORK), (work_side,) * 4 + (work,)),
+        Box(
+            (_R_BACK + 0.03, _R_FRONT[0] - 0.03),
+            (0.5, _R_LEN - 0.07),
+            (0.0, _R_WORK - 0.015),
+            (steel, steel, steel, steel, steel),
+        ),
+        # The logo, the phone, the visitors' book.
+        Box((_R_FRONT[1], _R_FRONT[1] + 0.006), (-0.07, 0.07), (0.17, 0.31), (logo_plaque(),) * 5),
+        Box(
+            (-0.12, -0.02),
+            (-0.55, -0.42),
+            (_R_WORK, _R_WORK + 0.03),
+            (work_side,) * 4 + (phone_top(),),
+        ),
+        Box(
+            (0.17, 0.27),
+            (0.35, 0.52),
+            (_R_LEDGE_TOP, _R_LEDGE_TOP + 0.01),
+            (book_side,) * 4 + (book_top(),),
+        ),
+    ]
+    return tuple(boxes)
+
+
 # Keyed by thing type name, like SPRITES.
 BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "mac": _mac_se30(),
     "filing_cabinet": _filing_cabinet(),
     "water_cooler": _water_cooler(),
     "ficus": _ficus(),
+    "reception_desk": _reception_desk(),
 }
 BOX_TEXTURES: U8Array = np.stack(_TEXTURES)  # [texture][u][v]
 BOX_OPAQUE: BoolArray = np.stack(_OPAQUE)  # [texture][u][v]: False = see-through

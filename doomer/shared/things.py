@@ -9,6 +9,19 @@ same name.
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+
+@dataclass(frozen=True, slots=True)
+class Footprint:
+    """Part of a piece of furniture's floor plan, in the thing's own frame
+    (x towards its front, the way its angle faces; y to its right), cells;
+    and the height of its top (walls), which things placed on it rest on.
+    doomer/shared/furniture.py turns them into obstacles and surfaces."""
+
+    x: tuple[float, float]
+    y: tuple[float, float]
+    top: float
+
+
 # ID passes, by colour: staff, facilities, executive (docs/GAME.md). A pass
 # thing is a pickup; a door's `lock` names the pass that opens it.
 PASS_COLOURS = ("blue", "red", "gold")
@@ -23,6 +36,9 @@ class ThingType:
     # Properties a map may give this thing (`key=value` after its angle), each
     # with the values allowed. Anything else is a map error.
     properties: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+    # A blocking thing's floor plan, if not the square `radius`: rectangles,
+    # turned to its angle (snapped to quarter turns).
+    footprints: tuple[Footprint, ...] = ()
 
 
 THING_TYPES: dict[str, ThingType] = {}
@@ -57,6 +73,23 @@ for _name, _description, _blocking, _radius in (
     ("mac", "Apple Macintosh SE/30 with keyboard and mouse, for a desk", False, 0.0),
 ):
     register_thing_type(ThingType(_name, _description, _blocking, _radius))
+
+# The reception desk (drawn by doomer/client/boxes.py; its dimensions match):
+# angle = the way its front faces (the visitors' side). A transaction ledge
+# along the front, and the work surface behind it, at their own heights:
+# things placed on it (a computer, a pass) rest on whichever they're over.
+RECEPTION_DESK = register_thing_type(
+    ThingType(
+        "reception_desk",
+        "Reception desk: a ledge for visitors, a work surface behind",
+        blocking=True,
+        radius=0.3,
+        footprints=(
+            Footprint((0.14, 0.31), (-0.92, 0.92), 0.425),  # the ledge
+            Footprint((-0.30, 0.14), (-0.92, 0.92), 0.27),  # the work surface
+        ),
+    )
+)
 
 # Doors (doomer/shared/doors.py): in a doorway cell; angle = the way it opens.
 # `lock=<colour>`: only opens for a team holding that pass.

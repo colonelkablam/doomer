@@ -8,6 +8,7 @@ from doomer.shared.collision import Obstacle
 from doomer.shared.config import SimConfig
 from doomer.shared.doors import Door, doors_from_map
 from doomer.shared.events import Event, PlayerSpawned
+from doomer.shared.furniture import footprint_obstacles
 from doomer.shared.mapfile import GameMap
 from doomer.shared.modes import GAME_MODES, missing_requirements
 from doomer.shared.pickups import Pickup, pickups_from_map
@@ -49,9 +50,14 @@ def new_world(
     if missing:
         raise ModeNotSupported(f"{game_map.name!r} can't be played as {mode}: {', '.join(missing)}")
     obstacles = tuple(
-        Obstacle(t.x, t.y, THING_TYPES[t.type].radius)
+        ob
         for t in game_map.things
         if THING_TYPES[t.type].blocking
+        for ob in (
+            footprint_obstacles(t)
+            if THING_TYPES[t.type].footprints
+            else [Obstacle.square(t.x, t.y, THING_TYPES[t.type].radius)]
+        )
     )
     return World(
         game_map,

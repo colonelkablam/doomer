@@ -81,6 +81,7 @@ from doomer.client.textures import (
     build_opacity,
     railing,
 )
+from doomer.shared.furniture import resting_height
 from doomer.shared.mapfile import (
     RAIL_HEIGHT,
     RAILING_WALL_TYPE,
@@ -157,7 +158,7 @@ def sprites_from_things(game_map: GameMap) -> list[SpriteInstance]:
         if art is not None and art.on_ceiling:
             z = game_map.ceiling_height(cx, cy) - 1.0  # the image's top at the ceiling
         else:
-            z = game_map.floor_at(t.x, t.y) if game_map.is_low_block(cx, cy) else 0.0
+            z = resting_height(game_map, t)  # a block's top, furniture's, or the floor
         out.append(SpriteInstance(t.type, t.x, t.y, z, t.angle))
     return out
 
