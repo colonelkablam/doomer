@@ -8,7 +8,7 @@ class RenderConfig:
     width: int = 320  # internal resolution; scaled up to the window
     height: int = 200
     window_scale: int = 3
-    fov_degrees: float = 66.0  # horizontal
+    fov_degrees: float = 75.0  # horizontal
     max_fps: int = 144  # 0 = uncapped
     vsync: bool = True
     shade_distance: float = 14.0  # walls fade to their darkest at this distance

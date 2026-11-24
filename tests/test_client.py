@@ -60,9 +60,9 @@ def test_no_fisheye_flat_wall_has_equal_height_across_screen() -> None:
     # Facing a flat wall square-on, perpendicular distance is the same in every
     # column, so every column must be the same height.
     # The room is 3 cells tall, so from 4 cells away the east wall spans only the
-    # middle ~58% of the screen; outside that, rays hit the side walls.
+    # middle ~half of the screen; outside that, rays hit the side walls.
     frame = render_frame(ROOM, Camera(4.0, 2.5, 0.0))
-    heights = {column_height(frame, c) for c in (80, 120, 160, 200, 240)}
+    heights = {column_height(frame, c) for c in (100, 130, 160, 190, 220)}
     assert max(heights) - min(heights) <= 1
 
 

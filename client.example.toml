@@ -4,7 +4,7 @@
 
 [render]
 window_scale = 3        # window = 320x200 times this
-fov_degrees = 66.0
+fov_degrees = 75.0
 max_fps = 144           # 0 = uncapped
 vsync = true
 show_fps = true
