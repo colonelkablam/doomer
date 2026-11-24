@@ -91,31 +91,32 @@ water_cooler    6.5   6.5   0
 dm_spawn        2.5   5.5   0
 dm_spawn        4.5   1.5   0
 # Open plan: four pods of back-to-back steel desks, a Mac per sitter,
-# its screen facing them (north half 270, south half 90)
-mac             10.5  2.3   270
-mac             10.5  2.7   90
-mac             11.5  2.3   270
-mac             11.5  2.7   90
-mac             12.5  2.3   270
-mac             12.5  2.7   90
-mac             16.5  2.3   270
-mac             16.5  2.7   90
-mac             17.5  2.3   270
-mac             17.5  2.7   90
-mac             18.5  2.3   270
-mac             18.5  2.7   90
-mac             10.5  6.3   270
-mac             10.5  6.7   90
-mac             11.5  6.3   270
-mac             11.5  6.7   90
-mac             12.5  6.3   270
-mac             12.5  6.7   90
-mac             16.5  6.3   270
-mac             16.5  6.7   90
-mac             17.5  6.3   270
-mac             17.5  6.7   90
-mac             18.5  6.3   270
-mac             18.5  6.7   90
+# its screen facing them (north half 270, south half 90), centred over the
+# sitter's knee space (the drawer pedestal is at each sitter's right)
+mac             10.68 2.3   270
+mac             10.32 2.7   90
+mac             11.68 2.3   270
+mac             11.32 2.7   90
+mac             12.68 2.3   270
+mac             12.32 2.7   90
+mac             16.68 2.3   270
+mac             16.32 2.7   90
+mac             17.68 2.3   270
+mac             17.32 2.7   90
+mac             18.68 2.3   270
+mac             18.32 2.7   90
+mac             10.68 6.3   270
+mac             10.32 6.7   90
+mac             11.68 6.3   270
+mac             11.32 6.7   90
+mac             12.68 6.3   270
+mac             12.32 6.7   90
+mac             16.68 6.3   270
+mac             16.32 6.7   90
+mac             17.68 6.3   270
+mac             17.32 6.7   90
+mac             18.68 6.3   270
+mac             18.32 6.7   90
 filing_cabinet  22.5  1.5   0
 filing_cabinet  22.5  2.5   0
 filing_cabinet  22.5  3.5   0
