@@ -39,7 +39,7 @@ from doomer.client.palette import (
     WOOD,
     U8Array,
 )
-from doomer.client.pixelart import Canvas, noise
+from doomer.client.pixelart import BoolArray, Canvas, noise
 from doomer.shared.mapfile import STAIR_RISE, STAIRS_WALL_TYPE, WALL_UNITS, GameMap
 from doomer.shared.screens import SCREEN_HALF, SCREEN_HEIGHT
 from doomer.shared.screens import desk_screens as shared_desk_screens
@@ -78,11 +78,14 @@ class PlacedBox(NamedTuple):
 
 
 _TEXTURES: list[U8Array] = []
+_OPAQUE: list[BoolArray] = []
 
 
 def _texture(canvas: Canvas) -> int:
-    """Register a face texture; returns its id."""
+    """Register a face texture; returns its id. Texels the canvas didn't
+    paint are see-through (leaves)."""
     _TEXTURES.append(np.ascontiguousarray(canvas.index.T))
+    _OPAQUE.append(np.ascontiguousarray(canvas.opaque.T))
     return len(_TEXTURES) - 1
 
 
@@ -497,10 +500,97 @@ def _water_cooler() -> tuple[Box, ...]:
     )
 
 
+# --- Potted ficus ---------------------------------------------------------------
+# ~1.95 m: a terracotta pot (octagonal, flaring to a rim), two braided stems,
+# and a crown of crossed leaf cards: thin panels with see-through leaf
+# textures, four upright at 45 degrees to each other through the crown's
+# axis and two flat ones across it, so it reads as a bush from any side and
+# from above. (Solid boxes would look like a topiary cube.) Pot footprint
+# matches its collision (half-width 0.16); the crown spreads wider, at head
+# height, as a real one does.
+
+_CROWN = (0.30, 0.72)  # walls
+_CROWN_R = 0.23  # cells
+
+
+def leaves(seed: int, flat: bool = False) -> int:
+    """A ragged oval of leaf clusters, see-through between them. Lit from
+    above (upright cards) and darker inside the clumps."""
+    rng = np.random.default_rng(seed)
+    c = Canvas()
+    coarse, fine = noise(rng, 8), noise(rng, 32)
+    density = 0.6 * coarse + 0.4 * fine
+    outline = c.ellipse(32, 32, 31, 31) if flat else c.ellipse(34, 32, 30, 31)
+    lit = 0.0 if flat else (32 - c.v) / 32 * 1.5  # tops of the crown catch the light
+    c.paint(outline & (density > 0.42), GREEN, 4.0 + fine * 7.0 + lit)
+    c.paint(outline & (density > 0.42) & (fine < 0.25), GREEN, 2.5)  # shadowed leaves
+    return _texture(c)
+
+
+def pot_side() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), ORANGE, 7.5)
+    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64), ORANGE, 6.0)
+    return _texture(c)
+
+
+def soil() -> int:
+    rng = np.random.default_rng(61)
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 2.5 + noise(rng, 16) * 1.5)
+    return _texture(c)
+
+
+def bark() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 5.0)
+    c.paint(c.rect(0, 64, 0, 16), WOOD, 6.5)
+    return _texture(c)
+
+
+def _ficus() -> tuple[Box, ...]:
+    side, earth, stem = pot_side(), soil(), bark()
+    pot = (
+        *_octagon(0.10, (0.0, 0.12), (side, earth)),
+        *_octagon(0.12, (0.12, 0.2), (side, earth)),  # flaring
+        *_octagon(0.13, (0.2, 0.22), (side, earth)),  # rim; its top is the soil
+    )
+    stems = tuple(
+        Box((x - 0.012, x + 0.012), (y - 0.012, y + 0.012), (0.22, 0.5), (stem,) * 5)
+        for x, y in ((0.02, -0.015), (-0.02, 0.02))
+    )
+    r = (-_CROWN_R, _CROWN_R)
+    card = (-0.003, 0.003)
+    upright = tuple(
+        Box(card, r, _CROWN, (tex, tex, tex, tex, tex), turn=turn)
+        for turn, tex in zip(
+            (0.0, math.pi / 4, math.pi / 2, 3 * math.pi / 4),
+            (leaves(71), leaves(72), leaves(73), leaves(74)),
+            strict=True,
+        )
+    )
+    flat = tuple(
+        Box(
+            (-_CROWN_R * k, _CROWN_R * k),
+            (-_CROWN_R * k, _CROWN_R * k),
+            (z, z + 0.004),
+            (tex,) * 5,
+            turn=turn,
+        )
+        for z, k, turn, tex in (
+            (0.47, 0.9, 0.3, leaves(75, flat=True)),
+            (0.62, 0.7, 1.1, leaves(76, flat=True)),
+        )
+    )
+    return (*pot, *stems, *upright, *flat)
+
+
 # Keyed by thing type name, like SPRITES.
 BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "mac": _mac_se30(),
     "filing_cabinet": _filing_cabinet(),
     "water_cooler": _water_cooler(),
+    "ficus": _ficus(),
 }
 BOX_TEXTURES: U8Array = np.stack(_TEXTURES)  # [texture][u][v]
+BOX_OPAQUE: BoolArray = np.stack(_OPAQUE)  # [texture][u][v]: False = see-through

@@ -24,7 +24,6 @@ from doomer.client.palette import (
     CREAM,
     GREEN,
     GREY,
-    ORANGE,
     SAND,
     WARM_GREY,
     WOOD,
@@ -125,21 +124,6 @@ def terminal() -> Sprite:
     return Sprite(baked.index, baked.opaque, sink=baked.sink, reach=baked.reach)
 
 
-def ficus() -> Sprite:
-    """Potted ficus, ~1.9 m: the tallest furniture."""
-    c = Canvas()
-    rng = np.random.default_rng(14)
-    pot = c.rect(53, 64, 25, 39) & (np.abs(c.u + 0.5 - 32) <= 7 - (63 - c.v) * 0.12)
-    c.paint(pot, ORANGE, np.where(c.u < 30, 8.0, 7.0))
-    c.paint(c.rect(52, 54, 24, 40), ORANGE, 9.0)  # rim
-    c.paint(c.rect(40, 52, 31, 33), WOOD, 5.0)  # trunk
-    # Leaf clusters: coarse noise gives clumps, fine noise breaks up the edges.
-    leaves = noise(rng, 8) * 0.6 + noise(rng, 32) * 0.4
-    crown = c.ellipse(32, 32, 14, 14) | c.ellipse(25, 26, 7, 7) | c.ellipse(27, 39, 7, 7)
-    c.paint(crown & (leaves > 0.3), GREEN, 3 + leaves * 9)
-    return _finish(c)
-
-
 def exit_sign() -> Sprite:
     c = Canvas()
     c.paint(c.rect(0, 8, 31, 33), GREY, 6.0)  # hanging rod
@@ -152,6 +136,5 @@ def exit_sign() -> Sprite:
 SPRITES: dict[str, Sprite] = {
     "desk": desk(),
     "terminal": terminal(),
-    "ficus": ficus(),
     "exit": exit_sign(),
 }

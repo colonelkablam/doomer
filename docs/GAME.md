@@ -83,7 +83,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Desk with beige PC (single desk, sprite) | yes | [built] |
 | Water cooler (box model: cream cabinet, hot and cold taps, upturned octagonal bottle; faces its map angle) | yes | [built] |
 | Filing cabinet (box model: five steel drawers with pulls and label cards; faces its map angle) | yes | [built] |
-| Potted ficus | yes | [built] |
+| Potted ficus (box model: octagonal terracotta pot, two stems, a crown of crossed see-through leaf cards) | yes | [built] |
 | Fluorescent ceiling light (a panel set into the ceiling) | no | [built] |
 | Exit sign (marks the exit) | no | [built] |
 | Swivel chair (inert) | no | planned |

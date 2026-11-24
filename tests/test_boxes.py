@@ -2,7 +2,11 @@
 
 import math
 
-from doomer.client.boxes import BOX_MODELS
+import numpy as np
+import numpy.typing as npt
+import pytest
+
+from doomer.client.boxes import BOX_MODELS, PlacedBox
 from doomer.client.config import RenderConfig
 from doomer.client.render import EYE_HEIGHT, Camera, Renderer, SpriteInstance
 from doomer.shared.mapfile import parse_map
@@ -88,10 +92,10 @@ def test_plain_desk_pairs_have_no_screens() -> None:
     assert desk_screens(plain) == []
 
 
-def test_filing_cabinet_and_water_cooler_are_box_models_not_sprites() -> None:
+def test_furniture_is_box_models_not_sprites() -> None:
     from doomer.client.sprites import SPRITES
 
-    for name in ("filing_cabinet", "water_cooler"):
+    for name in ("filing_cabinet", "water_cooler", "ficus", "mac"):
         assert name in BOX_MODELS and name not in SPRITES
 
 
@@ -115,3 +119,45 @@ def test_water_cooler_bottle_is_an_octagon() -> None:
         R.render_indices(OPEN, CAM, [SpriteInstance("water_cooler", 4.5, 2.5, 0.0, turn)])
         row = row_for(height, 3.0 - reach)
         assert math.isclose(R.zbuffer[CENTRE, row], 3.0 - reach, abs_tol=0.003), turn
+
+
+def test_ficus_leaves_are_see_through_between_the_clusters() -> None:
+    from doomer.client.boxes import BOX_OPAQUE
+
+    plain = R.render_indices(OPEN, CAM).copy()
+    frame = R.render_indices(OPEN, CAM, [SpriteInstance("ficus", 3.5, 2.5)])
+    # The crown, 2 cells away: between ~0.95 and ~1.65 m up, the middle columns.
+    rows = slice(row_for(0.62, 2.0), row_for(0.4, 2.0))
+    crown = frame[150:170, rows] != plain[150:170, rows]
+    assert crown.any() and not crown.all()  # leaves, and gaps showing the wall behind
+    leaf_textures = {
+        tex for box in BOX_MODELS["ficus"] for tex in box.faces if not BOX_OPAQUE[tex].all()
+    }
+    assert len(leaf_textures) >= 4
+
+
+def test_testing_only_each_boxs_columns_draws_the_same_as_testing_all(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from doomer.client.render import sprites_from_things
+    from doomer.shared.mapfile import load_map
+
+    office = load_map("maps/office.map")
+    things = sprites_from_things(office)
+    views = [
+        Camera(3.0, 5.0, math.radians(-20)),
+        Camera(11.5, 4.3, math.radians(-90), pitch=-0.3),
+        Camera(6.3, 1.5, math.radians(60), z=1.6, pitch=-0.4),
+        Camera(11.68, 1.75, math.radians(90), z=0.42),
+    ]
+    culled = [R.render_indices(office, cam, things).copy() for cam in views]
+
+    def every_column(
+        self: Renderer, boxes: list[PlacedBox], camera: Camera
+    ) -> tuple[list[PlacedBox], npt.NDArray[np.intp], npt.NDArray[np.intp]]:
+        n = len(boxes)
+        return boxes, np.zeros(n, dtype=np.intp), np.full(n, self.config.width, dtype=np.intp)
+
+    monkeypatch.setattr(Renderer, "_in_view", every_column)
+    for cam, image in zip(views, culled, strict=True):
+        assert (R.render_indices(office, cam, things) == image).all()

@@ -32,20 +32,20 @@ def screen_rect(depth: float) -> tuple[float, float, float]:
 
 
 def test_sprite_straight_ahead_is_centred() -> None:
-    cols = changed_columns([SpriteInstance("ficus", 4.5, 2.5)])
+    cols = changed_columns([SpriteInstance("desk", 4.5, 2.5)])
     assert len(cols) > 0
     assert abs((int(cols[0]) + int(cols[-1])) / 2 - CFG.width / 2) <= 1.5  # sorted
 
 
 def test_sprite_width_is_inversely_proportional_to_depth() -> None:
-    near = len(changed_columns([SpriteInstance("ficus", 3.5, 2.5)]))  # depth 2
-    far = len(changed_columns([SpriteInstance("ficus", 5.5, 2.5)]))  # depth 4
+    near = len(changed_columns([SpriteInstance("desk", 3.5, 2.5)]))  # depth 2
+    far = len(changed_columns([SpriteInstance("desk", 5.5, 2.5)]))  # depth 4
     assert abs(near - 2 * far) <= 2
 
 
 def test_sprite_behind_wall_is_hidden_and_behind_camera_is_skipped() -> None:
-    assert len(changed_columns([SpriteInstance("ficus", 5.5, 2.5)], PILLAR)) == 0
-    assert len(changed_columns([SpriteInstance("ficus", 0.9, 2.5)])) == 0
+    assert len(changed_columns([SpriteInstance("desk", 5.5, 2.5)], PILLAR)) == 0
+    assert len(changed_columns([SpriteInstance("desk", 0.9, 2.5)])) == 0
 
 
 def test_partly_hidden_sprite_is_clipped_per_column() -> None:
@@ -68,9 +68,9 @@ def test_transparent_texels_show_what_is_behind() -> None:
 
 
 def test_nearer_sprite_is_drawn_over_farther_one() -> None:
-    # Desk (wood) in front of a ficus (green); listed far-last to check the
+    # Desk (wood) in front of a beige PC; listed far-last to check the
     # renderer sorts rather than trusting input order.
-    sprites = [SpriteInstance("desk", 3.5, 2.5), SpriteInstance("ficus", 5.5, 2.5)]
+    sprites = [SpriteInstance("desk", 3.5, 2.5), SpriteInstance("terminal", 5.5, 2.5)]
     frame = R.render_indices(OPEN, CAM, sprites)
     left, top, size = screen_rect(2.0)
     y = int(top + 55.5 * size / 64)  # well inside the desk's front panel

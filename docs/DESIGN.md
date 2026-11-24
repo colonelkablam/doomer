@@ -309,17 +309,23 @@ dm_spawn      1.5   3.5   0
   (`terminal`) uses it.
 - **Box models** (`client/boxes.py`): small box-shaped things drawn as real
   geometry: a few axis-aligned boxes in the thing's frame, turned to its map
-  angle, a 64x64 texture per face. Every box is slab-tested against every
-  column's ray at once (numpy, boxes x columns); the face a ray enters by is
-  drawn like a wall slice at the entry depth, the top (or underside) like a
-  floor between entry and exit depth, then all box pixels are z-tested
-  together. Correct from any angle and height with no frame popping, which
-  sprites can't do; the cost is per box per column, so keep models to a few
-  boxes, only within 16 cells. Box models: the Mac SE/30 (`mac`, with
-  keyboard and mouse), the filing cabinet and the water cooler. A box can be
-  turned about the model's origin (`Box.turn`); round things are octagonal
-  prisms made of four strips, two of them turned 45 degrees (two squares
-  would make an eight-pointed star: a union keeps the corners). Big
+  angle, a 64x64 texture per face (with an opacity mask). Each box gets the
+  screen columns its bounding circle can cover (`_in_view`; conservative,
+  so most boxes, behind or beside you, are dropped and far ones cover a few
+  columns), and each (box, column) pair is slab-tested in one numpy pass;
+  the face a ray enters by is drawn like a wall slice at the entry depth,
+  the top (or underside) like a floor between entry and exit depth, then
+  see-through texels are dropped and all box pixels are z-tested together.
+  Correct from any angle and height with no frame popping, which sprites
+  can't do. ~2.5 ms for ~220 boxes in view (testing every box against all
+  320 columns took ~10). Box-model things are drawn within 16 cells. Box
+  models: the Mac SE/30 (`mac`, with keyboard and mouse), the filing
+  cabinet, the water cooler and the ficus. A box can be turned about the
+  model's origin (`Box.turn`); round things are octagonal prisms made of
+  four strips, two of them turned 45 degrees (two squares would make an
+  eight-pointed star: a union keeps the corners). Foliage is crossed cards:
+  thin boxes with see-through leaf textures, four upright at 45 degrees to
+  each other and two flat, as games have long done for plants. Big
   furniture stays as map cells.
 - **Cubicle screens** (`shared/screens.py`, drawn by `boxes.desk_screens`):
   on `j` desk pairs, thin world-aligned panels (5 cm thick, to ~1.25 m) down

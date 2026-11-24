@@ -39,6 +39,7 @@ different number of steps), so it stays in Python, 320 iterations a frame.
 Everything per-pixel is whole-array numpy, which runs in C.
 """
 
+import functools
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -50,8 +51,10 @@ import pygame
 
 from doomer.client.boxes import (
     BOX_MODELS,
+    BOX_OPAQUE,
     BOX_TEXTURES,
     TOP,
+    Box,
     PlacedBox,
     desk_screens,
     stair_boxes,
@@ -1053,64 +1056,77 @@ class Renderer:
         horizon: float,
         eye: float,
     ) -> None:
-        """Box models (boxes.py), drawn as solid geometry. Every box is tested
-        against every column's ray at once (B boxes x W columns): the slab
-        test, in each box's own frame. Where a ray enters a box by a side, that
-        face is a vertical run of pixels at the entry depth (like a wall); the
-        top (or bottom) is a stretch of rows between the entry and exit
+        """Box models (boxes.py), drawn as solid geometry. Each box is tested
+        against the rays of the columns it can cover, all at once (numpy, one
+        row per box-column pair): the slab test, in each box's own frame.
+        Where a ray enters a box by a side, that face is a vertical run of
+        pixels at the entry depth (like a wall); the top (or bottom) is a
+        stretch of rows between the entry and exit
         depths, cast back onto its plane (like a floor). Pixels from all boxes
         are then z-tested together, nearest wins. Used for box-model things
         and for the steps of stairs."""
+        boxes, c0, c1 = self._in_view(boxes, camera)
         if not boxes:
             return
         h = self.config.height
         proj = self.projection
 
         def per_box(values: list[float]) -> FloatArray:
-            return np.array(values)[:, None]  # (B, 1), broadcasts over columns
+            return np.array(values)  # (B,)
 
-        turned = [p.angle + p.box.turn for p in boxes]
-        ca = per_box([math.cos(a) for a in turned])
-        sa = per_box([math.sin(a) for a in turned])
+        turned_b = per_box([p.angle + p.box.turn for p in boxes])
+        ca, sa = np.cos(turned_b), np.sin(turned_b)
         rel_x = per_box([camera.x - p.x for p in boxes])
         rel_y = per_box([camera.y - p.y for p in boxes])
-        x0, x1 = per_box([p.box.x[0] for p in boxes]), per_box([p.box.x[1] for p in boxes])
-        y0, y1 = per_box([p.box.y[0] for p in boxes]), per_box([p.box.y[1] for p in boxes])
-        z0 = per_box([p.z + p.box.z[0] for p in boxes])
-        z1 = per_box([p.z + p.box.z[1] for p in boxes])
-        faces = np.array([p.box.faces for p in boxes])  # (B, 5)
-        tiled = np.array([p.box.tiled_sides for p in boxes])
-        riser = np.array([p.box.riser for p in boxes])
+        # Camera into each box's frame (rotate by -angle).
+        ox_b, oy_b = rel_x * ca + rel_y * sa, -rel_x * sa + rel_y * ca
 
-        # Camera and rays into each box's frame (rotate by -angle).
-        ox, oy = rel_x * ca + rel_y * sa, -rel_x * sa + rel_y * ca
-        ray = camera.angle + np.array(self._offsets)
-        wx, wy = np.cos(ray)[None, :], np.sin(ray)[None, :]
-        dx, dy = wx * ca + wy * sa, -wx * sa + wy * ca
+        # The (box, column) pairs to test: each box only against the columns
+        # its bounding circle covers on screen.
+        counts = c1 - c0
+        pair_box = np.repeat(np.arange(len(boxes)), counts)
+        pair_col = (
+            c0[pair_box] + np.arange(pair_box.size) - np.repeat(np.cumsum(counts) - counts, counts)
+        )
+        ray = camera.angle + np.array(self._offsets)[pair_col]
+        wx, wy = np.cos(ray), np.sin(ray)
+        cb, sb = ca[pair_box], sa[pair_box]
+        dx, dy = wx * cb + wy * sb, -wx * sb + wy * cb
         dx = np.where(np.abs(dx) < 1e-12, 1e-12, dx)
         dy = np.where(np.abs(dy) < 1e-12, 1e-12, dy)
+        ox, oy = ox_b[pair_box], oy_b[pair_box]
+        x0 = per_box([p.box.x[0] for p in boxes])[pair_box]
+        x1 = per_box([p.box.x[1] for p in boxes])[pair_box]
+        y0 = per_box([p.box.y[0] for p in boxes])[pair_box]
+        y1 = per_box([p.box.y[1] for p in boxes])[pair_box]
         tx0, tx1 = (x0 - ox) / dx, (x1 - ox) / dx
         ty0, ty1 = (y0 - oy) / dy, (y1 - oy) / dy
         in_x, in_y = np.minimum(tx0, tx1), np.minimum(ty0, ty1)
         t_in = np.maximum(in_x, in_y)
         t_out = np.minimum(np.maximum(tx0, tx1), np.maximum(ty0, ty1))
         near_t = np.maximum(t_in, NEAR_PLANE)
-        hit = t_out > near_t
-        bi, ci = np.nonzero(hit)  # the (box, column) pairs whose ray crosses the box
-        if not bi.size:
+        hit = np.flatnonzero(t_out > near_t)  # pairs whose ray crosses the box
+        if not hit.size:
             return
+        bi, ci = pair_box[hit], pair_col[hit]
+        dx, dy, ox, oy = dx[hit], dy[hit], ox[hit], oy[hit]
+        x0, x1, y0, y1 = x0[hit], x1[hit], y0[hit], y1[hit]
+        in_x, in_y, t_in, t_out, near_t = in_x[hit], in_y[hit], t_in[hit], t_out[hit], near_t[hit]
+        faces = np.array([p.box.faces for p in boxes])  # (B, 5)
+        tiled = np.array([p.box.tiled_sides for p in boxes])
+        riser = np.array([p.box.riser for p in boxes])
         cos_c = self._cos[ci]
-        d_near = near_t[bi, ci] * cos_c  # perpendicular depths, as in the z-buffer
-        d_far = t_out[bi, ci] * cos_c
-        zt, zb = z1[bi, 0], z0[bi, 0]
+        d_near = near_t * cos_c  # perpendicular depths, as in the z-buffer
+        d_far = t_out * cos_c
+        zt = per_box([p.z + p.box.z[1] for p in boxes])[bi]
+        zb = per_box([p.z + p.box.z[0] for p in boxes])[bi]
 
         # Which face the ray enters by, where along it (u), and its light.
-        from_x = in_x[bi, ci] > in_y[bi, ci]
-        rdx, rdy = dx[bi, ci], dy[bi, ci]
+        from_x = in_x > in_y
+        rdx, rdy = dx, dy
         face = np.where(from_x, np.where(rdx < 0, 0, 2), np.where(rdy < 0, 1, 3))
-        ti = t_in[bi, ci]
-        hx, hy = ox[bi, 0] + rdx * ti, oy[bi, 0] + rdy * ti
-        bx0, bx1, by0, by1 = x0[bi, 0], x1[bi, 0], y0[bi, 0], y1[bi, 0]
+        hx, hy = ox + rdx * t_in, oy + rdy * t_in
+        bx0, bx1, by0, by1 = x0, x1, y0, y1
         across = np.choose(
             face,
             [
@@ -1121,18 +1137,19 @@ class Renderer:
             ],
         )
         # World direction of the face's normal: north/south faces darker, as walls.
-        normal = np.array(turned)[bi] + face * (math.pi / 2)
+        normal = turned_b[bi] + face * (math.pi / 2)
         side_light = 1.0 - (1.0 - Y_SIDE_SHADE) * np.abs(np.sin(normal))
 
         cols: list[IntArray] = []
         rows: list[IntArray] = []
         depths: list[FloatArray] = []
         texels: list[npt.NDArray[np.uint8]] = []
+        solid: list[npt.NDArray[np.bool_]] = []  # False: see-through (leaves)
         lights: list[FloatArray] = []
 
         # Sides: where the ray enters by one (not from inside the footprint).
         # A riser (front/back of a step) is only its top slice.
-        side = t_in[bi, ci] > NEAR_PLANE
+        side = t_in > NEAR_PLANE
         short = (riser[bi] > 0) & (face % 2 == 0)
         face_bottom = np.where(short, zt - riser[bi], zb)
         p, r = self._runs(
@@ -1157,6 +1174,7 @@ class Renderer:
             rows.append(r)
             depths.append(depth)
             texels.append(BOX_TEXTURES[tex, tu, tv])
+            solid.append(BOX_OPAQUE[tex, tu, tv])
             lights.append(side_light[k])
 
         # Top (seen from above) or bottom (from below): between entry and exit.
@@ -1175,19 +1193,23 @@ class Renderer:
             depth = (eye - plane[k]) * proj / (r + 0.5 - horizon)
             depth = np.clip(depth, d_near[k], d_far[k])
             t = depth / cos_c[k]
-            px, py = ox[bi[k], 0] + dx[bi[k], ci[k]] * t, oy[bi[k], 0] + dy[bi[k], ci[k]] * t
-            u = (y1[bi[k], 0] - py) / (y1[bi[k], 0] - y0[bi[k], 0])
-            v = (px - x0[bi[k], 0]) / (x1[bi[k], 0] - x0[bi[k], 0])
+            px, py = ox[k] + dx[k] * t, oy[k] + dy[k] * t
+            u = (y1[k] - py) / (y1[k] - y0[k])
+            v = (px - x0[k]) / (x1[k] - x0[k])
             cols.append(ci[k])
             rows.append(r)
             depths.append(depth)
-            texels.append(BOX_TEXTURES[faces[bi[k], TOP], _texel_clamped(u), _texel_clamped(v)])
+            top_tex, tu, tv = faces[bi[k], TOP], _texel_clamped(u), _texel_clamped(v)
+            texels.append(BOX_TEXTURES[top_tex, tu, tv])
+            solid.append(BOX_OPAQUE[top_tex, tu, tv])
             lights.append(np.full(k.size, 1.0 if above else Y_SIDE_SHADE))
 
         if not cols:
             return
-        col, row, depth = np.concatenate(cols), np.concatenate(rows), np.concatenate(depths)
-        texel, light = np.concatenate(texels), np.concatenate(lights)
+        keep = np.concatenate(solid)
+        col, row = np.concatenate(cols)[keep], np.concatenate(rows)[keep]
+        depth, texel = np.concatenate(depths)[keep], np.concatenate(texels)[keep]
+        light = np.concatenate(lights)[keep]
         # Where boxes overlap on screen, keep the nearest pixel (sort by pixel
         # then depth, take the first of each pixel), then z-test it.
         key = col * h + row
@@ -1200,6 +1222,39 @@ class Renderer:
         level = light_level(self._brightness(depth) * light[pick])
         frame[col, row] = COLORMAP[level, texel[pick]]
         zbuffer[col, row] = depth
+
+    def _in_view(
+        self, boxes: list[PlacedBox], camera: Camera
+    ) -> tuple[list[PlacedBox], IntArray, IntArray]:
+        """Boxes that may be on screen, and the screen columns [c0, c1) each
+        can cover: from its bounding circle (round the placement, so turns
+        don't matter), the angles it spans either side of its centre.
+        Conservative, so nothing visible is dropped; most boxes are behind or
+        beside you, or far away and a few columns wide."""
+        w = self.config.width
+        cos_a, sin_a = math.cos(camera.angle), math.sin(camera.angle)
+        half_fov = math.atan((w / 2) / self.projection)
+        kept, c0s, c1s = [], [], []
+        for p in boxes:
+            reach = _box_reach(p.box)
+            dx, dy = p.x - camera.x, p.y - camera.y
+            depth = dx * cos_a + dy * sin_a
+            lateral = -dx * sin_a + dy * cos_a
+            dist = math.hypot(depth, lateral)
+            if dist <= reach + NEAR_PLANE:
+                lo, hi = -half_fov, half_fov  # around the camera: anywhere
+            else:
+                centre, spread = math.atan2(lateral, depth), math.asin(reach / dist)
+                lo, hi = max(centre - spread, -half_fov), min(centre + spread, half_fov)
+                if lo >= hi:
+                    continue  # outside the field of view (or behind)
+            c0 = max(0, math.floor(w / 2 + math.tan(lo) * self.projection - 1))
+            c1 = min(w, math.ceil(w / 2 + math.tan(hi) * self.projection + 1))
+            if c0 < c1:
+                kept.append(p)
+                c0s.append(c0)
+                c1s.append(c1)
+        return kept, np.array(c0s, dtype=np.intp), np.array(c1s, dtype=np.intp)
 
     def _runs(self, start: FloatArray, end: FloatArray) -> tuple[IntArray, IntArray]:
         """Screen rows covered from row `start` to `end` (pixel centres in
@@ -1324,6 +1379,12 @@ def _floor_at_ray(
     return game_map.floor_at(
         min(max(x, cx + eps), cx + 1 - eps), min(max(y, cy + eps), cy + 1 - eps)
     )
+
+
+@functools.cache
+def _box_reach(box: Box) -> float:
+    """How far a box reaches from its model's origin, in any direction."""
+    return max(math.hypot(x, y) for x in box.x for y in box.y)
 
 
 def _texel_clamped(v: FloatArray) -> IntArray:
