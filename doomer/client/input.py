@@ -4,6 +4,7 @@ The pygame-specific part (KeyboardMouseInput) is thin; the logic that matters
 (compose_input) is a pure function so it can be tested without a display.
 """
 
+import logging
 import math
 from collections.abc import Set
 from enum import Enum
@@ -13,6 +14,8 @@ import pygame
 
 from doomer.client.config import ControlsConfig
 from doomer.shared.player import PlayerInput
+
+log = logging.getLogger(__name__)
 
 
 class Action(Enum):
@@ -52,6 +55,9 @@ class KeyboardMouseInput:
         self.controls = controls
         self.angle = angle
         self.captured = False
+        # SDL relative mode where available; otherwise grab + hidden cursor +
+        # warp back to the window centre each frame (some VMs, remote desktops).
+        self._warp_fallback = False
         self._bindings: list[tuple[int, Action]] = []
         for action in Action:
             for key_name in getattr(controls, action.value):
@@ -60,12 +66,29 @@ class KeyboardMouseInput:
     def set_captured(self, captured: bool) -> None:
         """Capture hides the cursor and reports raw mouse motion for mouse look."""
         self.captured = captured
-        pygame.mouse.set_relative_mode(captured)
+        if not self._warp_fallback:
+            try:
+                pygame.mouse.set_relative_mode(captured)
+            except pygame.error as e:
+                log.warning("relative mouse mode unavailable (%s); using cursor warping", e)
+                self._warp_fallback = True
+        if self._warp_fallback:
+            pygame.event.set_grab(captured)
+            pygame.mouse.set_visible(not captured)
+            self._recentre()
         pygame.mouse.get_rel()  # discard motion accumulated while not captured
 
     def poll(self, real_dt: float) -> PlayerInput:
         pressed = pygame.key.get_pressed()
         actions = {action for code, action in self._bindings if pressed[code]}
         mouse_dx = pygame.mouse.get_rel()[0] if self.captured else 0
+        if self.captured and self._warp_fallback:
+            self._recentre()
         self.angle = turn(self.angle, actions, mouse_dx, real_dt, self.controls)
         return compose_input(actions, self.angle)
+
+    def _recentre(self) -> None:
+        surface = pygame.display.get_surface()
+        if surface is not None:
+            pygame.mouse.set_pos(surface.get_rect().center)
+            pygame.mouse.get_rel()  # the warp itself registers as motion; drop it
