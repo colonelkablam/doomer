@@ -1,9 +1,11 @@
+from pathlib import Path
+
 import pygame
 
 from doomer.client.headless import save_png
 
 
-def test_render_frame_to_png(tmp_path):
+def test_render_frame_to_png(tmp_path: Path) -> None:
     pygame.init()
     try:
         pygame.display.set_mode((1, 1))  # proves the dummy driver works

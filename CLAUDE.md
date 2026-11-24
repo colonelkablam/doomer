@@ -22,10 +22,18 @@ Read it before starting work, and update it when a decision changes.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest -q
+.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/mypy && .venv/bin/pytest -q
 ```
 
+All four checks must pass before committing. CI runs them on Linux and Windows.
+
 ## Conventions
+
+- Follow the "Code design rules" section of `docs/DESIGN.md`: one-way
+  dependencies, dataclass state + functions, deterministic simulation that
+  emits events, registries for thing types/weapons/modes, `Protocol`
+  interfaces, one protocol module, config as data, `logging` not `print`.
+- Don't add frameworks or abstraction layers the design rules don't call for.
 
 - The cloud VM is headless: tests set `SDL_VIDEODRIVER=dummy` (see
   `tests/conftest.py`). To check rendering visually, render a frame and save it

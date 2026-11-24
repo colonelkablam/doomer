@@ -1,12 +1,25 @@
-"""Guard the model/view split: shared code must run on a bare Python install."""
+"""Guard the dependency rules in docs/DESIGN.md ("Code design rules", rule 1).
+
+shared and server must run on a bare Python install (the Pi), and nothing may
+depend on the client or editor.
+"""
+
 import ast
+from collections.abc import Iterator
 from pathlib import Path
 
-SHARED = Path(__file__).resolve().parent.parent / "doomer" / "shared"
-FORBIDDEN = {"pygame", "numpy", "doomer.client", "doomer.editor"}
+import pytest
+
+PKG = Path(__file__).resolve().parent.parent / "doomer"
+VIEW = {"pygame", "numpy", "doomer.client", "doomer.editor"}
+
+RULES: dict[str, set[str]] = {
+    "shared": VIEW | {"doomer.server"},
+    "server": VIEW,
+}
 
 
-def imported_modules(path: Path):
+def imported_modules(path: Path) -> Iterator[str]:
     tree = ast.parse(path.read_text(), filename=str(path))
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -15,10 +28,13 @@ def imported_modules(path: Path):
             yield node.module
 
 
-def test_shared_has_no_view_or_third_party_imports():
-    bad = []
-    for path in SHARED.rglob("*.py"):
-        for mod in imported_modules(path):
-            if any(mod == f or mod.startswith(f + ".") for f in FORBIDDEN):
-                bad.append(f"{path.name}: {mod}")
+@pytest.mark.parametrize("package", sorted(RULES))
+def test_forbidden_imports(package: str) -> None:
+    forbidden = RULES[package]
+    bad = [
+        f"{path.relative_to(PKG)}: {mod}"
+        for path in (PKG / package).rglob("*.py")
+        for mod in imported_modules(path)
+        if any(mod == f or mod.startswith(f + ".") for f in forbidden)
+    ]
     assert not bad, bad

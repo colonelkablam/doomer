@@ -20,6 +20,57 @@ Raspberry Pi 5 server), with co-op, deathmatch and a level editor.
 - **Fixed timestep**: the model advances in fixed steps. Rendering runs as fast
   as it can and is decoupled from the model.
 
+## Code design rules
+
+The aim is that adding a feature (a weapon, a pickup, a door, a game mode)
+means adding a module and registering it, not editing a dozen files.
+
+1. **Dependencies point one way**: `client`, `server` and `editor` import
+   `shared`; `shared` imports nothing of theirs. Enforced by
+   `tests/test_architecture.py` (extend it as packages are added).
+2. **Data and logic are separate.** State is plain typed `@dataclass(slots=True)`
+   objects. Behaviour lives in functions that take state and return or mutate
+   it. No god-objects with fifty methods.
+3. **The simulation is deterministic and side-effect free.** `step(world,
+   inputs, dt)` touches no clock, socket, file or random module. Randomness
+   comes from a seeded `random.Random` stored in the world. This makes it
+   testable, replayable, and usable for client prediction.
+4. **The simulation emits events, it doesn't call out.** A shot, a death or a
+   pickup is appended to an event list (`ShotFired`, `PlayerDied`, ...). Sound,
+   HUD, networking and scoring consume events. New consumers never need
+   simulation changes.
+5. **Registries for things that grow.** Thing types, weapons and game modes
+   are looked up by name in a registry (a dict populated by a decorator or an
+   explicit table). Adding a pickup = one new definition + one registration.
+6. **Interfaces as `typing.Protocol`, not base classes.** e.g. an
+   `InputSource` (keyboard, network, bot), a `Transport` (local, TCP). Swap
+   implementations without inheritance trees.
+7. **Wire format is defined in one place.** Every network message is a typed,
+   frozen dataclass in `shared/protocol.py` with explicit `to_dict` /
+   `from_dict`, plus the protocol version. Nothing else builds JSON by hand.
+8. **Config is data.** Tunables (speeds, tick rate, resolution, key bindings)
+   live in typed config dataclasses, loadable from TOML (`tomllib`), not as
+   magic numbers scattered through the code.
+9. **Logging via `logging`**, never `print`, outside CLI entry points.
+
+### Deliberately not doing
+
+- **Full ECS (entity-component-system).** It pays off with thousands of
+  entities and many combinable behaviours. We'll have tens of entities, and in
+  Python an ECS mostly adds indirection. The registry + event approach gives
+  the extensibility without that cost. Revisit if entity behaviours start
+  combining in awkward ways.
+- **Plugin loading, dependency-injection frameworks, abstract factories.**
+  Plain functions and Protocols are enough at this size.
+
+### Tooling
+
+- `ruff` for lint and formatting, `mypy --strict` for types, `pytest` for
+  tests. All three must pass before a commit; CI runs them on Linux and
+  Windows (`.github/workflows/ci.yml`).
+- Every public function is type-annotated. Tests sit alongside every module in
+  `shared` and `server`; rendering is checked by rendering to PNG.
+
 ## Networking
 
 - Join handshake: client sends protocol version and name; server rejects on
