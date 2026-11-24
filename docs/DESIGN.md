@@ -148,6 +148,14 @@ dm_spawn      1.5   3.5   0
   plain raised floor (galleries, steps). Things may stand on a low block and
   are drawn on its top. A raised floor must have a wall type (its sides need a
   texture), so `[floor]` on an empty `.` cell is an error.
+- **Stairs** (wall type `h`): a stair cell's floor slopes up across the cell
+  towards its `[facing]`, by half a storey (`STAIR_RISE` = 4 units); its
+  `[floor]` value is the height at the top edge. Two stair cells climb a full
+  storey. `GameMap.floor_at(x, y)` gives the floor at any point.
+- **Balconies** (wall type `i`): a raised floor with a 1.1 m railing along
+  every edge that drops to a lower floor. Where stairs arrive level with it
+  there's no railing, so the opening appears by itself. Railings stop you
+  walking off; plain raised floors (`e`) don't.
 - **Ceilings**: `[ceiling]` sets each cell's ceiling. Walls are drawn up to the
   ceiling of the space in front of them; where the ceiling drops between cells
   a bulkhead face is drawn. Wall types may register an `UPPER` texture for
@@ -246,6 +254,21 @@ dm_spawn      1.5   3.5   0
   atrium). Inside stretches with a different ceiling it doesn't exist, so
   those pixels stay infinitely far. The default floor stays infinitely far
   (open floor is never raised).
+- **Sloped floors**: hits carry the floor height where the ray enters and
+  leaves a cell (`top`, `exit_top`); along a ray a slope's height is linear,
+  so each pixel's distance is closed-form: `d = (eye - top + m near) /
+  ((y - horizon) / projection + m)` (m = 0 for flat floors). Tread lines
+  every 1/16 storey. Surfaces may be above the horizon (stairs rising above
+  eye level).
+- **Railings** are drawn above balcony edges where the ray climbs onto the
+  balcony (from below) or leaves it over a drop (from on top), as a masked
+  texture.
+- **Sparse pixel work**: in the lower pass, masks are built with cheap
+  comparisons over the band of rows, then textures, shading and dithering
+  are evaluated only at the pixels drawn (`np.nonzero`). Texture slots per
+  (cell, face) are precomputed per map. With these, the double-height lobby
+  with its stairs and balcony is ~13-14 ms/frame, the tightest part of the
+  map.
 - **Ceiling lights** are panels set into the ceiling, not sprites: ceiling
   casting. Each `ceiling_light` thing marks a cell; the panel's corners are
   projected to a screen bounding box, and for those pixels the world point on

@@ -9,9 +9,9 @@ editor.
 - Setting, characters, enemies, furniture: [docs/GAME.md](docs/GAME.md)
 - Engine, code design and milestones: [docs/DESIGN.md](docs/DESIGN.md)
 
-Current state: single-player on the ground floor: a double-height lobby with
-a gallery, desk pods you can jump onto, look up/down, jump and crouch
-(milestone 2c). Networking is next.
+Current state: single-player on the ground floor: a two-storey glazed lobby
+with the main doors, a reception desk and stairs up to a railed balcony; desk
+pods you can jump onto; look up/down, jump and crouch. Networking is next.
 
 ## Play (Linux)
 

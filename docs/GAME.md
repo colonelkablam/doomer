@@ -22,7 +22,7 @@ Suggested floor order:
 | Floor | Theme | New things introduced |
 |---|---|---|
 | B1 | Mailroom and post | Staplers, photocopiers |
-| G | Double-height entrance lobby with a gallery, reception | Swivel chairs, water coolers |
+| G | Two-storey glazed entrance lobby: main doors, reception desk, stairs up to a railed balcony | Swivel chairs, water coolers |
 | 1 | Open-plan sales floor | Middle managers |
 | 2 | Accounts (all filing cabinets) | Fax swarms |
 | 3 | IT and the server room | Haywire mainframe terminals |
@@ -112,6 +112,10 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | c (12) | 1980s steel desk: mahogany laminate top, grey steel frame and legs, one drawer pedestal at its left end; open underneath (low block, height 2, uses [facing]) | Single desks |
 | d (13) | Two steel desks back to back in one cell, sitters facing each other: both long sides show a desk front (pedestal on the right), both ends are half pedestal panel, half open (low block, height 2; [facing] sets the axis) | Open-plan pods |
 | e (14) | Raised floor: plain sides with a nosing line every 1/8, blue carpet top (low block; walk up 1/8 steps) | Lobby gallery and its steps |
+| f (15) | Glazed curtain wall: aluminium mullions and glass, two storeys meeting at a transom | Lobby outer walls |
+| g (16) | Main entrance: closed glass double doors, curtain wall above | Lobby entrance |
+| h (17) | Stairs: carpeted slope with tread lines, half a storey per cell ([facing] = up) | Lobby stairs |
+| i (18) | Balcony floor: raised floor with a railing along edges that drop away | Lobby balcony |
 
 ## Pickups [planned]
 

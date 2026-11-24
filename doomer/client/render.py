@@ -174,6 +174,8 @@ class Renderer:
         self._dither = (BAYER_4X4[x & 3, y & 3] + 0.5) / 16  # (w, h) thresholds in (0, 1)
         self._backgrounds: dict[tuple[int, int], U8Array] = {}
         self._light_key = -1
+        self._slots_key = -1
+        self._cell_slots: list[list[list[int]]] = []
         self._light_list: list[tuple[float, float, float]] = []
         # Last frame's per-pixel perpendicular distances, and its horizon row.
         self.zbuffer: FloatArray = np.full((w, h), np.inf)
@@ -278,8 +280,9 @@ class Renderer:
             if hits and hits[-1].full:
                 hit = hits.pop()
                 dist[col] = hit.distance
-                wall_slot[col] = self._slot(game_map, hit, hit.face)
-                upper_slot[col] = self._upper_slot(hit.wall_type)
+                cell = self._cell_slots_for(game_map, hit)
+                wall_slot[col] = cell[hit.face]
+                upper_slot[col] = cell[4]
                 tex_u[col] = hit.u
                 y_side[col] = hit.side is Side.Y
                 wall_base[col] = hit.base
@@ -324,9 +327,7 @@ class Renderer:
                 layers[k][col] = SpanHit(
                     span,
                     block and after > span.exit_distance + 1e-9,
-                    self._slot(game_map, span, span.face) if block else 0,
-                    self._slot(game_map, span, span.exit_face) if block else 0,
-                    self._upper_slot(span.wall_type) if block else bulkhead,
+                    *self._span_slots(game_map, span, block, bulkhead),
                 )
 
         # 2. Walls, floor to ceiling of the space in front of them (numpy).
@@ -361,6 +362,41 @@ class Renderer:
         self._draw_sprites(frame, zbuffer, camera, sprites, horizon, eye)
         self.zbuffer = zbuffer
         return frame
+
+    def _cell_slots_for(self, game_map: GameMap, hit: RayHit) -> list[int]:
+        """[slot for each compass face 0-3, upper slot] of the hit's cell, from a
+        per-map table (a cell's textures never change during a map). Plain
+        nested lists: single-element lookups are much faster than numpy's."""
+        if self._slots_key != id(game_map):
+            self._cell_slots = [
+                [
+                    [self._slot_for(game_map, x, y, f) for f in range(4)]
+                    + [self._upper_slot(game_map.walls[y][x])]
+                    for x in range(game_map.width)
+                ]
+                for y in range(game_map.height)
+            ]
+            self._slots_key = id(game_map)
+        if 0 <= hit.cell_y < game_map.height and 0 <= hit.cell_x < game_map.width:
+            return self._cell_slots[hit.cell_y][hit.cell_x]
+        # Outside the map (solid): wall type 1.
+        return [int(self.slot_table[1, side]) for side in range(4)] + [self._upper_slot(1)]
+
+    def _span_slots(
+        self, game_map: GameMap, span: RayHit, block: bool, bulkhead: int
+    ) -> tuple[int, int, int]:
+        """(entry slot, exit slot, upper slot) for a change of space."""
+        if not block:
+            return 0, 0, bulkhead
+        cell = self._cell_slots_for(game_map, span)
+        return cell[span.face], cell[span.exit_face], cell[4]
+
+    def _slot_for(self, game_map: GameMap, x: int, y: int, face: int) -> int:
+        wall_type = game_map.walls[y][x]
+        if wall_type >= len(self.slot_table):
+            return 0  # unknown wall type -> missing texture
+        side = (face - game_map.facing_at(x, y)) % 4
+        return int(self.slot_table[wall_type, side])
 
     def _slot(self, game_map: GameMap, hit: RayHit, face: int) -> int:
         """Atlas slot for one face of a wall cell: which side of the cell that
@@ -526,6 +562,14 @@ class Renderer:
         horizon: float,
         eye: float,
     ) -> None:
+        """Risers, back faces, contact shadows, floor surfaces and railings.
+
+        Each part builds its mask with cheap comparisons over the band of rows,
+        then does the expensive work (texel lookup, transparency, shading,
+        dithering) only at the pixels that pass: `ci, ri = np.nonzero(mask)`.
+        Faces and surfaces usually cover a small part of the band, so this is
+        several times faster than evaluating textures for every pixel.
+        """
         hits = [e.hit for e in entries]
         y_top = self._rows(s.top, s.near, horizon, eye)  # riser top / floor near edge
         y_base = self._rows(s.base, s.near, horizon, eye)  # riser bottom
@@ -543,6 +587,7 @@ class Renderer:
             return
         cols = s.cols
         py = self._pixel_y[None, r0:r1]
+        rows_y = self._pixel_y[r0:r1]
         sub_frame = frame[cols, r0:r1]
         sub_z = zbuffer[cols, r0:r1]
         near, far = s.near, s.far
@@ -550,51 +595,57 @@ class Renderer:
         # Riser face (a desk front, a step): floor before .. this floor, at `near`.
         # Transparent texels (the space under a desk) keep what's behind.
         face = (py >= y_top[:, None]) & (py < y_base[:, None]) & (near[:, None] < sub_z)
-        if face.any():
-            which, vi = self._face_texels(py, near, s.slot, s.upper, horizon, eye)
-            face &= self.opacity[which, s.u[:, None], vi]
-            texel = self.atlas[which, s.u[:, None], vi]
-            sub_frame = np.where(face, COLORMAP[s.level_near[:, None], texel], sub_frame)
-            sub_z = np.where(face, near[:, None], sub_z)
+        ci, ri = np.nonzero(face)
+        if ci.size:
+            which, vi = self._texel_at(rows_y[ri], near[ci], s.slot[ci], s.upper[ci], horizon, eye)
+            uu = s.u[ci]
+            keep = self.opacity[which, uu, vi]
+            ci, ri = ci[keep], ri[keep]
+            texel = self.atlas[which[keep], uu[keep], vi[keep]]
+            sub_frame[ci, ri] = COLORMAP[s.level_near[ci], texel]
+            sub_z[ci, ri] = near[ci]
 
         # Back face of see-through blocks (an open desk's back legs), from the
         # floor up to its top at the exit distance: only shows through the gaps.
         exits_to_floor = np.array([e.exits_to_floor for e in entries])
         back_cols = s.block & exits_to_floor & ~self.opacity[s.slot].all(axis=(1, 2))
         if back_cols.any():
-            back_slot = np.array([e.back_slot for e in entries], dtype=np.intp)
-            # Seen from inside the cell, so mirror u to match the outside view.
-            back_u = _texel_u(1.0 - np.array([h.exit_u for h in hits]))
-            back_y_side = np.array([h.exit_side is Side.Y for h in hits])
             back = (
                 back_cols[:, None]
                 & (py >= y_far[:, None])
                 & (py < y_far_floor[:, None])
                 & (far[:, None] < sub_z)
             )
-            which_f, vi_f = self._face_texels(py, s.finite_far, back_slot, s.upper, horizon, eye)
-            back &= self.opacity[which_f, back_u[:, None], vi_f]
-            texel_f = self.atlas[which_f, back_u[:, None], vi_f]
-            level_far = light_level(
-                self._brightness(far) * np.where(back_y_side, Y_SIDE_SHADE, 1.0)
-            )
-            sub_frame = np.where(back, COLORMAP[level_far[:, None], texel_f], sub_frame)
-            sub_z = np.where(back, far[:, None], sub_z)
+            ci, ri = np.nonzero(back)
+            if ci.size:
+                back_slot = np.array([e.back_slot for e in entries], dtype=np.intp)
+                # Seen from inside the cell, so mirror u to match the outside view.
+                back_u = _texel_u(1.0 - np.array([h.exit_u for h in hits]))
+                back_y_side = np.array([h.exit_side is Side.Y for h in hits])
+                depth = s.finite_far[ci]
+                which, vi = self._texel_at(
+                    rows_y[ri], depth, back_slot[ci], s.upper[ci], horizon, eye
+                )
+                uu = back_u[ci]
+                keep = self.opacity[which, uu, vi]
+                ci, ri, which, uu, vi = ci[keep], ri[keep], which[keep], uu[keep], vi[keep]
+                shade = self._brightness(far[ci]) * np.where(back_y_side[ci], Y_SIDE_SHADE, 1.0)
+                sub_frame[ci, ri] = COLORMAP[light_level(shade), self.atlas[which, uu, vi]]
+                sub_z[ci, ri] = far[ci]
 
         with np.errstate(divide="ignore", invalid="ignore"):
-            below = py > horizon
             # Contact shadow: floor seen through the gap under an open desk lies
             # inside its footprint, so darken it. Grounds the furniture.
             if s.block.any():
                 floor_depth = eye * self.projection / (py - horizon)
                 under = (
                     (s.block & (s.base == 0.0))[:, None]
-                    & below
+                    & (py > horizon)
                     & (floor_depth >= near[:, None])
                     & (floor_depth <= far[:, None])
                     & np.isinf(sub_z)  # still showing the default floor
                 )
-                sub_frame = np.where(under, COLORMAP[UNDER_DESK_SHADOW, sub_frame], sub_frame)
+                sub_frame[under] = COLORMAP[UNDER_DESK_SHADOW, sub_frame[under]]
 
             # Floor surface of this span (a desk top, a raised floor, stairs), if
             # it isn't the default floor. Along a ray its height goes linearly
@@ -610,10 +661,10 @@ class Renderer:
                 m = np.where(np.isfinite(s.far), (exit_top - s.top) / span_len, 0.0)
                 denom = (py - horizon) / self.projection + m[:, None]
                 row_depth = (eye - s.top + m * near)[:, None] / denom
-                # No "below the horizon" test here: a stair rising ahead of you
-                # climbs above eye level, so its far part is above the horizon.
-                # A flat surface above eye level gives a negative distance and
-                # is excluded by the range test anyway.
+                # No "below the horizon" test: a stair rising ahead of you climbs
+                # above eye level, so its far part is above the horizon. A flat
+                # surface above eye level gives a negative distance, excluded by
+                # the range test anyway.
                 on_floor = (
                     raised[:, None]
                     & (denom > 0)
@@ -621,55 +672,86 @@ class Renderer:
                     & (row_depth <= far[:, None])
                     & (row_depth < sub_z)
                 )
-                if on_floor.any():
-                    colour = np.where(s.block, self.top_colour[s.slot], self.floor_colour)
-                    lit = self._dithered(colour, row_depth, cols, r0, r1)
-                    if s.stairs.any():
+                ci, ri = np.nonzero(on_floor)
+                if ci.size:
+                    depth = row_depth[ci, ri]
+                    colour = np.where(s.block, self.top_colour[s.slot], self.floor_colour)[ci]
+                    lit = self._dithered_at(colour, depth, cols[ci], r0 + ri)
+                    stairs = s.stairs[ci]
+                    if stairs.any():
                         # Tread nosings every 1/16 of a storey (~17 cm, one step).
-                        height = s.top[:, None] + m[:, None] * (row_depth - near[:, None])
-                        nosing = s.stairs[:, None] & (np.mod(height * 16, 1.0) < 0.2)
+                        height = s.top[ci] + m[ci] * (depth - near[ci])
+                        nosing = stairs & (np.mod(height * 16, 1.0) < 0.2)
                         lit = np.where(nosing, COLORMAP[STAIR_NOSING_DARKEN, lit], lit)
-                    sub_frame = np.where(on_floor, lit, sub_frame)
-                    sub_z = np.where(on_floor, row_depth, sub_z)
+                    sub_frame[ci, ri] = lit
+                    sub_z[ci, ri] = depth
 
         if s.rail.any():
             # Railings along balcony edges that drop to a lower floor: above
             # the front face where the ray climbs onto the balcony (seen from
             # below), and where it leaves over the drop (seen from on it).
-            exits = np.array([e.exits_to_floor for e in entries])
             drop_in = s.rail & (s.top - s.base > STEP_HEIGHT)
-            drop_out = s.rail & exits
+            drop_out = s.rail & exits_to_floor
             # Leaving, the ray sees that edge from inside: mirror u (as for
             # desks' back faces) so the balusters line up with the outside view.
             exit_u = _texel_u(1.0 - np.array([h.exit_u for h in hits]))
-            for mask, edge_top, depth, rail_u in (
+            for mask, edge_top, depth_cols, rail_u in (
                 (drop_in, s.top, near, s.u),
                 (drop_out, exit_top, s.finite_far, exit_u),
             ):
                 if not mask.any():
                     continue
-                y_rail = self._rows(edge_top + RAIL_HEIGHT, depth, horizon, eye)
-                y_edge = self._rows(edge_top, depth, horizon, eye)
+                y_rail = self._rows(edge_top + RAIL_HEIGHT, depth_cols, horizon, eye)
+                y_edge = self._rows(edge_top, depth_cols, horizon, eye)
                 rail = (
                     mask[:, None]
                     & (py >= y_rail[:, None])
                     & (py < y_edge[:, None])
-                    & (depth[:, None] < sub_z)
+                    & (depth_cols[:, None] < sub_z)
                 )
-                if not rail.any():
+                ci, ri = np.nonzero(rail)
+                if not ci.size:
                     continue
-                height = eye - (py - horizon) * depth[:, None] / self.projection
-                above = (height - edge_top[:, None]) / RAIL_HEIGHT  # 0 at the floor, 1 at the top
+                depth = depth_cols[ci]
+                height = eye - (rows_y[ri] - horizon) * depth / self.projection
+                above = (height - edge_top[ci]) / RAIL_HEIGHT  # 0 at the floor, 1 at the top
                 rv = np.clip(((1.0 - above) * TEX_SIZE).astype(np.intp), 0, TEX_MASK)
-                ru = rail_u[:, None]
-                rail &= self.rail_opaque[ru, rv]
+                ru = rail_u[ci]
+                keep = self.rail_opaque[ru, rv]
+                ci, ri, ru, rv, depth = ci[keep], ri[keep], ru[keep], rv[keep], depth[keep]
                 level = light_level(self._brightness(depth))
-                texel = COLORMAP[level[:, None], self.rail_tex[ru, rv]]
-                sub_frame = np.where(rail, texel, sub_frame)
-                sub_z = np.where(rail, depth[:, None], sub_z)
+                sub_frame[ci, ri] = COLORMAP[level, self.rail_tex[ru, rv]]
+                sub_z[ci, ri] = depth
 
         frame[cols, r0:r1] = sub_frame
         zbuffer[cols, r0:r1] = sub_z
+
+    def _texel_at(
+        self,
+        y: FloatArray,
+        depth: FloatArray,
+        slot: IntArray,
+        upper: IntArray,
+        horizon: float,
+        eye: float,
+    ) -> tuple[IntArray, IntArray]:
+        """(slot, v) for individual pixels of vertical faces: row y, perpendicular
+        depth. Same rule as _face_texels: floor-anchored, upper texture above a storey."""
+        height = eye - (y - horizon) * depth / self.projection
+        vi: IntArray = ((1.0 - np.mod(height, 1.0)) * TEX_SIZE).astype(np.intp) & TEX_MASK
+        which: IntArray = np.where(height >= 1.0, upper, slot)
+        return which, vi
+
+    def _dithered_at(
+        self, colour: npt.NDArray[np.integer], depth: FloatArray, cols: IntArray, rows: IntArray
+    ) -> U8Array:
+        """Distance-shaded, dithered palette indices for individual pixels of a
+        horizontal surface (same rule as _dithered)."""
+        brightness = self._brightness(np.nan_to_num(depth, nan=np.inf, posinf=1e9))
+        exact = ((colour & 0x0F) + 1) * brightness - 1
+        shade = np.floor(exact + self._dither[cols, rows]).clip(0, 15).astype(np.intp)
+        result: U8Array = ((colour & 0xF0) | shade).astype(np.uint8)
+        return result
 
     def _draw_upper(
         self, frame: U8Array, zbuffer: FloatArray, s: "_Span", horizon: float, eye: float
