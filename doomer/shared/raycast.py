@@ -124,6 +124,11 @@ def cast_ray(
     open_ceiling = ceiling_now
     open_hit = -1  # index of the open-space hit whose exit distance is still open
     facing = game_map.facing
+    # Starting on stairs, the floor at your feet isn't the floor where the ray
+    # leaves the cell: take it at the exit point, or the top of the stairs
+    # would look like a step up (with a railing across the opening).
+    start_x, start_y = cell_x, cell_y
+    start_on_stairs = game_map.is_stairs(start_x, start_y)
 
     while True:
         if next_x < next_y:
@@ -134,6 +139,11 @@ def cast_ray(
             distance, side = next_y, Side.Y
             next_y += delta_y
             cell_y += step_y
+        if start_on_stairs:
+            floor_now = _floor_in_cell(
+                game_map, x + dx * distance, y + dy * distance, start_x, start_y
+            )
+            start_on_stairs = False
         if distance > max_distance:
             return hits
 

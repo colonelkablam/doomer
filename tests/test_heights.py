@@ -213,3 +213,21 @@ def test_stair_surface_follows_its_slope_even_above_eye_level() -> None:
             assert math.isclose(R.zbuffer[COL, y], d, rel_tol=1e-6), y
             checked += 1
     assert checked > 5
+
+
+def test_no_railing_or_step_at_the_top_of_the_stairs_when_standing_on_them() -> None:
+    from doomer.client.render import Renderer as _R
+
+    # Balcony (i, a storey up) along y = 1, stairs up to it at x = 3 (y = 2, 3).
+    room = parse_map(
+        "[walls]\n#######\n#iiiii#\n#..h..#\n#..h..#\n#.....#\n#######\n\n"
+        "[floor]\n0000000\n0888880\n0008000\n0004000\n\n"
+        "[ceiling]\nggggggg\nggggggg\nggggggg\nggggggg\nggggggg\nggggggg\n\n"
+        "[facing]\n.......\n.......\n...n...\n...n...\n"
+    )
+    on = _R(CFG)
+    off = _R(CFG)
+    off.rail_opaque = np.zeros_like(off.rail_opaque)  # the same, minus railings
+    x, y = 3.5, 2.5  # halfway up the upper flight, looking north at the opening
+    camera = Camera(x, y, -math.pi / 2, z=room.floor_at(x, y) + EYE_HEIGHT)
+    assert (on.render_indices(room, camera) == off.render_indices(room, camera)).all()
