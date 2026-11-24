@@ -21,6 +21,18 @@ class Obstacle(NamedTuple):
     radius: float  # half-width of its square footprint
 
 
+class ThinWall(NamedTuple):
+    """A thin panel (a cubicle screen): the plane x = `at` (axis 0) or
+    y = `at` (axis 1), `half` thick either side, from `lo` to `hi` along the
+    other axis."""
+
+    axis: int
+    at: float
+    lo: float
+    hi: float
+    half: float
+
+
 def move_box(
     game_map: GameMap,
     x: float,
@@ -30,13 +42,14 @@ def move_box(
     radius: float,
     obstacles: Sequence[Obstacle] = (),
     blocked: Callable[[int, int], bool] | None = None,
+    walls: Sequence[ThinWall] = (),
 ) -> tuple[float, float]:
     """Move a box from (x, y) by (dx, dy), stopping at walls and obstacles.
 
     `blocked(cell_x, cell_y)` says whether a cell stops the box; by default
     any wall cell does. The simulation passes a height-aware test (a desk
-    blocks you on the floor but not once you've jumped onto it). Returns the
-    new centre.
+    blocks you on the floor but not once you've jumped onto it). `walls` are
+    thin panels inside cells. Returns the new centre.
     """
     is_blocked = blocked if blocked is not None else game_map.is_solid
     # Each sub-step moves at most `radius`, so the box can't skip over a cell.
@@ -44,9 +57,11 @@ def move_box(
     sx, sy = dx / steps, dy / steps
     for _ in range(steps):
         nx = _move_x(is_blocked, x, y, sx, radius)
-        x = _clamp_to_obstacles(obstacles, x, nx, y, radius, axis=0)
+        nx = _clamp_to_obstacles(obstacles, x, nx, y, radius, axis=0)
+        x = _clamp_to_walls(walls, x, nx, y, radius, axis=0)
         ny = _move_y(is_blocked, x, y, sy, radius)
-        y = _clamp_to_obstacles(obstacles, y, ny, x, radius, axis=1)
+        ny = _clamp_to_obstacles(obstacles, y, ny, x, radius, axis=1)
+        y = _clamp_to_walls(walls, y, ny, x, radius, axis=1)
     return x, y
 
 
@@ -68,6 +83,24 @@ def _clamp_to_obstacles(
             new = min(new, o_pos - reach)
         elif new < pos and pos >= o_pos + reach - _EPS:
             new = max(new, o_pos + reach)
+    return new
+
+
+def _clamp_to_walls(
+    walls: Sequence[ThinWall], pos: float, new: float, other: float, r: float, axis: int
+) -> float:
+    """Stop movement along one axis at a thin wall across it. As for
+    obstacles, only a wall the box isn't already overlapping can block."""
+    for wall in walls:
+        if wall.axis != axis:
+            continue  # parallel to this movement: can't be run into this way
+        if other + r <= wall.lo + _EPS or other - r >= wall.hi - _EPS:
+            continue  # beside the wall's end
+        reach = r + wall.half
+        if new > pos and pos <= wall.at - reach + _EPS:
+            new = min(new, wall.at - reach)
+        elif new < pos and pos >= wall.at + reach - _EPS:
+            new = max(new, wall.at + reach)
     return new
 
 

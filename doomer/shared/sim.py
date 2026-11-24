@@ -13,10 +13,11 @@ and bump your head on ceilings.
 import math
 from collections.abc import Mapping
 
-from doomer.shared.collision import move_box
+from doomer.shared.collision import ThinWall, move_box
 from doomer.shared.config import MovementConfig
 from doomer.shared.mapfile import RAIL_HEIGHT, RAILING_WALL_TYPE, GameMap
 from doomer.shared.player import PlayerInput, PlayerState
+from doomer.shared.screens import SCREEN_HALF, screens_at_height
 from doomer.shared.world import World
 
 TAU = math.tau
@@ -52,6 +53,11 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
         distance = speed * dt
         body = body_height(player, move)
         railed = on_railed_floor(world.map, player, move.radius)
+        # Cubicle screens block you only while you're up on the desks.
+        walls = [
+            ThinWall(sc.axis, sc.at, sc.lo, sc.hi, SCREEN_HALF)
+            for sc in screens_at_height(world.screens, player.z)
+        ]
         player.x, player.y = move_box(
             world.map,
             player.x,
@@ -64,6 +70,7 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
                 cell_blocks(world.map, cx, cy, player.z, body, move.step_height, player.x, player.y)
                 or (railed and _drops_away(world.map, cx, cy, player, move.step_height))
             ),
+            walls,
         )
 
     if player_input.jump and player.on_ground:

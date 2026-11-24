@@ -85,8 +85,9 @@ and an `exit`; **deathmatch** needs at least 4 `dm_spawn`s.
   the sitters. A row of identical cells is drawn as one (cheaper; see
   Performance). `j` is the same with cubicle screens (a booth per sitter):
   give neighbouring cells in a row the same facing so their shared edge has
-  one screen. Screens don't block movement, so a player on the desk tops
-  walks through them; don't make desk-top routes through `j` pods.
+  one screen. Screens block you on the desk tops; under a storey-high
+  ceiling you can't jump over them from a desk (no headroom), so a `j` pod
+  is no desk-top route, only booths. Under a tall ceiling they can be jumped.
 - **Single desks** `c` face where you sit; **executive desks** `b` likewise.
 - **Counters**: wall type `2`, height 3: too high to jump onto (cover).
 - **Tall spaces**: `[ceiling]` `g` (16) for two storeys. Walls get their

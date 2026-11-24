@@ -10,6 +10,7 @@ from doomer.shared.events import Event, PlayerSpawned
 from doomer.shared.mapfile import GameMap
 from doomer.shared.modes import GAME_MODES, missing_requirements
 from doomer.shared.player import PlayerState
+from doomer.shared.screens import Screen, desk_screens
 from doomer.shared.things import THING_TYPES
 
 
@@ -26,6 +27,8 @@ class World:
     # Footprints of blocking things placed in the map. Static for now; moving
     # entities (enemies) will be collided with separately.
     obstacles: tuple[Obstacle, ...] = ()
+    # Cubicle screens on desk tops (static, part of the map).
+    screens: tuple[Screen, ...] = ()
 
 
 class ModeNotSupported(ValueError):
@@ -43,7 +46,14 @@ def new_world(
         for t in game_map.things
         if THING_TYPES[t.type].blocking
     )
-    return World(game_map, mode, config or SimConfig(), random.Random(seed), obstacles=obstacles)
+    return World(
+        game_map,
+        mode,
+        config or SimConfig(),
+        random.Random(seed),
+        obstacles=obstacles,
+        screens=tuple(desk_screens(game_map)),
+    )
 
 
 def spawn_player(world: World, player_id: int, name: str) -> PlayerState:

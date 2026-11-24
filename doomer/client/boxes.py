@@ -40,6 +40,8 @@ from doomer.client.palette import (
 )
 from doomer.client.pixelart import Canvas, noise
 from doomer.shared.mapfile import STAIR_RISE, STAIRS_WALL_TYPE, WALL_UNITS, GameMap
+from doomer.shared.screens import SCREEN_HALF, SCREEN_HEIGHT
+from doomer.shared.screens import desk_screens as shared_desk_screens
 
 FRONT, RIGHT, BACK, LEFT, TOP = range(5)  # face order in Box.faces
 
@@ -299,13 +301,7 @@ def stair_boxes(game_map: GameMap) -> list[PlacedBox]:
 # --- Cubicle screens on desk pairs ('j') ---------------------------------------
 # A fabric screen down the middle of each pair (between the two sitters) and
 # one across the pair at each cell edge, so every sitter has a three-sided
-# booth. Tops at ~1.25 m, a seated person's head height: privacy sitting down,
-# a view over the top standing up. Drawn only: they don't block movement (you
-# can walk through them on a desk top).
-
-SCREENED_DESK_PAIR = 19  # 'j'
-SCREEN_HEIGHT = 0.21  # walls above the desk top (~57 cm; desk 0.25 + 0.21 = 1.24 m)
-SCREEN_HALF = 0.01  # half-thickness, cells (~5 cm thick)
+# booth. Where they are, their size and their collision: doomer/shared/screens.py.
 
 
 def screen_fabric() -> int:
@@ -336,36 +332,17 @@ _THIN_Y = (_TRIM, _FABRIC, _TRIM, _FABRIC, _TRIM)
 
 
 def desk_screens(game_map: GameMap) -> list[PlacedBox]:
-    """Screens on every screened desk pair: one down the middle, one at each
-    cell edge across the pair (shared edges once, row ends too)."""
+    """The map's cubicle screens (doomer/shared/screens.py) as boxes."""
     out = []
-    h = (0.0, SCREEN_HEIGHT)
-    t = (-SCREEN_HALF, SCREEN_HALF)
-
-    def pair(x: int, y: int, facing: int) -> bool:
-        return (
-            game_map.wall_at(x, y) == SCREENED_DESK_PAIR
-            and game_map.is_low_block(x, y)
-            and game_map.facing_at(x, y) % 2 == facing % 2
-        )
-
-    for cy, row in enumerate(game_map.walls):
-        for cx, wall in enumerate(row):
-            if wall != SCREENED_DESK_PAIR or not game_map.is_low_block(cx, cy):
-                continue
-            top = game_map.floor_height(cx, cy)
-            facing = game_map.facing_at(cx, cy)
-            mx, my = cx + 0.5, cy + 0.5
-            if facing % 2 == 0:  # north/south: the pair meets along y = middle, row runs along x
-                out.append(PlacedBox(mx, my, top, 0.0, Box((-0.5, 0.5), t, h, _THIN_Y)))
-                out.append(PlacedBox(cx, my, top, 0.0, Box(t, (-0.5, 0.5), h, _THIN_X)))
-                if not pair(cx + 1, cy, facing):
-                    out.append(PlacedBox(cx + 1, my, top, 0.0, Box(t, (-0.5, 0.5), h, _THIN_X)))
-            else:  # east/west: meets along x = middle, row runs along y
-                out.append(PlacedBox(mx, my, top, 0.0, Box(t, (-0.5, 0.5), h, _THIN_X)))
-                out.append(PlacedBox(mx, cy, top, 0.0, Box((-0.5, 0.5), t, h, _THIN_Y)))
-                if not pair(cx, cy + 1, facing):
-                    out.append(PlacedBox(mx, cy + 1, top, 0.0, Box((-0.5, 0.5), t, h, _THIN_Y)))
+    for sc in shared_desk_screens(game_map):
+        middle, length = (sc.lo + sc.hi) / 2, (sc.hi - sc.lo) / 2
+        thin, long = (-SCREEN_HALF, SCREEN_HALF), (-length, length)
+        if sc.axis == 0:  # the plane x = at: thin across x
+            box = Box(thin, long, (0.0, SCREEN_HEIGHT), _THIN_X)
+            out.append(PlacedBox(sc.at, middle, sc.base, 0.0, box))
+        else:
+            box = Box(long, thin, (0.0, SCREEN_HEIGHT), _THIN_Y)
+            out.append(PlacedBox(middle, sc.at, sc.base, 0.0, box))
     return out
 
 

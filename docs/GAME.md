@@ -118,7 +118,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | g (16) | Main entrance: closed glass double doors, curtain wall above | Lobby entrance |
 | h (17) | Stairs: half a storey per cell ([facing] = up); you walk a smooth slope, drawn as 8 carpeted steps | Lobby stairs |
 | i (18) | Balcony floor: raised floor with a railing along edges that drop away | Lobby balcony |
-| j (19) | Desk pair with cubicle screens: as `d`, plus fabric screens to seated head height (~1.25 m) down the middle and across each cell edge (box models; drawn only, they don't block) | Open-plan cubicles |
+| j (19) | Desk pair with cubicle screens: as `d`, plus fabric screens to seated head height (~1.25 m) down the middle and across each cell edge (box models; they block you on the desk tops) | Open-plan cubicles |
 
 ## Pickups [planned]
 

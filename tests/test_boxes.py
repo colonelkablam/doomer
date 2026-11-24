@@ -60,7 +60,8 @@ def test_nothing_drawn_when_the_camera_is_inside_one() -> None:
 
 
 def test_screened_desk_pairs_get_a_middle_screen_and_one_per_cell_edge() -> None:
-    from doomer.client.boxes import SCREEN_HEIGHT, desk_screens
+    from doomer.client.boxes import desk_screens
+    from doomer.shared.screens import SCREEN_HEIGHT
 
     # Three screened pairs (j) facing north at x 2..4, and one facing east.
     pods = parse_map(
