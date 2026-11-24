@@ -45,5 +45,7 @@ for _name, _description, _blocking, _radius in (
     ("ceiling_light", "Fluorescent ceiling light panel", False, 0.0),
     # Sits on a desk-pod cell (a low block), so it needs no footprint of its own.
     ("terminal", "Beige PC and CRT, for standing on a desk pod", False, 0.0),
+    # Drawn as solid boxes (client/boxes.py); faces its map angle, like terminal.
+    ("mac", "Apple Macintosh SE/30 with keyboard and mouse, for a desk", False, 0.0),
 ):
     register_thing_type(ThingType(_name, _description, _blocking, _radius))

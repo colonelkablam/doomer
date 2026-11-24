@@ -48,6 +48,7 @@ import numpy as np
 import numpy.typing as npt
 import pygame
 
+from doomer.client.boxes import BOX_MODELS, BOX_TEXTURES, TOP
 from doomer.client.config import RenderConfig
 from doomer.client.palette import (
     COLORMAP,
@@ -94,6 +95,7 @@ MAX_PITCH = math.radians(25)  # y-shearing looks wrong much beyond this
 BAYER_4X4 = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]])
 BULKHEAD_TYPE = 1  # wall type whose upper texture faces a dropped ceiling
 NEAR_PLANE = 0.05  # sprites closer than this (in cells) aren't drawn
+MAX_BOX_DISTANCE = 16.0  # box models further than this (cells) aren't drawn: a few pixels
 UNDER_DESK_SHADOW = 12  # colormap levels darker (of 32) for the floor under a desk
 STAIR_NOSING_DARKEN = 10  # colormap levels darker for the edge line of each step
 STEP_HEIGHT = 0.125  # a rise up to this is a step, not a drop that needs a railing
@@ -373,6 +375,8 @@ class Renderer:
             self._draw_span_layer(frame, zbuffer, layer, horizon, eye)
 
         self._draw_ceiling_lights(frame, zbuffer, game_map, camera, horizon, eye)
+        sprites = list(sprites)
+        self._draw_boxes(frame, zbuffer, camera, sprites, horizon, eye)
         self._draw_sprites(frame, zbuffer, camera, sprites, horizon, eye)
         self.zbuffer = zbuffer
         return frame
@@ -908,6 +912,166 @@ class Renderer:
         region[panel] = frame_colour[panel]
         region[diffuser] = LIGHT_DIFFUSER
 
+    def _draw_boxes(
+        self,
+        frame: U8Array,
+        zbuffer: FloatArray,
+        camera: Camera,
+        things: list[SpriteInstance],
+        horizon: float,
+        eye: float,
+    ) -> None:
+        """Box models (boxes.py), drawn as solid geometry. Every box is tested
+        against every column's ray at once (B boxes x W columns): the slab
+        test, in each box's own frame. Where a ray enters a box by a side, that
+        face is a vertical run of pixels at the entry depth (like a wall); the
+        top (or bottom) is a stretch of rows between the entry and exit
+        depths, cast back onto its plane (like a floor). Pixels from all boxes
+        are then z-tested together, nearest wins."""
+        boxes = [
+            (s, box)
+            for s in things
+            for box in BOX_MODELS.get(s.name, ())
+            if (s.x - camera.x) ** 2 + (s.y - camera.y) ** 2 < MAX_BOX_DISTANCE**2
+        ]
+        if not boxes:
+            return
+        h = self.config.height
+        proj = self.projection
+
+        def per_box(values: list[float]) -> FloatArray:
+            return np.array(values)[:, None]  # (B, 1), broadcasts over columns
+
+        ca = per_box([math.cos(s.angle) for s, _ in boxes])
+        sa = per_box([math.sin(s.angle) for s, _ in boxes])
+        rel_x = per_box([camera.x - s.x for s, _ in boxes])
+        rel_y = per_box([camera.y - s.y for s, _ in boxes])
+        x0, x1 = per_box([b.x[0] for _, b in boxes]), per_box([b.x[1] for _, b in boxes])
+        y0, y1 = per_box([b.y[0] for _, b in boxes]), per_box([b.y[1] for _, b in boxes])
+        z0 = per_box([s.z + b.z[0] for s, b in boxes])
+        z1 = per_box([s.z + b.z[1] for s, b in boxes])
+        faces = np.array([b.faces for _, b in boxes])  # (B, 5)
+
+        # Camera and rays into each box's frame (rotate by -angle).
+        ox, oy = rel_x * ca + rel_y * sa, -rel_x * sa + rel_y * ca
+        ray = camera.angle + np.array(self._offsets)
+        wx, wy = np.cos(ray)[None, :], np.sin(ray)[None, :]
+        dx, dy = wx * ca + wy * sa, -wx * sa + wy * ca
+        dx = np.where(np.abs(dx) < 1e-12, 1e-12, dx)
+        dy = np.where(np.abs(dy) < 1e-12, 1e-12, dy)
+        tx0, tx1 = (x0 - ox) / dx, (x1 - ox) / dx
+        ty0, ty1 = (y0 - oy) / dy, (y1 - oy) / dy
+        in_x, in_y = np.minimum(tx0, tx1), np.minimum(ty0, ty1)
+        t_in = np.maximum(in_x, in_y)
+        t_out = np.minimum(np.maximum(tx0, tx1), np.maximum(ty0, ty1))
+        near_t = np.maximum(t_in, NEAR_PLANE)
+        hit = t_out > near_t
+        bi, ci = np.nonzero(hit)  # the (box, column) pairs whose ray crosses the box
+        if not bi.size:
+            return
+        cos_c = self._cos[ci]
+        d_near = near_t[bi, ci] * cos_c  # perpendicular depths, as in the z-buffer
+        d_far = t_out[bi, ci] * cos_c
+        zt, zb = z1[bi, 0], z0[bi, 0]
+
+        # Which face the ray enters by, where along it (u), and its light.
+        from_x = in_x[bi, ci] > in_y[bi, ci]
+        rdx, rdy = dx[bi, ci], dy[bi, ci]
+        face = np.where(from_x, np.where(rdx < 0, 0, 2), np.where(rdy < 0, 1, 3))
+        ti = t_in[bi, ci]
+        hx, hy = ox[bi, 0] + rdx * ti, oy[bi, 0] + rdy * ti
+        bx0, bx1, by0, by1 = x0[bi, 0], x1[bi, 0], y0[bi, 0], y1[bi, 0]
+        across = np.choose(
+            face,
+            [
+                (by1 - hy) / (by1 - by0),  # front: the viewer's right is -y
+                (hx - bx0) / (bx1 - bx0),  # right side: towards the front
+                (hy - by0) / (by1 - by0),  # back
+                (bx1 - hx) / (bx1 - bx0),  # left side
+            ],
+        )
+        # World direction of the face's normal: north/south faces darker, as walls.
+        normal = np.array([s.angle for s, _ in boxes])[bi] + face * (math.pi / 2)
+        side_light = 1.0 - (1.0 - Y_SIDE_SHADE) * np.abs(np.sin(normal))
+
+        cols: list[IntArray] = []
+        rows: list[IntArray] = []
+        depths: list[FloatArray] = []
+        texels: list[npt.NDArray[np.uint8]] = []
+        lights: list[FloatArray] = []
+
+        # Sides: where the ray enters by one (not from inside the footprint).
+        side = t_in[bi, ci] > NEAR_PLANE
+        p, r = self._runs(
+            horizon + (eye - zt[side]) * proj / d_near[side],
+            horizon + (eye - zb[side]) * proj / d_near[side],
+        )
+        if p.size:
+            k = np.flatnonzero(side)[p]
+            depth = d_near[k]
+            height = eye - (r + 0.5 - horizon) * depth / proj
+            v = (zt[k] - height) / (zt[k] - zb[k])
+            tex = faces[bi[k], face[k]]
+            cols.append(ci[k])
+            rows.append(r)
+            depths.append(depth)
+            texels.append(BOX_TEXTURES[tex, _texel_clamped(across[k]), _texel_clamped(v)])
+            lights.append(side_light[k])
+
+        # Top (seen from above) or bottom (from below): between entry and exit.
+        for above in (True, False):
+            plane = zt if above else zb
+            sees = (eye > plane) if above else (eye < plane)
+            first = np.where(above, d_far, d_near)
+            last = np.where(above, d_near, d_far)
+            p, r = self._runs(
+                horizon + (eye - plane[sees]) * proj / first[sees],
+                horizon + (eye - plane[sees]) * proj / last[sees],
+            )
+            if not p.size:
+                continue
+            k = np.flatnonzero(sees)[p]
+            depth = (eye - plane[k]) * proj / (r + 0.5 - horizon)
+            depth = np.clip(depth, d_near[k], d_far[k])
+            t = depth / cos_c[k]
+            px, py = ox[bi[k], 0] + dx[bi[k], ci[k]] * t, oy[bi[k], 0] + dy[bi[k], ci[k]] * t
+            u = (y1[bi[k], 0] - py) / (y1[bi[k], 0] - y0[bi[k], 0])
+            v = (px - x0[bi[k], 0]) / (x1[bi[k], 0] - x0[bi[k], 0])
+            cols.append(ci[k])
+            rows.append(r)
+            depths.append(depth)
+            texels.append(BOX_TEXTURES[faces[bi[k], TOP], _texel_clamped(u), _texel_clamped(v)])
+            lights.append(np.full(k.size, 1.0 if above else Y_SIDE_SHADE))
+
+        if not cols:
+            return
+        col, row, depth = np.concatenate(cols), np.concatenate(rows), np.concatenate(depths)
+        texel, light = np.concatenate(texels), np.concatenate(lights)
+        # Where boxes overlap on screen, keep the nearest pixel (sort by pixel
+        # then depth, take the first of each pixel), then z-test it.
+        key = col * h + row
+        order = np.lexsort((depth, key))
+        first = np.ones(order.size, dtype=np.bool_)
+        first[1:] = key[order][1:] != key[order][:-1]
+        pick = order[first]
+        pick = pick[depth[pick] < zbuffer[col[pick], row[pick]]]
+        col, row, depth = col[pick], row[pick], depth[pick]
+        level = light_level(self._brightness(depth) * light[pick])
+        frame[col, row] = COLORMAP[level, texel[pick]]
+        zbuffer[col, row] = depth
+
+    def _runs(self, start: FloatArray, end: FloatArray) -> tuple[IntArray, IntArray]:
+        """Screen rows covered from row `start` to `end` (pixel centres in
+        [start, end)), clipped to the screen, for many runs at once. Returns
+        (run index, row) for every covered pixel."""
+        h = self.config.height
+        r0 = np.clip(np.ceil(start - 0.5), 0, h).astype(np.intp)
+        r1 = np.clip(np.ceil(end - 0.5), 0, h).astype(np.intp)
+        count = np.maximum(r1 - r0, 0)
+        run = np.repeat(np.arange(count.size), count)
+        within = np.arange(run.size) - np.repeat(np.cumsum(count) - count, count)
+        return run, r0[run] + within
+
     def _draw_sprites(
         self,
         frame: U8Array,
@@ -1019,6 +1183,13 @@ def _floor_at_ray(
     return game_map.floor_at(
         min(max(x, cx + eps), cx + 1 - eps), min(max(y, cy + eps), cy + 1 - eps)
     )
+
+
+def _texel_clamped(v: FloatArray) -> IntArray:
+    """Texel (0-63) for positions 0..1 across a face, clamped (not wrapped):
+    box faces don't tile."""
+    result: IntArray = np.clip((v * TEX_SIZE).astype(np.intp), 0, TEX_MASK)
+    return result
 
 
 def _texel_u(u: FloatArray) -> IntArray:

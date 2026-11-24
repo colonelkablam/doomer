@@ -4,6 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 from doomer.client.config import RenderConfig
+from doomer.client.models import VIEWS
 from doomer.client.palette import GREEN, GREY
 from doomer.client.render import EYE_HEIGHT, Camera, Renderer, SpriteInstance
 from doomer.client.sprites import SPRITES
@@ -93,7 +94,7 @@ def test_unknown_sprite_names_are_ignored() -> None:
 def test_every_sprite_is_64x64_with_something_drawn() -> None:
     for name, sprite in SPRITES.items():
         assert sprite.index.shape == sprite.opaque.shape, name
-        assert sprite.index.shape[1:] == (64, 64) and len(sprite.index) in (1, 8), name
+        assert sprite.index.shape[1:] == (64, 64) and len(sprite.index) in (1, VIEWS), name
         assert sprite.opaque.any() and not sprite.opaque.all(), name
 
 
@@ -101,20 +102,24 @@ def _green(index: npt.NDArray[np.uint8]) -> int:
     return int(((index >> 4) == GREEN).sum())
 
 
-def test_terminal_has_eight_views_screen_in_front_only() -> None:
+def test_terminal_has_views_all_round_screen_in_front_only() -> None:
+    from doomer.client.models import VIEWS
+
     sprite = SPRITES["terminal"]
-    assert len(sprite.index) == 8
-    front, back = sprite.index[0][sprite.opaque[0]], sprite.index[4][sprite.opaque[4]]
+    assert len(sprite.index) == VIEWS
+    behind = VIEWS // 2
+    front, back = sprite.index[0][sprite.opaque[0]], sprite.index[behind][sprite.opaque[behind]]
     assert _green(front) > 50 and _green(back) == 0
 
 
 def test_view_is_picked_from_where_you_see_the_thing() -> None:
-    from doomer.client.models import view_for
+    from doomer.client.models import VIEWS, view_for
 
+    step = 360 / VIEWS
     assert view_for(0.0) == 0  # from the front
-    assert view_for(math.pi) == 4  # from behind
-    assert view_for(math.radians(80)) == 2  # from its right (y points down)
-    assert view_for(math.radians(-44)) == 7
+    assert view_for(math.pi) == VIEWS // 2  # from behind
+    assert view_for(math.radians(90 - 0.4 * step)) == VIEWS // 4  # its right (y down)
+    assert view_for(math.radians(-1.4 * step)) == VIEWS - 1
 
 
 def test_rotated_terminal_shows_its_screen_only_when_facing_you() -> None:

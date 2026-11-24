@@ -31,8 +31,8 @@ import numpy.typing as npt
 from doomer.client.palette import SHADES, U8Array
 from doomer.client.pixelart import ART_SIZE, BoolArray, indices
 
-VIEWS = 8  # frames per model: one per 45 degrees, as in Doom
-ELEVATION = math.radians(20)  # views look down on the model this much
+VIEWS = 16  # frames per model: one per 22.5 degrees (Doom had 8; baked, more is free)
+ELEVATION = math.radians(10)  # views look down on the model this much
 GRID = ART_SIZE  # model space is GRID voxels across, deep and tall
 _HALF = GRID // 2
 
@@ -93,9 +93,9 @@ class Baked:
 
 def bake(model: VoxelModel) -> Baked:
     """Render the model from VIEWS directions, each [view][u][v] like a sprite.
-    View k sees the model from k * 45 degrees round from its front, in the
+    View k sees the model from k * 360 / VIEWS degrees round from its front, in the
     map's angle direction (view 0 = from the front; with y pointing down,
-    view 2 = from the thing's right)."""
+    view VIEWS / 4 = from the thing's right)."""
     solid = model.ramp >= 0
     normals = _normals(solid)
     surface = solid & normals.any(axis=-1)

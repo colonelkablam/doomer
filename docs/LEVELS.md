@@ -63,6 +63,7 @@ units at most). Anything higher with no stairs is unreachable.
 | `dm_spawn` | Deathmatch spawn | At least 4 for deathmatch. Reachable; spread out (see checks) |
 | `desk`, `water_cooler`, `filing_cabinet`, `ficus` | Blocking furniture | Square footprints, half-widths 0.32 / 0.12 / 0.16 / 0.16 |
 | `terminal` | PC on a desk | Put it in a desk/counter cell; it stands on the top. Its angle is where the screen faces (towards the sitter): in a pod, 270 on the north half, 90 on the south |
+| `mac` | Macintosh SE/30, keyboard and mouse | As `terminal` (same angle rule). Solid boxes: costs more than a sprite per thing in view, fine for dozens |
 | `ceiling_light` | Light panel in the ceiling | Marks the cell; drawn at that cell's ceiling height |
 
 - Positions are cell coordinates (`3.5` = centre of cell 3). Use cell centres

@@ -8,7 +8,7 @@ Sprites are keyed by thing type name (doomer/shared/things.py). Things with no
 sprite (spawn points) are invisible.
 
 Most sprites are one picture, the same from every side. A sprite can instead
-have VIEWS frames, one per 45 degrees round the thing (as Doom's had), baked
+have VIEWS frames round the thing (Doom's had 8), baked
 from a voxel model (doomer/client/models.py); the renderer picks the frame
 for the direction the thing is seen from, using its map angle.
 """
@@ -95,7 +95,7 @@ def desk() -> Sprite:
 def terminal() -> Sprite:
     """A beige 1980s PC on a desk: a desktop system unit with two floppy
     drives, a green-screen CRT monitor on it, and a keyboard in front. Drawn
-    from its base up (it stands on a desk top); 8 views, baked from a model.
+    from its base up (it stands on a desk top); baked from a model.
 
     Model axes (models.py): x out of the screen, y to the PC's right, z up.
     Exaggerated ~1.5x in width, like the other sprites; about 24 deep, so two

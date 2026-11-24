@@ -77,7 +77,8 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Desk pod (a row of back-to-back steel desk pairs, a terminal per sitter) | yes | [built] |
 | Executive desk (kneehole desk: drawer pedestals, open in the middle) | yes | [built] |
 | Reception counter (low block, wood, 1 m) | yes | [built] |
-| Beige PC terminal (stands on a desk pod or counter; 8 views, faces its map angle) | no | [built] |
+| Beige PC terminal (stands on a desk pod or counter; rotating sprite, 16 views, faces its map angle) | no | [built] |
+| Apple Macintosh SE/30 with keyboard and mouse (on a desk; solid box model, faces its map angle) | no | [built] |
 | Desk with beige PC (single desk, sprite) | yes | [built] |
 | Water cooler | yes | [built] |
 | Filing cabinet | yes | [built] |
@@ -154,8 +155,9 @@ Built to the code design rules in `DESIGN.md`.
 - **Events** (`EnemyAlerted`, `EnemyAttacked`, `EnemyHurt`, `EnemyDied`) drive
   sounds and barks on the client; the AI never touches audio.
 - **Sprites**: frame chosen by state (walk, attack, pain, death) and, for
-  enemies that face somewhere, by viewing angle (8 rotations), as in Doom.
-  Rotations are baked from voxel models (`client/models.py`), as the PC
-  terminal's are [built]; animation poses would be one model each.
+  enemies that face somewhere, by viewing angle, as in Doom (16 rotations,
+  baked from voxel models, `client/models.py`, as the PC terminal's are
+  [built]; animation poses would be one model each). Boxy enemies (the
+  photocopier) could instead be box models (`client/boxes.py`) [planned].
 - **Modes**: enemies appear in co-op. Deathmatch ignores enemy things in the
   map, like other mode-specific things.
