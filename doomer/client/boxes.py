@@ -895,7 +895,9 @@ def _reception_desk() -> tuple[Box, ...]:
             (steel, steel, steel, steel, steel),
         ),
         # The logo, the phone, the visitors' book.
-        Box((_R_FRONT[1], _R_FRONT[1] + 0.006), (-0.07, 0.07), (0.17, 0.31), (logo_plaque(),) * 5),
+        Box(
+            (_R_FRONT[1], _R_FRONT[1] + 0.006), (-0.055, 0.055), (0.07, 0.18), (logo_plaque(),) * 5
+        ),
         Box(
             (-0.12, -0.02),
             (-0.55, -0.42),
@@ -909,6 +911,9 @@ def _reception_desk() -> tuple[Box, ...]:
             (book_side,) * 4 + (book_top(),),
         ),
     ]
+    # "WELCOME" in brass letters across the front, above the logo; not lit
+    # like the wall sign, just polished (they take the room's light).
+    boxes += _letters("WELCOME", 0.0, 0.08, 0.09, 0.23, 0.025, face=_R_FRONT[1], glow=False)
     return tuple(boxes)
 
 
@@ -959,10 +964,18 @@ def sign_panel() -> int:
 
 
 def _letters(
-    text: str, centre: float, width: float, height: float, base: float, gap: float
+    text: str,
+    centre: float,
+    width: float,
+    height: float,
+    base: float,
+    gap: float,
+    face: float = 0.012,
+    glow: bool = True,
 ) -> list[Box]:
-    """A line of letters across the sign, reading left to right as you face
-    it: towards the model's -y (your right, facing the wall)."""
+    """A line of letters standing out from a surface at model x = `face`,
+    reading left to right as you face it: towards the model's -y (your
+    right, as you look back along -x)."""
     clear = _texture(Canvas())
     total = len(text) * width + (len(text) - 1) * gap
     out = []
@@ -975,11 +988,11 @@ def _letters(
         tex = _LETTERS[ch]
         out.append(
             Box(
-                (0.012, 0.02),
+                (face, face + 0.008),
                 (y1 - width, y1),
                 (base, base + height),
                 (tex, clear, tex, clear, clear),
-                glow=True,
+                glow=glow,
             )
         )
     return out
