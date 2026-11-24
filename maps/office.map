@@ -88,7 +88,7 @@ mac             4.5   3.5   0
 ficus           1.5   1.5   0
 ficus           5.5   5.5   0
 ficus           1.5   6.5   0
-water_cooler    6.5   6.5   0
+water_cooler    6.5   6.5   270
 dm_spawn        2.5   5.5   0
 dm_spawn        4.5   1.5   0
 # Open plan: four pods of back-to-back steel desks, a Mac per sitter,
@@ -118,22 +118,22 @@ mac             17.68 6.3   270
 mac             17.32 6.7   90
 mac             18.68 6.3   270
 mac             18.32 6.7   90
-filing_cabinet  22.5  1.5   0
-filing_cabinet  22.5  2.5   0
-filing_cabinet  22.5  3.5   0
-water_cooler    14.5  8.5   0
+filing_cabinet  22.5  1.5   180
+filing_cabinet  22.5  2.5   180
+filing_cabinet  22.5  3.5   180
+water_cooler    14.5  8.5   270
 ficus           9.5   1.5   0
 ficus           22.5  9.5   0
 ficus           14.5  4.5   0
 dm_spawn        21.5  6.5   180
 # Boss office: executive desk
 mac             4.5   10.5  270
-filing_cabinet  1.5   8.5   0
-filing_cabinet  2.5   8.5   0
+filing_cabinet  1.5   8.5   90
+filing_cabinet  2.5   8.5   90
 ficus           7.5   14.5  0
 dm_spawn        2.5   13.5  270
 # Lower corridor, washroom, lift lobby
-water_cooler    22.5  11.5  0
+water_cooler    22.5  11.5  180
 ficus           17.5  14.5  0
 dm_spawn        17.5  11.5  180
 dm_spawn        10.5  13.5  0

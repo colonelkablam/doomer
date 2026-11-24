@@ -27,6 +27,7 @@ import numpy as np
 from doomer.client.palette import (
     BLUE,
     BRICK,
+    CREAM,
     GREEN,
     GREY,
     OCHRE,
@@ -60,6 +61,9 @@ class Box:
     # their texture over that height: a step's riser. Below it the step in
     # front hides the face, so it isn't drawn at all.
     riser: float = 0.0
+    # Turned this far (radians) about the model's origin, on top of the
+    # thing's angle (for an octagon's diagonal faces, see _octagon).
+    turn: float = 0.0
 
 
 class PlacedBox(NamedTuple):
@@ -346,6 +350,157 @@ def desk_screens(game_map: GameMap) -> list[PlacedBox]:
     return out
 
 
+# --- Five-drawer steel filing cabinet --------------------------------------------
+# ~1.5 m tall; footprint 0.32 x 0.3 cells to match its collision square
+# (doomer/shared/things.py, half-width 0.16). Front = its map angle.
+
+_CAB_H = 0.55  # walls
+_CAB_DRAWERS = 5
+
+
+def cabinet_front() -> int:
+    """Five drawers, each with a pull and a cream label card; kick plate."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 8.0)
+    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64), GREY, 6.0)  # frame edges
+    pitch = 60 // _CAB_DRAWERS  # rows per drawer; the bottom 4 rows are the plinth
+    for i in range(_CAB_DRAWERS):
+        top = i * pitch
+        c.paint(c.rect(top, top + 1, 0, 64), GREY, 3.0)  # gap above the drawer
+        c.paint(c.rect(top + 1, top + 2, 2, 62), GREY, 10.0)  # lit top edge
+        c.paint(c.rect(top + 4, top + 6, 14, 50), CREAM, 10.0)  # label card
+        c.paint(c.rect(top + 4, top + 6, 13, 14) | c.rect(top + 4, top + 6, 50, 51), GREY, 11.0)
+        c.paint(c.rect(top + 7, top + 9, 22, 42), GREY, 13.0)  # pull
+        c.paint(c.rect(top + 9, top + 10, 22, 42), GREY, 4.0)  # its shadow
+    c.paint(c.rect(60, 64, 0, 64), GREY, 4.0)  # recessed kick plate
+    return _texture(c)
+
+
+def cabinet_side() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 7.5)
+    c.paint(c.rect(0, 64, 0, 1) | c.rect(0, 64, 63, 64), GREY, 6.0)
+    c.paint(c.rect(60, 64, 0, 64), GREY, 4.0)
+    return _texture(c)
+
+
+def cabinet_top() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 9.0)
+    c.paint(c.rect(0, 2, 0, 64) | c.rect(62, 64, 0, 64), GREY, 7.0)
+    return _texture(c)
+
+
+def _filing_cabinet() -> tuple[Box, ...]:
+    side = cabinet_side()
+    return (
+        Box(
+            (-0.15, 0.15),
+            (-0.16, 0.16),
+            (0.0, _CAB_H),
+            (cabinet_front(), side, side, side, cabinet_top()),
+        ),
+    )
+
+
+# --- Water cooler ----------------------------------------------------------------
+# A cream cabinet with hot and cold taps, under an upturned blue bottle; ~1.3 m
+# to the top. Footprint 0.24 cells, matching its collision (half-width 0.12).
+# The bottle is round, so it's an octagonal prism (`_octagon`, using `turn`).
+# Each face is lit by which way it faces, so the eight shade round like a
+# cylinder.
+
+
+def cooler_front() -> int:
+    """The cabinet's front: a recess with the two taps' drip tray."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), CREAM, 9.0)
+    c.paint(c.rect(0, 2, 0, 64), CREAM, 11.0)
+    c.paint(c.rect(8, 30, 10, 54), CREAM, 6.0)  # recess for the taps
+    c.paint(c.rect(26, 30, 12, 52), GREY, 5.0)  # drip tray grille
+    for u0 in range(14, 52, 4):
+        c.paint(c.rect(26, 30, u0, u0 + 1), GREY, 9.0)
+    c.paint(c.rect(60, 64, 0, 64), CREAM, 5.0)  # plinth
+    return _texture(c)
+
+
+def cooler_side() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), CREAM, 8.0)
+    c.paint(c.rect(0, 2, 0, 64), CREAM, 10.0)
+    for v0 in range(36, 56, 4):  # vents for the chiller
+        c.paint(c.rect(v0, v0 + 2, 16, 48), CREAM, 5.0)
+    c.paint(c.rect(60, 64, 0, 64), CREAM, 5.0)
+    return _texture(c)
+
+
+def cooler_top() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), CREAM, 10.0)
+    return _texture(c)
+
+
+def bottle() -> int:
+    """Water, moulded ribs, and the air gap at the top. (The bottle stands
+    upside down with its neck in the cabinet, so the air is at the top.)"""
+    rng = np.random.default_rng(51)
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), BLUE, 10.0 + (noise(rng, 8) - 0.5))
+    c.paint(c.rect(0, 10, 0, 64), BLUE, 13.0)  # air above the water line
+    c.paint(c.rect(10, 12, 0, 64), BLUE, 14.0)  # meniscus glint
+    for v0 in (28, 46):
+        c.paint(c.rect(v0, v0 + 3, 0, 64), BLUE, 12.0)  # moulded ribs
+    return _texture(c)
+
+
+def tap(ramp: int) -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), ramp, 10.0)
+    c.paint(c.rect(0, 20, 0, 64), ramp, 12.0)
+    return _texture(c)
+
+
+def _octagon(radius: float, z: tuple[float, float], faces: tuple[int, ...]) -> tuple[Box, ...]:
+    """An octagonal prism of inradius `radius` centred on the model origin, as
+    a union of boxes. (Two squares, one turned 45 degrees, would make an
+    eight-pointed star: a union keeps the corners.) Instead, four strips, each
+    from one face to the opposite one and one face wide (2 r tan 22.5): each
+    lies inside the octagon, together they cover it, and their ends are its
+    eight faces."""
+    half = radius * math.tan(math.pi / 8)
+    r, w = (-radius, radius), (-half, half)
+    sides = (faces[0], faces[0], faces[0], faces[0], faces[1])
+    return tuple(
+        Box(x, y, z, sides, turn=turn) for turn in (0.0, math.pi / 4) for x, y in ((r, w), (w, r))
+    )
+
+
+def _water_cooler() -> tuple[Box, ...]:
+    side = cooler_side()
+    water, cap = bottle(), cooler_top()
+    cabinet = Box(
+        (-0.12, 0.12), (-0.12, 0.12), (0.0, 0.29), (cooler_front(), side, side, side, cap)
+    )
+    cold, hot = tap(BLUE), tap(BRICK)
+    taps = (
+        Box((0.12, 0.15), (0.02, 0.05), (0.2, 0.22), (cold, cold, cold, cold, cold)),
+        Box((0.12, 0.15), (-0.05, -0.02), (0.2, 0.22), (hot, hot, hot, hot, hot)),
+    )
+    return (
+        cabinet,
+        *taps,
+        # The bottle stands upside down: neck down in the cabinet's collar,
+        # shoulder, then the body up to its flat base at the top (~1.3 m).
+        *_octagon(0.03, (0.29, 0.30), (water, water)),  # neck
+        *_octagon(0.06, (0.30, 0.325), (water, water)),  # shoulder
+        *_octagon(0.085, (0.325, 0.48), (water, water)),  # body
+    )
+
+
 # Keyed by thing type name, like SPRITES.
-BOX_MODELS: dict[str, tuple[Box, ...]] = {"mac": _mac_se30()}
+BOX_MODELS: dict[str, tuple[Box, ...]] = {
+    "mac": _mac_se30(),
+    "filing_cabinet": _filing_cabinet(),
+    "water_cooler": _water_cooler(),
+}
 BOX_TEXTURES: U8Array = np.stack(_TEXTURES)  # [texture][u][v]

@@ -61,7 +61,7 @@ units at most). Anything higher with no stairs is unreachable.
 | `coop_start` | Where co-op players arrive | Exactly 1 for co-op. On open floor or a raised floor, never in a full wall |
 | `exit` | Co-op level exit (drawn as a hanging EXIT sign) | Exactly 1 for co-op. Must be reachable on foot from `coop_start` |
 | `dm_spawn` | Deathmatch spawn | At least 4 for deathmatch. Reachable; spread out (see checks) |
-| `desk`, `water_cooler`, `filing_cabinet`, `ficus` | Blocking furniture | Square footprints, half-widths 0.32 / 0.12 / 0.16 / 0.16 |
+| `desk`, `water_cooler`, `filing_cabinet`, `ficus` | Blocking furniture | Square footprints, half-widths 0.32 / 0.12 / 0.16 / 0.16. Cabinets and coolers are solid box models: set the angle so the front faces into the room (away from the wall they stand against) |
 | `terminal` | PC on a desk | Put it in a desk/counter cell; it stands on the top. Its angle is where the screen faces (towards the sitter): in a pod, 270 on the north half, 90 on the south |
 | `mac` | Macintosh SE/30, keyboard and mouse | As `terminal` (same angle rule). Solid boxes: costs more than a sprite per thing in view, fine for dozens |
 | `ceiling_light` | Light panel in the ceiling | Marks the cell; drawn at that cell's ceiling height |

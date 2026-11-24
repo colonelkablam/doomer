@@ -81,8 +81,8 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Beige PC terminal (stands on a desk pod or counter; rotating sprite, 16 views, faces its map angle) | no | [built] |
 | Apple Macintosh SE/30 with keyboard and mouse (on a desk; solid box model, faces its map angle) | no | [built] |
 | Desk with beige PC (single desk, sprite) | yes | [built] |
-| Water cooler | yes | [built] |
-| Filing cabinet | yes | [built] |
+| Water cooler (box model: cream cabinet, hot and cold taps, upturned octagonal bottle; faces its map angle) | yes | [built] |
+| Filing cabinet (box model: five steel drawers with pulls and label cards; faces its map angle) | yes | [built] |
 | Potted ficus | yes | [built] |
 | Fluorescent ceiling light (a panel set into the ceiling) | no | [built] |
 | Exit sign (marks the exit) | no | [built] |

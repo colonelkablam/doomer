@@ -86,3 +86,32 @@ def test_plain_desk_pairs_have_no_screens() -> None:
 
     plain = parse_map("[walls]\n#####\n#.d.#\n#####\n\n[floor]\n00000\n00200\n")
     assert desk_screens(plain) == []
+
+
+def test_filing_cabinet_and_water_cooler_are_box_models_not_sprites() -> None:
+    from doomer.client.sprites import SPRITES
+
+    for name in ("filing_cabinet", "water_cooler"):
+        assert name in BOX_MODELS and name not in SPRITES
+
+
+def test_box_models_fit_their_collision_footprints() -> None:
+    for name in ("filing_cabinet", "water_cooler"):
+        radius = THING_TYPES[name].radius
+        for box in BOX_MODELS[name]:
+            if box.turn:
+                continue  # an octagon's turned half lies within its unturned half
+            assert max(abs(v) for v in (*box.x, *box.y)) <= radius + 0.031, name  # taps
+
+
+def test_water_cooler_bottle_is_an_octagon() -> None:
+    # Seen face on, the bottle's nearest point is its inradius away from its
+    # axis; turned 22.5 degrees, a corner faces you: inradius / cos(22.5).
+    top = max(b.z[1] for b in BOX_MODELS["water_cooler"])
+    body = [b for b in BOX_MODELS["water_cooler"] if b.z[1] == top]
+    inradius = max(b.x[1] for b in body)
+    height = (body[0].z[0] + top) / 2
+    for turn, reach in ((0.0, inradius), (math.pi / 8, inradius / math.cos(math.pi / 8))):
+        R.render_indices(OPEN, CAM, [SpriteInstance("water_cooler", 4.5, 2.5, 0.0, turn)])
+        row = row_for(height, 3.0 - reach)
+        assert math.isclose(R.zbuffer[CENTRE, row], 3.0 - reach, abs_tol=0.003), turn

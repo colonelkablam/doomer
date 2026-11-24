@@ -315,8 +315,12 @@ dm_spawn      1.5   3.5   0
   floor between entry and exit depth, then all box pixels are z-tested
   together. Correct from any angle and height with no frame popping, which
   sprites can't do; the cost is per box per column, so keep models to a few
-  boxes, only within 16 cells. The Mac SE/30 (`mac`, with keyboard and
-  mouse) is the first. Big furniture stays as map cells.
+  boxes, only within 16 cells. Box models: the Mac SE/30 (`mac`, with
+  keyboard and mouse), the filing cabinet and the water cooler. A box can be
+  turned about the model's origin (`Box.turn`); round things are octagonal
+  prisms made of four strips, two of them turned 45 degrees (two squares
+  would make an eight-pointed star: a union keeps the corners). Big
+  furniture stays as map cells.
 - **Cubicle screens** (`shared/screens.py`, drawn by `boxes.desk_screens`):
   on `j` desk pairs, thin world-aligned panels (5 cm thick, to ~1.25 m) down
   the middle of each pair and across every cell edge (a shared edge once).

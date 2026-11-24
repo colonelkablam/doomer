@@ -67,7 +67,7 @@ def test_front_face_top_surface_and_wall_behind() -> None:
 
 
 def test_desk_hides_bottom_of_a_sprite_behind_it() -> None:
-    behind = [SpriteInstance("filing_cabinet", 6.5, 2.5)]  # depth 5, just past the desk
+    behind = [SpriteInstance("ficus", 6.5, 2.5)]  # depth 5, just past the desk
     with_cab = R.render_indices(ROOM, CAM, behind)
     without = R.render_indices(ROOM, CAM)
     changed = np.flatnonzero(with_cab[CENTRE] != without[CENTRE])  # sorted rows

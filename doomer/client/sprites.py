@@ -20,7 +20,6 @@ import numpy as np
 
 from doomer.client.models import VoxelModel, bake, view_for
 from doomer.client.palette import (
-    BLUE,
     BRICK,
     CREAM,
     GREEN,
@@ -126,32 +125,6 @@ def terminal() -> Sprite:
     return Sprite(baked.index, baked.opaque, sink=baked.sink, reach=baked.reach)
 
 
-def water_cooler() -> Sprite:
-    """Water cooler ~1.15 m to the top of the bottle."""
-    c = Canvas()
-    c.paint(c.rect(46, 64, 26, 38), CREAM, 9.0)  # cabinet
-    c.paint(c.rect(46, 64, 36, 38), CREAM, 7.0)  # side shade
-    c.paint(c.rect(50, 52, 28, 30), BLUE, 9.0)  # cold tap
-    c.paint(c.rect(50, 52, 33, 35), BRICK, 10.0)  # hot tap
-    bottle = c.ellipse(40, 32, 5, 6) | c.rect(44, 46, 30, 34)
-    c.paint(bottle, BLUE, 11.0)
-    c.paint(bottle & c.rect(0, 64, 27, 30), BLUE, 14.0)  # highlight
-    c.paint(bottle & c.rect(0, 64, 35, 39), BLUE, 8.0)  # shadow side
-    return _finish(c)
-
-
-def filing_cabinet() -> Sprite:
-    """Five-drawer filing cabinet, ~1.6 m."""
-    c = Canvas()
-    c.paint(c.rect(26, 64, 22, 42), GREY, 8.0)
-    c.paint(c.rect(26, 64, 40, 42), GREY, 6.0)
-    for top in (27, 34, 41, 48, 55):
-        c.paint(c.rect(top, top + 1, 23, 40), GREY, 4.0)  # drawer gap
-        c.paint(c.rect(top + 2, top + 3, 28, 34), GREY, 13.0)  # handle
-        c.paint(c.rect(top + 4, top + 6, 29, 33), CREAM, 10.0)  # label
-    return _finish(c)
-
-
 def ficus() -> Sprite:
     """Potted ficus, ~1.9 m: the tallest furniture."""
     c = Canvas()
@@ -179,8 +152,6 @@ def exit_sign() -> Sprite:
 SPRITES: dict[str, Sprite] = {
     "desk": desk(),
     "terminal": terminal(),
-    "water_cooler": water_cooler(),
-    "filing_cabinet": filing_cabinet(),
     "ficus": ficus(),
     "exit": exit_sign(),
 }

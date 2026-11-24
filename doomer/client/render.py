@@ -1055,8 +1055,9 @@ class Renderer:
         def per_box(values: list[float]) -> FloatArray:
             return np.array(values)[:, None]  # (B, 1), broadcasts over columns
 
-        ca = per_box([math.cos(p.angle) for p in boxes])
-        sa = per_box([math.sin(p.angle) for p in boxes])
+        turned = [p.angle + p.box.turn for p in boxes]
+        ca = per_box([math.cos(a) for a in turned])
+        sa = per_box([math.sin(a) for a in turned])
         rel_x = per_box([camera.x - p.x for p in boxes])
         rel_y = per_box([camera.y - p.y for p in boxes])
         x0, x1 = per_box([p.box.x[0] for p in boxes]), per_box([p.box.x[1] for p in boxes])
@@ -1106,7 +1107,7 @@ class Renderer:
             ],
         )
         # World direction of the face's normal: north/south faces darker, as walls.
-        normal = np.array([p.angle for p in boxes])[bi] + face * (math.pi / 2)
+        normal = np.array(turned)[bi] + face * (math.pi / 2)
         side_light = 1.0 - (1.0 - Y_SIDE_SHADE) * np.abs(np.sin(normal))
 
         cols: list[IntArray] = []
