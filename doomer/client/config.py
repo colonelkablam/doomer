@@ -13,8 +13,8 @@ class RenderConfig:
     vsync: bool = True
     shade_distance: float = 14.0  # walls fade to their darkest at this distance
     # Mapped to the nearest palette entry.
-    ceiling_colour: Colour = (52, 52, 60)
-    floor_colour: Colour = (78, 70, 60)
+    ceiling_colour: Colour = (205, 200, 180)  # off-white ceiling tiles
+    floor_colour: Colour = (120, 108, 96)  # grey-brown office carpet
     show_fps: bool = True
 
 

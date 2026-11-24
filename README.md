@@ -1,10 +1,15 @@
-# Doomer
+# OK Doomer
 
-A Doom-style LAN shooter in Python: raycast rendering with pygame-ce, an
+A Doom-style LAN shooter set in a 1980s office block: fight haywire
+photocopiers and angry bosses among beige PCs and water coolers, as the IT
+Guy, the Caretaker or the Temp. Python, raycast rendering with pygame-ce, an
 authoritative server on a Raspberry Pi, co-op and deathmatch, and a level
-editor. See [docs/DESIGN.md](docs/DESIGN.md) for the design and milestones.
+editor.
 
-Current state: single-player walking around a textured map (milestone 1b).
+- Setting, characters, enemies, furniture: [docs/GAME.md](docs/GAME.md)
+- Engine, code design and milestones: [docs/DESIGN.md](docs/DESIGN.md)
+
+Current state: single-player walking around the ground floor (milestone 2).
 
 ## Play (Linux)
 
@@ -19,8 +24,8 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 Controls: mouse to look, WASD to move, arrow keys also work. Esc releases the
 mouse; Esc again quits. Click to recapture.
 
-Options: `--mode coop|deathmatch`, `--config client.toml` (see
-`client.example.toml`), or a different map path as the first argument.
+Options: a map path as the first argument (default `maps/office.map`),
+`--mode coop|deathmatch`, `--config client.toml` (see `client.example.toml`).
 
 ## Develop
 
@@ -35,5 +40,5 @@ Options: `--mode coop|deathmatch`, `--config client.toml` (see
 Render a frame without a display:
 
 ```bash
-.venv/bin/python -m doomer.client.screenshot maps/test.map --at 9.5,2.5,90 --out out/frame.png
+.venv/bin/python -m doomer.client.screenshot maps/office.map --at 20.5,11.2,90 --out out/frame.png
 ```

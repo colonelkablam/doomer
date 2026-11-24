@@ -8,8 +8,8 @@ fov_degrees = 75.0
 max_fps = 144           # 0 = uncapped
 vsync = true
 show_fps = true
-# ceiling_colour = [52, 52, 60]
-# floor_colour = [78, 70, 60]
+# ceiling_colour = [205, 200, 180]
+# floor_colour = [120, 108, 96]
 
 [controls]
 mouse_sensitivity = 0.0025   # radians per pixel

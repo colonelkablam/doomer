@@ -40,7 +40,13 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
     vy = forward * sin_a + strafe * cos_a
     distance = move.walk_speed * world.config.dt
     player.x, player.y = move_box(
-        world.map, player.x, player.y, vx * distance, vy * distance, move.radius
+        world.map,
+        player.x,
+        player.y,
+        vx * distance,
+        vy * distance,
+        move.radius,
+        world.obstacles,
     )
 
 

@@ -1,7 +1,10 @@
-# Doomer: design
+# OK Doomer: design
 
 A Doom-style shooter in Python for home LAN play (Fedora and Windows clients,
-Raspberry Pi 5 server), with co-op, deathmatch and a level editor.
+Raspberry Pi 5 server), with co-op, deathmatch and a level editor. Set in a
+1980s office block. This file is the engine and code design; the setting,
+characters, enemies and furniture are in [GAME.md](GAME.md). The Python
+package keeps the short name `doomer`.
 
 ## Architecture
 
@@ -157,8 +160,15 @@ dm_spawn      1.5   3.5   0
   floor/ceiling heights (milestone 4) extend it rather than replace it: draw
   front to back with per-column clipping, like Doom's clip arrays.
 - Look up/down by y-shearing (moving the horizon), limited to about +/-30 deg.
-- Other players and items are billboard sprites, depth-clipped against the
-  per-column wall depth buffer.
+- **Sprites** (`client/sprites.py`): 64x64 palette art with an opacity mask,
+  spanning one cell wide by one wall tall and standing on the floor, so texel
+  size matches the walls; ceiling-hung things are drawn at the top of the
+  image. Keyed by thing type name; things without art (spawns) are invisible.
+  Drawn far-to-near (painter's algorithm), each column only where the sprite
+  is nearer than the wall (the per-column wall depth is a 1D depth buffer).
+  `fullbright` sprites (lights, signs) skip distance shading.
+- **Blocking things** (`ThingType.blocking`, `radius`) are square footprints
+  that the shared collision code treats like walls.
 
 ## Gameplay defaults
 
@@ -182,11 +192,15 @@ keys), later floor/ceiling heights; place things. Shows mode readiness
 | 0 ✅ | Scaffold: layout, requirements, CLAUDE.md, pytest, headless PNG helper | `pytest` passes; a test frame saves as PNG |
 | 1 ✅ | Map loader, fixed-timestep model, movement with wall sliding, flat-colour DDA raycaster at 320x200, mouse look | Walkable test map at 60 fps on Fedora; ray-distance and collision tests pass |
 | 1b ✅ | Textured walls by wall type | Wall types visibly differ |
-| 2 | Billboard sprites, depth-clipped | A static thing renders correctly in front of and behind walls |
+| 2 ✅ | Billboard sprites, depth-clipped; office furniture, office textures, office map | A static thing renders correctly in front of and behind walls |
 | 3 | Server: handshake, 60 Hz tick, snapshots, interpolation, bot client | Two clients and a bot move together; protocol tests pass |
-| 3b | Hitscan, health, death/respawn, DM scoring | A playable deathmatch |
-| 4 | Multi-hit rendering, per-cell heights, step-up/gravity, y-shearing | Stairs and ledges render and are walkable |
-| 5 | Level editor (pull earlier if hand-editing height grids gets tedious) | Round-trips a map; shows mode readiness |
+| 3b | Character classes, weapons (hitscan first), health, death/respawn, DM scoring | A playable deathmatch with the three characters |
+| 4 | Enemies: entities, behaviours, sight, flow-field pathing, projectiles (see GAME.md "NPC design") | Co-op floor with staplers, chairs and a photocopier |
+| 5 | Level editor | Round-trips a map; shows mode readiness |
+| 6 | Multi-hit rendering, per-cell heights, step-up/gravity, y-shearing | Stairs and ledges render and are walkable |
+
+Heights moved last: office floors are flat, and stairs between floors are
+level transitions, so they matter far less than enemies for this game.
 
 ## Setup
 

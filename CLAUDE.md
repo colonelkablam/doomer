@@ -1,7 +1,9 @@
 # CLAUDE.md
 
-Doom-style LAN shooter in Python. Full design and milestones: `docs/DESIGN.md`.
-Read it before starting work, and update it when a decision changes.
+OK Doomer: Doom-style LAN shooter in Python, set in a 1980s office. Engine design and
+milestones: `docs/DESIGN.md`. Game content (characters, enemies, furniture): `docs/GAME.md`.
+Read both before starting work, and update them when a decision changes (including
+the [built]/[planned] markers in GAME.md).
 
 ## Git
 

@@ -19,7 +19,7 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
     pygame.init()
     try:
         window = _open_window((rc.width * rc.window_scale, rc.height * rc.window_scale), rc.vsync)
-        pygame.display.set_caption("Doomer")
+        pygame.display.set_caption("OK Doomer")
         frame = make_frame_surface(rc)
         font = pygame.font.Font(None, 22)
         renderer = Renderer(rc)
@@ -45,7 +45,8 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
             player_input = controls.poll(real_dt)
             session.update(real_dt, player_input)  # events unused until sound/HUD exist
 
-            renderer.render(frame, session.game_map, session.camera(controls.angle))
+            camera = session.camera(controls.angle)
+            renderer.render(frame, session.game_map, camera, session.sprites())
             # 8-bit frame -> window format, then nearest-neighbour scale into the window.
             pygame.transform.scale(frame.convert(window), window.get_size(), window)
             if rc.show_fps:

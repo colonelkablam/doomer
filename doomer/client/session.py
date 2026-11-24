@@ -7,7 +7,7 @@ interpolates snapshots, so the game loop doesn't change.
 
 from typing import Protocol
 
-from doomer.client.render import Camera
+from doomer.client.render import Camera, SpriteInstance
 from doomer.shared.events import Event
 from doomer.shared.mapfile import GameMap
 from doomer.shared.player import PlayerInput
@@ -28,6 +28,10 @@ class GameSession(Protocol):
         """Where to draw from this frame. The client owns its view angle."""
         ...
 
+    def sprites(self) -> list[SpriteInstance]:
+        """Things to draw this frame (the renderer skips names with no art)."""
+        ...
+
 
 class LocalSession:
     def __init__(self, world: World, player_name: str, player_id: int = 1) -> None:
@@ -35,6 +39,8 @@ class LocalSession:
         self.player = spawn_player(world, player_id, player_name)
         self.timestep = FixedTimestep(world.config.dt)
         self._prev = (self.player.x, self.player.y)
+        # Map things never move; later, enemies and pickups come from the world.
+        self._static_sprites = [SpriteInstance(t.type, t.x, t.y) for t in world.map.things]
 
     @property
     def game_map(self) -> GameMap:
@@ -54,3 +60,6 @@ class LocalSession:
         x = px + (self.player.x - px) * a
         y = py + (self.player.y - py) * a
         return Camera(x, y, view_angle)
+
+    def sprites(self) -> list[SpriteInstance]:
+        return self._static_sprites

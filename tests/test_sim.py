@@ -2,12 +2,13 @@ import math
 
 import pytest
 
-from doomer.shared.collision import move_box
+from doomer.shared.collision import Obstacle, move_box
 from doomer.shared.config import ConfigError, MovementConfig, SimConfig, from_dict
 from doomer.shared.events import PlayerSpawned
 from doomer.shared.mapfile import parse_map
 from doomer.shared.player import PlayerInput
 from doomer.shared.sim import step
+from doomer.shared.things import THING_TYPES, ThingType, register_thing_type
 from doomer.shared.timestep import FixedTimestep
 from doomer.shared.world import ModeNotSupported, World, drain_events, new_world, spawn_player
 
@@ -164,3 +165,47 @@ def test_config_from_dict_nested_with_int_to_float() -> None:
 def test_config_rejects_bad_input(data: dict[str, object]) -> None:
     with pytest.raises(ConfigError):
         from_dict(SimConfig, data)
+
+
+# --- blocking things -------------------------------------------------------------
+
+OB = Obstacle(4.0, 2.5, 0.25)
+OPEN = parse_map("[walls]\n########\n#......#\n#......#\n#......#\n########\n")
+
+
+def test_obstacle_stops_movement_on_each_side() -> None:
+    reach = R + OB.radius
+    assert move_box(OPEN, 2.0, 2.5, 3.0, 0.0, R, [OB])[0] == pytest.approx(OB.x - reach)
+    assert move_box(OPEN, 5.5, 2.5, -3.0, 0.0, R, [OB])[0] == pytest.approx(OB.x + reach)
+    assert move_box(OPEN, 4.0, 1.4, 0.0, 3.0, R, [OB])[1] == pytest.approx(OB.y - reach)
+
+
+def test_slides_past_obstacle_and_misses_when_not_lined_up() -> None:
+    x, y = move_box(OPEN, 3.0, 2.5, 0.5, 0.5, R, [OB])  # diagonal into its west face
+    assert x == pytest.approx(OB.x - R - OB.radius)
+    assert y == pytest.approx(3.0)
+    # Passing well to the north: no effect.
+    assert move_box(OPEN, 2.0, 1.4, 3.0, 0.0, R, [OB]) == pytest.approx((5.0, 1.4))
+
+
+def test_can_walk_out_if_overlapping() -> None:
+    x, _ = move_box(OPEN, 4.1, 2.5, 0.5, 0.0, R, [OB])
+    assert x == pytest.approx(4.6)
+
+
+def test_world_builds_obstacles_from_blocking_things() -> None:
+    m = parse_map(
+        "[walls]\n######\n#....#\n######\n[things]\n"
+        "coop_start 1.5 1.5 0\nexit 4.5 1.5 0\ndesk 3.5 1.5 0\nceiling_light 2.5 1.5 0\n"
+    )
+    world = new_world(m, "coop")
+    assert world.obstacles == (Obstacle(3.5, 1.5, THING_TYPES["desk"].radius),)
+    player = spawn_player(world, 1, "p")
+    for _ in range(60):
+        step(world, {1: PlayerInput(forward=1.0, angle=0.0)})
+    assert player.x == pytest.approx(3.5 - THING_TYPES["desk"].radius - R)
+
+
+def test_blocking_thing_type_needs_radius() -> None:
+    with pytest.raises(ValueError, match="needs a radius"):
+        register_thing_type(ThingType("broken", "no radius", blocking=True))

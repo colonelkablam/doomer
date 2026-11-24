@@ -14,16 +14,18 @@ use_dummy_video()
 import pygame  # noqa: E402
 
 from doomer.client.config import RenderConfig  # noqa: E402
-from doomer.client.render import Camera, Renderer, make_frame_surface  # noqa: E402
+from doomer.client.render import Camera, Renderer, SpriteInstance, make_frame_surface  # noqa: E402
 from doomer.shared.mapfile import GameMap, load_map  # noqa: E402
 
 
 def render_frame(
-    game_map: GameMap, camera: Camera, config: RenderConfig | None = None
+    game_map: GameMap, camera: Camera, config: RenderConfig | None = None, things: bool = True
 ) -> pygame.Surface:
+    """Render one frame; `things=False` draws walls, floor and ceiling only."""
     config = config or RenderConfig()
     frame = make_frame_surface(config)
-    Renderer(config).render(frame, game_map, camera)
+    sprites = [SpriteInstance(t.type, t.x, t.y) for t in game_map.things] if things else []
+    Renderer(config).render(frame, game_map, camera, sprites)
     return frame
 
 

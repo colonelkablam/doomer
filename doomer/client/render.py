@@ -9,6 +9,10 @@ Fisheye: the ray's Euclidean distance is multiplied by cos(ray offset) to get
 the perpendicular distance to the camera plane. Without that, a flat wall in
 front of you bulges towards the middle of the screen.
 
+Sprites (things) are drawn after the walls, farthest first (the painter's
+algorithm), and only in columns where they are nearer than the wall: the
+per-column wall depth from the ray pass doubles as a 1D depth buffer.
+
 Why split it in two: the DDA is inherently a loop (each ray takes a different
 number of steps), so it stays in Python, 320 iterations a frame. Everything
 per-pixel (64,000 of them) is done as whole-array numpy operations, which run
@@ -16,6 +20,7 @@ in C. A per-pixel Python loop would be ~100x too slow.
 """
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 import numpy as np
@@ -24,6 +29,7 @@ import pygame
 
 from doomer.client.config import RenderConfig
 from doomer.client.palette import COLORMAP, PALETTE, U8Array, light_level, nearest_index
+from doomer.client.sprites import SPRITES
 from doomer.client.textures import TEX_MASK, TEX_SIZE, build_atlas
 from doomer.shared.mapfile import GameMap
 from doomer.shared.raycast import Side, cast_ray
@@ -39,11 +45,23 @@ FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.intp]
 
 
+NEAR_PLANE = 0.05  # sprites closer than this (in cells) aren't drawn
+
+
 @dataclass(frozen=True, slots=True)
 class Camera:
     x: float
     y: float
     angle: float
+
+
+@dataclass(frozen=True, slots=True)
+class SpriteInstance:
+    """Something to draw this frame: a sprite name (= thing type) at a position."""
+
+    name: str
+    x: float
+    y: float
 
 
 def make_frame_surface(config: RenderConfig) -> pygame.Surface:
@@ -99,11 +117,19 @@ class Renderer:
         result: FloatArray = np.maximum(MIN_SHADE, 1.0 - distance / self.config.shade_distance)
         return result
 
-    def render(self, target: pygame.Surface, game_map: GameMap, camera: Camera) -> None:
+    def render(
+        self,
+        target: pygame.Surface,
+        game_map: GameMap,
+        camera: Camera,
+        sprites: Iterable[SpriteInstance] = (),
+    ) -> None:
         """Draw into an 8-bit surface from make_frame_surface()."""
-        pygame.surfarray.blit_array(target, self.render_indices(game_map, camera))
+        pygame.surfarray.blit_array(target, self.render_indices(game_map, camera, sprites))
 
-    def render_indices(self, game_map: GameMap, camera: Camera) -> U8Array:
+    def render_indices(
+        self, game_map: GameMap, camera: Camera, sprites: Iterable[SpriteInstance] = ()
+    ) -> U8Array:
         """The frame as a (width, height) array of palette indices."""
         w = self.config.width
 
@@ -142,4 +168,47 @@ class Renderer:
         texel = self.atlas[slot[:, None], u[:, None], vi]  # (w, h) palette indices
         lit = COLORMAP[level[:, None], texel]  # shading = one table lookup
         frame: U8Array = np.where(on_wall, lit, self.background)
+        self._draw_sprites(frame, camera, sprites)
         return frame
+
+    def _draw_sprites(
+        self, frame: U8Array, camera: Camera, sprites: Iterable[SpriteInstance]
+    ) -> None:
+        w, h = self.config.width, self.config.height
+        cos_a, sin_a = math.cos(camera.angle), math.sin(camera.angle)
+
+        # Into camera space: depth along the view direction, lateral to the right.
+        visible = []
+        for s in sprites:
+            art = SPRITES.get(s.name)
+            if art is None:
+                continue  # e.g. spawn points: no sprite
+            dx, dy = s.x - camera.x, s.y - camera.y
+            depth = dx * cos_a + dy * sin_a
+            if depth > NEAR_PLANE:
+                visible.append((depth, -dx * sin_a + dy * cos_a, art))
+        visible.sort(key=lambda item: item[0], reverse=True)  # painter's: far to near
+
+        for depth, lateral, art in visible:
+            size = self.projection / depth  # one cell wide, one wall tall, in pixels
+            left = w / 2 + lateral * self.projection / depth - size / 2
+            bottom = self.horizon + EYE_HEIGHT * size  # standing on the floor
+            top = bottom - size
+            c0, c1 = max(0, math.ceil(left - 0.5)), min(w, math.ceil(left + size - 0.5))
+            r0, r1 = max(0, math.ceil(top - 0.5)), min(h, math.ceil(bottom - 0.5))
+            if c0 >= c1 or r0 >= r1:
+                continue
+            cols = np.arange(c0, c1)
+            in_front = depth < self.depth[cols]  # the 1D depth buffer test
+            if not in_front.any():
+                continue
+            scale = 64 / size
+            u = ((cols + 0.5 - left) * scale).astype(np.intp).clip(0, 63)
+            v = ((np.arange(r0, r1) + 0.5 - top) * scale).astype(np.intp).clip(0, 63)
+            index = art.index[u[:, None], v[None, :]]
+            draw = art.opaque[u[:, None], v[None, :]] & in_front[:, None]
+            if not art.fullbright:
+                level = light_level(self._brightness(np.array(depth)))
+                index = COLORMAP[level, index]
+            region = frame[c0:c1, r0:r1]
+            region[draw] = index[draw]

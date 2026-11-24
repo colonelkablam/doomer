@@ -13,7 +13,7 @@ from doomer.shared.mapfile import MapError, load_map
 from doomer.shared.modes import supported_modes
 from doomer.shared.world import ModeNotSupported, new_world
 
-DEFAULT_MAP = Path(__file__).resolve().parents[2] / "maps" / "test.map"
+DEFAULT_MAP = Path(__file__).resolve().parents[2] / "maps" / "office.map"
 
 
 def main(argv: list[str] | None = None) -> int:

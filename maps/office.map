@@ -1,0 +1,64 @@
+name: Ground Floor
+
+[walls]
+144444441444444444444441
+4.......1..............4
+4.......1..............4
+4.......1..............4
+4......................4
+4.......1.3333..3333...4
+4.......1..............4
+222222222..............4
+4.......2..............4
+4.......2..............4
+4.......1111.1111111.111
+4......................4
+4.......277.77.........4
+4.......2....7.66......4
+4.......2....7.66......4
+144444442444444444455541
+
+[things]
+# type          x     y     angle
+# Reception
+coop_start      2.5   2.5   0
+ficus           1.5   1.5   0
+ficus           7.5   1.5   0
+desk            5.5   2.5   0
+water_cooler    7.5   6.5   0
+ceiling_light   4.5   3.5   0
+dm_spawn        2.5   5.5   0
+# Open plan: desks either side of the cubicle partitions
+desk            10.5  4.5   0
+desk            12.5  4.5   0
+desk            16.5  4.5   0
+desk            18.5  4.5   0
+desk            11.5  6.5   0
+desk            17.5  6.5   0
+filing_cabinet  22.5  1.5   0
+filing_cabinet  22.5  2.5   0
+filing_cabinet  22.5  3.5   0
+water_cooler    14.5  8.5   0
+ficus           9.5   1.5   0
+ficus           22.5  9.5   0
+ceiling_light   11.5  2.5   0
+ceiling_light   17.5  2.5   0
+ceiling_light   11.5  7.5   0
+ceiling_light   17.5  7.5   0
+dm_spawn        21.5  6.5   180
+# Boss office
+desk            4.5   10.5  0
+filing_cabinet  1.5   8.5   0
+filing_cabinet  2.5   8.5   0
+ficus           7.5   14.5  0
+ceiling_light   4.5   11.5  0
+dm_spawn        2.5   13.5  270
+# Lower corridor, washroom, lift lobby
+water_cooler    22.5  11.5  0
+ficus           17.5  14.5  0
+ceiling_light   15.5  11.5  0
+ceiling_light   20.5  12.5  0
+ceiling_light   10.5  13.5  0
+dm_spawn        17.5  11.5  180
+dm_spawn        10.5  13.5  0
+exit            20.5  14.5  90

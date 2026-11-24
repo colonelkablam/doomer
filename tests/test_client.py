@@ -5,7 +5,7 @@ import pytest
 
 from doomer.client.config import ClientConfig, ControlsConfig, RenderConfig
 from doomer.client.input import Action, compose_input, turn
-from doomer.client.palette import BRICK, GREEN, GREY, MAGENTA, PINK
+from doomer.client.palette import GREEN, MAGENTA, PINK, WOOD
 from doomer.client.render import Camera, Renderer
 from doomer.client.screenshot import render_frame
 from doomer.client.session import LocalSession
@@ -28,14 +28,14 @@ coop_start 1.5 2.5 0
 exit 7.5 2.5 0
 """
 )
-# Ceiling and floor from ramps the brick texture (wall type 2) never uses, so
+# Ceiling and floor from ramps the wood panelling (wall type 2) never uses, so
 # any pixel in another ramp is wall.
 CFG = RenderConfig(ceiling_colour=(250, 130, 190), floor_colour=(110, 200, 90))
 CEILING_RAMP, FLOOR_RAMP = PINK, GREEN
 
 
 def render(camera: Camera) -> pygame.Surface:
-    return render_frame(ROOM, camera, CFG)
+    return render_frame(ROOM, camera, CFG, things=False)
 
 
 def ramp_at(frame: pygame.Surface, x: int, y: int) -> int:
@@ -51,7 +51,7 @@ def column_height(frame: pygame.Surface, col: int) -> int:
 def test_frame_is_8_bit_with_wall_texture_at_horizon() -> None:
     frame = render(Camera(4.5, 2.5, 0.0))
     assert frame.get_bitsize() == 8
-    assert ramp_at(frame, CFG.width // 2, CFG.height // 2) in {BRICK, GREY}  # brick or mortar
+    assert ramp_at(frame, CFG.width // 2, CFG.height // 2) == WOOD  # type 2 = wood panelling
     assert ramp_at(frame, 0, 0) == CEILING_RAMP
     assert ramp_at(frame, 0, CFG.height - 1) == FLOOR_RAMP
 
