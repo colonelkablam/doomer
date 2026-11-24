@@ -236,12 +236,14 @@ def test_desk_pair_ends_are_half_pedestal_half_open_from_either_end() -> None:
         assert see_through(0.75)  # right half: the other desk's open end
 
 
-def test_desk_pairs_show_a_seam_down_the_middle_of_their_top(
+def test_desk_pairs_show_seams_where_the_desks_meet(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import doomer.client.render as render
 
-    # A row of desk pairs (d) facing north: the two desks meet along y = 2.5.
+    # A row of three desk pairs (d) facing north, x 2..5: each pair's two desks
+    # meet along y = 2.5, and neighbouring pairs at x = 3 and x = 4 (not at the
+    # row's ends, x = 2 and 5).
     pod = parse_map(
         "[walls]\n#######\n#.....#\n#.ddd.#\n#.....#\n#######\n\n"
         "[floor]\n0000000\n0000000\n0022200\n\n[facing]\n.......\n.......\n..nnn..\n"
@@ -252,8 +254,14 @@ def test_desk_pairs_show_a_seam_down_the_middle_of_their_top(
     monkeypatch.setattr(render, "TOP_SEAM_WALL_TYPES", frozenset())
     without = R.render_indices(pod, camera)
     cols, rows = np.nonzero(with_seam != without)
-    assert cols.size > 20
+    seam = joins = 0
     for col, row in zip(cols, rows, strict=True):
         along = depth[col, row] / R._cos[col]
+        x = camera.x + math.cos(camera.angle + R._offsets[col]) * along
         y = camera.y + math.sin(camera.angle + R._offsets[col]) * along
-        assert abs(y - 2.5) < 0.05
+        if abs(y - 2.5) < 0.05:
+            seam += 1
+        else:
+            assert min(abs(x - 3), abs(x - 4)) < 0.05, (x, y)
+            joins += 1
+    assert seam > 20 and joins > 20

@@ -99,7 +99,8 @@ NEAR_PLANE = 0.05  # sprites closer than this (in cells) aren't drawn
 MAX_BOX_DISTANCE = 16.0  # box models further than this (cells) aren't drawn: a few pixels
 UNDER_DESK_SHADOW = 12  # colormap levels darker (of 32) for the floor under a desk
 DESK_SEAM_DARKEN = 9  # colormap levels darker for the join between two desks' tops
-DESK_SEAM_WIDTH = 0.01  # half-width of that line, in cells (~3 cm wide)
+DESK_JOIN_DARKEN = 5  # ... and for the joins between neighbouring pairs in a row
+DESK_SEAM_WIDTH = 0.01  # half-width of those lines, in cells (~3 cm wide)
 STEP_HEIGHT = 0.125  # a rise up to this is a step, not a drop that needs a railing
 # Ceiling light panels: half-size in cells, and colours (diffuser is full-bright).
 LIGHT_HALF = (0.22, 0.11)
@@ -191,6 +192,8 @@ class Renderer:
         self._lights_map: GameMap | None = None
         self._slots_map: GameMap | None = None
         self._stairs_map: GameMap | None = None
+        self._seam_map: GameMap | None = None
+        self._seam_grid: IntArray = np.zeros((0, 0), dtype=np.intp)
         self._stairs: list[PlacedBox] = []
         self._cell_slots: list[list[list[int]]] = []
         self._light_list: list[tuple[float, float, float]] = []
@@ -784,34 +787,77 @@ class Renderer:
         depth: FloatArray,
         drop: FloatArray,
     ) -> U8Array:
-        """Darken a line across the top of desk pairs, where the two desks meet:
-        the middle of the cell, perpendicular to its facing. Pixels are put
-        back into the world (camera + ray * distance) to find which are on it.
-        `drop` is the eye's height above the surface."""
-        seam = np.array([h.wall_type in TOP_SEAM_WALL_TYPES for h in hits])
-        if not seam[ci].any():
+        """Joins on the tops of desk pairs: a dark seam across the middle of
+        each cell, perpendicular to its facing, where the two desks meet; and
+        a fainter join at the cell edges between neighbouring pairs in a row.
+        Pixels are put back into the world (camera + ray * distance) to find
+        which are on a line. `drop` is the eye's height above the surface."""
+        seam = np.array([h.wall_type in TOP_SEAM_WALL_TYPES for h in hits])[ci]
+        if not seam.any():
             return lit
-        game_map, camera = self._frame_map, self._frame_camera
-        # Facing north or south: the desks meet along y = middle of the cell.
-        along_y = np.array([game_map.facing_at(h.cell_x, h.cell_y) % 2 == 0 for h in hits])
-        middle = np.array(
-            [(h.cell_y if y else h.cell_x) + 0.5 for h, y in zip(hits, along_y, strict=True)]
-        )
+        camera = self._frame_camera
+        grid = self._seam_grid_for(self._frame_map)
         t = depth / self._cos[cols]
-        coord = np.where(
-            along_y[ci], camera.y + self._ray_dy[cols] * t, camera.x + self._ray_dx[cols] * t
-        )
-        # At least half a pixel's footprint on the surface wide, or the line
-        # falls between pixel centres. A pixel covers depth / projection across
-        # the ray and, seen at a slant, depth^2 / (projection * drop) along it.
+        wx = camera.x + self._ray_dx[cols] * t
+        wy = camera.y + self._ray_dy[cols] * t
+        # A pixel's footprint on the surface: depth / projection across the ray
+        # and, seen at a slant, depth^2 / (projection * drop) along it. Lines are
+        # at least half of it wide, or they fall between pixel centres.
         across = depth / self.projection / self._cos[cols]
         along = across * depth / np.maximum(drop, 1e-6)
-        dx, dy = np.abs(self._ray_dx[cols]), np.abs(self._ray_dy[cols])
-        footprint = np.where(along_y[ci], along * dy + across * dx, along * dx + across * dy)
-        width = np.maximum(DESK_SEAM_WIDTH, 0.5 * footprint)
-        on = seam[ci] & (np.abs(coord - middle[ci]) < width)
-        result: U8Array = np.where(on, COLORMAP[DESK_SEAM_DARKEN, lit], lit)
+        rx, ry = np.abs(self._ray_dx[cols]), np.abs(self._ray_dy[cols])
+        reach_x, reach_y = 0.5 * (along * rx + across * ry), 0.5 * (along * ry + across * rx)
+
+        gx = np.clip(np.floor(wx).astype(np.intp), 0, grid.shape[1] - 1)
+        gy = np.clip(np.floor(wy).astype(np.intp), 0, grid.shape[0] - 1)
+        facing = grid[gy, gx]  # -1 unless this pixel is on a desk pair
+        ns = facing % 2 == 0  # facing north/south: the pair meets along y
+        # The seam: the middle of the cell across the facing.
+        middle = np.where(ns, np.abs(wy - gy - 0.5), np.abs(wx - gx - 0.5))
+        on_seam = (
+            seam
+            & (facing >= 0)
+            & (middle < np.maximum(DESK_SEAM_WIDTH, np.where(ns, reach_y, reach_x)))
+        )
+        # Joins: the nearest cell edge along the row, if the pair beyond it is
+        # part of the same row (a desk pair facing the same way).
+        edge = np.where(ns, np.round(wx), np.round(wy)).astype(np.intp)
+        own = np.where(ns, gx, gy)
+        other = np.where(own == edge, edge - 1, edge)  # the cell across that edge
+        h, w = grid.shape
+        neighbour = np.where(
+            ns,
+            grid[gy, np.clip(other, 0, w - 1)],
+            grid[np.clip(other, 0, h - 1), gx],
+        )
+        gap = np.where(ns, np.abs(wx - edge), np.abs(wy - edge))
+        width = np.maximum(DESK_SEAM_WIDTH, np.where(ns, reach_x, reach_y))
+        on_join = seam & (facing >= 0) & (neighbour == facing) & (gap < width)
+        result: U8Array = np.where(
+            on_seam,
+            COLORMAP[DESK_SEAM_DARKEN, lit],
+            np.where(on_join, COLORMAP[DESK_JOIN_DARKEN, lit], lit),
+        )
         return result
+
+    def _seam_grid_for(self, game_map: GameMap) -> IntArray:
+        """Per cell: its facing if it's a desk pair (has a top seam), else -1.
+        Built once per map."""
+        if self._seam_map is not game_map:
+            self._seam_grid = np.array(
+                [
+                    [
+                        game_map.facing_at(x, y)
+                        if wall in TOP_SEAM_WALL_TYPES and game_map.is_low_block(x, y)
+                        else -1
+                        for x, wall in enumerate(row)
+                    ]
+                    for y, row in enumerate(game_map.walls)
+                ],
+                dtype=np.intp,
+            )
+            self._seam_map = game_map
+        return self._seam_grid
 
     def _dithered_at(
         self, colour: npt.NDArray[np.integer], depth: FloatArray, cols: IntArray, rows: IntArray

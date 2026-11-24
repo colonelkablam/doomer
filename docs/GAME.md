@@ -74,7 +74,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 
 | Thing | Blocks | Status |
 |---|---|---|
-| Desk pod (a row of back-to-back steel desk pairs, a seam where each pair meets, a Mac over each sitter's knee space) | yes | [built] |
+| Desk pod (a row of back-to-back steel desk pairs, a seam where each pair meets and joins between pairs, a Mac over each sitter's knee space) | yes | [built] |
 | Executive desk (kneehole desk: drawer pedestals, open in the middle) | yes | [built] |
 | Reception counter (low block, wood, 1 m) | yes | [built] |
 | Beige PC terminal (stands on a desk pod or counter; rotating sprite, 16 views, faces its map angle) | no | [built] |
