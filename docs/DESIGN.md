@@ -345,6 +345,72 @@ dm_spawn      1.5   3.5   0
 - **Blocking things** (`ThingType.blocking`, `radius`) are square footprints
   that the shared collision code treats like walls.
 
+### Lighting [planned]
+
+Today brightness depends only on distance from the eye (Doom's "fog",
+`shade_distance`), plus a fixed darkening of north/south faces. Ceiling
+light panels are drawn full-bright but light nothing. The plan: light that
+comes from the fittings, keeping the 8-bit palette and the one-lookup shading
+(`COLORMAP[level, texel]`), and the frame budget.
+
+**Model: a baked light map** (as Doom's per-sector light and Quake's light
+maps, simplified). Per map, at load, client-side:
+
+- A grid of light values over the floor plan, 4 samples per cell (0.25 cell
+  resolution; 96 x 64 floats for the office). Each sample:
+  `ambient + sum over lights of intensity * falloff * visible`.
+- **Falloff**: from the panel at its ceiling height `c` above the floor,
+  `1 / (1 + (d / r)^2)` with `d = sqrt(horizontal^2 + c^2)`, cut off at ~6
+  cells. A two-storey ceiling then gives dimmer, wider pools without a
+  special case.
+- **Visibility**: a sample is lit by a panel only if the segment between
+  them crosses no full wall (grid DDA, cell resolution). Low blocks don't
+  block light (the contact shadow under desks already exists).
+- **Ambient**: a map header value (default ~0.35), with an optional
+  `[light]` grid later for per-cell overrides (a dark server room, a lobby
+  lit by its glazing).
+- Each panel's contribution is kept as a separate patch (its radius only),
+  so dynamic changes add or subtract one patch, not a rebake. Bake: well
+  under 0.5 s; cached per map.
+
+**Applying it**: brightness = light(x, y) x distance fade (the fade stays,
+gentler, for atmosphere). Both multiply into one colormap level, so every
+surface is still a single lookup.
+
+- Walls and block faces: one light value per column, sampled just in front
+  of the face (0.1 cell into the space it faces). Cheap.
+- Floors and ceilings: no longer one cached background. Floor-cast: each
+  pixel's world position (camera + ray x distance, as the desk seams do)
+  samples the map bilinearly. Ceilings use a flatter curve (lit mostly by
+  bounce). The biggest cost: ~2-3 ms at 320 x 200; if needed, evaluate at
+  half resolution and let the dither hide it.
+- Desk tops, box models: per pixel from their world positions (already
+  computed). Sprites: one value at the thing.
+- Light panels and the exit sign stay full-bright (emissive). Light stays
+  white: the palette's ramps can darken a colour but not tint it.
+
+**Dynamic light** (cosmetic first, gameplay later):
+
+- Flickering or dead tubes (a `ceiling_light` variant): toggle that panel's
+  patch; pattern seeded, client-side.
+- Muzzle flashes, explosions: a short-lived patch at the source, added to a
+  frame-local copy of the affected region.
+- Power events (a switch; the CEO cutting the lights, emergency lighting
+  only): the simulation owns which lights are on, so all clients agree; it
+  emits events and the snapshot carries the light states. Lighting maths
+  stays client-only.
+
+**Phases**:
+
+1. Bake (ambient, panels, falloff, wall occlusion) + tests (brighter under
+   a panel than between; a wall blocks light; a two-storey room is dimmer
+   under its panels); a top-down PNG of the map for tuning.
+2. Apply to walls, faces, boxes and sprites (per column / per thing).
+3. Floor-cast floors and ceilings with the map; tune falloff, ambient and
+   fade; `RenderConfig.lighting` switch for slow machines; check frame time.
+4. Dynamic: flicker, muzzle flash, power events (after networking, since
+   power events cross the wire).
+
 ## Gameplay defaults
 
 - Weapons: hitscan first (a server-side ray tested against players as circles;
@@ -373,6 +439,7 @@ keys), later floor/ceiling heights; place things. Shows mode readiness
 | 4 | Enemies: entities, behaviours, sight, flow-field pathing, projectiles (see GAME.md "NPC design") | Co-op floor with staplers, chairs and a photocopier |
 | 5 | Level editor | Round-trips a map; shows mode readiness |
 | 2b ✅ | Raised floors: low blocks (desk pods, counters) rendered with faces and tops, per-pixel z-buffer, things on blocks | Desks hide what's behind them; terminals sit on desks |
+| 2d | Lighting: baked light map from the ceiling panels (falloff, wall occlusion, ambient), applied to walls, floors, ceilings, boxes and sprites; dynamic lights later (see Rendering, "Lighting") | Pools of light under the panels, dark corners; no frame over budget |
 | 2c ✅ | Heights and movement: per-cell ceilings, span renderer, look up/down, jump, crouch, stand on desks, stairs; double-height lobby with a gallery | Walk up the steps to the gallery, jump onto a desk |
 | 6 | Ramp cells (sloped floors) for proper-looking stairs and full-storey mezzanines | A storey-high mezzanine reached by a ramp/stair |
 
