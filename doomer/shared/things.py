@@ -36,10 +36,11 @@ DM_SPAWN = register_thing_type(ThingType("dm_spawn", "Deathmatch spawn point"))
 
 # Office furniture (docs/GAME.md)
 for _name, _description, _blocking, _radius in (
-    ("desk", "Desk with a beige PC and CRT", True, 0.42),
-    ("water_cooler", "Water cooler", True, 0.2),
-    ("filing_cabinet", "Filing cabinet", True, 0.25),
-    ("ficus", "Potted ficus", True, 0.2),
+    # Radii match the sprite widths in doomer/client/sprites.py (64 px = 1 cell).
+    ("desk", "Desk with a beige PC and CRT", True, 0.32),
+    ("water_cooler", "Water cooler", True, 0.12),
+    ("filing_cabinet", "Filing cabinet", True, 0.16),
+    ("ficus", "Potted ficus", True, 0.16),
     ("ceiling_light", "Fluorescent ceiling light", False, 0.0),
 ):
     register_thing_type(ThingType(_name, _description, _blocking, _radius))

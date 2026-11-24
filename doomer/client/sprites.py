@@ -40,62 +40,71 @@ def _finish(canvas: Canvas, fullbright: bool = False) -> Sprite:
     )
 
 
+# Scale: the image spans floor to ceiling, and an office ceiling is ~2.7 m, so
+# one pixel is ~4 cm of height. Heights are real-world; widths are exaggerated
+# ~1.3x (as Doom did) so small things stay readable. Collision footprints in
+# doomer/shared/things.py match these widths.
+
+
 def desk() -> Sprite:
+    """Desk 0.75 m high, beige PC on top reaching ~1.4 m."""
     c = Canvas()
     rng = np.random.default_rng(11)
     grain = 7 + noise(rng, 16) * 1.5
-    c.paint(c.rect(40, 62, 4, 60), WOOD, grain)  # front panel
-    c.paint(c.rect(40, 62, 4, 6) | c.rect(40, 62, 58, 60), WOOD, 5.0)  # edges
-    c.paint(c.rect(46, 47, 36, 58) | c.rect(54, 55, 36, 58), WOOD, 4.0)  # drawer lines
-    c.paint(c.rect(50, 51, 45, 50) | c.rect(58, 59, 45, 50), GREY, 12.0)  # handles
-    c.paint(c.rect(37, 40, 2, 62), WOOD, 10.0)  # desktop
+    c.paint(c.rect(47, 64, 12, 52), WOOD, grain)  # front panel
+    c.paint(c.rect(47, 64, 12, 14) | c.rect(47, 64, 50, 52), WOOD, 5.0)  # edges
+    c.paint(c.rect(52, 53, 34, 50) | c.rect(58, 59, 34, 50), WOOD, 4.0)  # drawer lines
+    c.paint(c.rect(55, 56, 40, 44) | c.rect(61, 62, 40, 44), GREY, 12.0)  # handles
+    c.paint(c.rect(45, 47, 10, 54), WOOD, 10.0)  # desktop
     # Beige PC: CRT monitor on a system unit, keyboard in front.
-    c.paint(c.rect(31, 37, 14, 50), SAND, 10.0)  # system unit
-    c.paint(c.rect(33, 34, 38, 46), GREY, 3.0)  # floppy slot
-    c.paint(c.rect(10, 31, 18, 46), SAND, 11.0)  # monitor case
-    c.paint(c.rect(10, 31, 44, 46), SAND, 8.0)  # side shading
-    c.paint(c.rect(13, 27, 21, 41), GREEN, 1.0)  # screen
-    for row, length in ((15, 12), (17, 16), (19, 9), (21, 14), (23, 6)):
-        c.paint(c.rect(row, row + 1, 23, 23 + length), GREEN, 13.0)  # green text
-    c.paint(c.rect(35, 37, 20, 44), WARM_GREY, 11.0)  # keyboard
+    c.paint(c.rect(41, 45, 19, 45), SAND, 10.0)  # system unit
+    c.paint(c.rect(42, 43, 36, 42), GREY, 3.0)  # floppy slot
+    c.paint(c.rect(29, 41, 22, 42), SAND, 11.0)  # monitor case
+    c.paint(c.rect(29, 41, 40, 42), SAND, 8.0)  # side shading
+    c.paint(c.rect(31, 39, 24, 38), GREEN, 1.0)  # screen
+    for row, length in ((32, 9), (34, 12), (36, 6)):
+        c.paint(c.rect(row, row + 1, 25, 25 + length), GREEN, 13.0)  # green text
+    c.paint(c.rect(44, 45, 22, 40), WARM_GREY, 11.0)  # keyboard
     return _finish(c)
 
 
 def water_cooler() -> Sprite:
+    """Water cooler ~1.15 m to the top of the bottle."""
     c = Canvas()
-    c.paint(c.rect(30, 63, 23, 41), CREAM, 9.0)  # cabinet
-    c.paint(c.rect(30, 63, 38, 41), CREAM, 7.0)  # side shade
-    c.paint(c.rect(38, 41, 27, 30), BLUE, 9.0)  # cold tap
-    c.paint(c.rect(38, 41, 34, 37), BRICK, 10.0)  # hot tap
-    bottle = c.ellipse(17, 32, 13, 10) | c.rect(26, 30, 28, 36)
+    c.paint(c.rect(46, 64, 26, 38), CREAM, 9.0)  # cabinet
+    c.paint(c.rect(46, 64, 36, 38), CREAM, 7.0)  # side shade
+    c.paint(c.rect(50, 52, 28, 30), BLUE, 9.0)  # cold tap
+    c.paint(c.rect(50, 52, 33, 35), BRICK, 10.0)  # hot tap
+    bottle = c.ellipse(40, 32, 5, 6) | c.rect(44, 46, 30, 34)
     c.paint(bottle, BLUE, 11.0)
-    c.paint(bottle & c.rect(0, 64, 26, 29), BLUE, 14.0)  # highlight
-    c.paint(bottle & c.rect(0, 64, 37, 43), BLUE, 8.0)  # shadow side
-    c.paint(c.rect(10, 11, 23, 41) & bottle, BLUE, 13.0)  # ridge
+    c.paint(bottle & c.rect(0, 64, 27, 30), BLUE, 14.0)  # highlight
+    c.paint(bottle & c.rect(0, 64, 35, 39), BLUE, 8.0)  # shadow side
     return _finish(c)
 
 
 def filing_cabinet() -> Sprite:
+    """Five-drawer filing cabinet, ~1.6 m."""
     c = Canvas()
-    c.paint(c.rect(14, 63, 18, 46), GREY, 8.0)
-    c.paint(c.rect(14, 63, 43, 46), GREY, 6.0)
-    for top in (16, 28, 40, 52):
-        c.paint(c.rect(top, top + 1, 19, 43), GREY, 4.0)  # drawer gap
-        c.paint(c.rect(top + 4, top + 6, 26, 36), GREY, 13.0)  # handle
-        c.paint(c.rect(top + 7, top + 9, 28, 34), CREAM, 10.0)  # label
+    c.paint(c.rect(26, 64, 22, 42), GREY, 8.0)
+    c.paint(c.rect(26, 64, 40, 42), GREY, 6.0)
+    for top in (27, 34, 41, 48, 55):
+        c.paint(c.rect(top, top + 1, 23, 40), GREY, 4.0)  # drawer gap
+        c.paint(c.rect(top + 2, top + 3, 28, 34), GREY, 13.0)  # handle
+        c.paint(c.rect(top + 4, top + 6, 29, 33), CREAM, 10.0)  # label
     return _finish(c)
 
 
 def ficus() -> Sprite:
+    """Potted ficus, ~1.9 m: the tallest furniture."""
     c = Canvas()
     rng = np.random.default_rng(14)
-    pot = c.rect(48, 64, 22, 42) & (np.abs(c.u + 0.5 - 32) <= 10 - (63 - c.v) * 0.15)
+    pot = c.rect(53, 64, 25, 39) & (np.abs(c.u + 0.5 - 32) <= 7 - (63 - c.v) * 0.12)
     c.paint(pot, ORANGE, np.where(c.u < 30, 8.0, 7.0))
-    c.paint(c.rect(48, 50, 21, 43), ORANGE, 9.0)  # rim
-    c.paint(c.rect(32, 48, 31, 33), WOOD, 5.0)  # trunk
+    c.paint(c.rect(52, 54, 24, 40), ORANGE, 9.0)  # rim
+    c.paint(c.rect(40, 52, 31, 33), WOOD, 5.0)  # trunk
     # Leaf clusters: coarse noise gives clumps, fine noise breaks up the edges.
     leaves = noise(rng, 8) * 0.6 + noise(rng, 32) * 0.4
-    crown = c.ellipse(26, 32, 22, 21) | c.ellipse(16, 24, 10, 10) | c.ellipse(18, 42, 9, 10)
+    crown = c.ellipse(32, 32, 14, 14) | c.ellipse(25, 26, 7, 7) | c.ellipse(27, 39, 7, 7)
     c.paint(crown & (leaves > 0.3), GREEN, 3 + leaves * 9)
     return _finish(c)
 

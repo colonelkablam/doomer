@@ -32,18 +32,24 @@ Suggested floor order:
 
 ## Player characters
 
-Three classes, each loosely a D&D archetype. Same movement code; they differ
-in health, speed, weapons and one special ability. All are gender-neutral
-roles; the sprite can come in variants.
+Three classes, each loosely a D&D archetype: a damage dealer, a tank and a
+healer, which suits two-player co-op. Same movement code; they differ in
+health, speed, weapons and one special ability. All are gender-neutral roles;
+the sprite can come in variants.
 
 | Character | Archetype | Health | Speed | Weapons | Special |
 |---|---|---|---|---|---|
 | **The IT Guy** | Wizard: fragile, strong at range | Low | Medium | Thrown floppy disks (fast, ranged); Modem Screech (short cone, dial-up shriek, stuns) | **Ctrl-Alt-Del**: clears everything on screen; long recharge |
 | **The Caretaker** | Fighter / barbarian: tough, close range | High | Slow | Mop (melee, wide arc); fire extinguisher (cone, knockback) | **Overtime**: brief damage resistance |
-| **The Temp** | Rogue: fast, sneaky | Medium | Fast | Staple gun (rapid fire, low damage); letter opener (melee, double damage from behind) | **Nobody Notices the Temp**: enemies take longer to spot you |
+| **The Tea Trolley** | Cleric: support and healing | Medium | Slow while pushing the trolley | Scalding teapot (short splash cone); sugar lumps (thrown, rapid, weak) | **Tea Break**: parks the trolley; allies near it heal over time, and it blocks shots like cover |
 
-Alternative third slot, if co-op wants a support role: **The Receptionist**
-(cleric), who heals the team with a coffee round and carries a hurled Rolodex.
+Healing in co-op: the Tea Trolley can also hand a cuppa directly to a team
+mate (a short-range heal on a cooldown), so the healer is useful even when
+the team is spread out.
+
+On the bench, if a fourth slot is ever wanted: **The Temp** (rogue): fast and
+sneaky, staple gun and letter opener (double damage from behind), and
+"Nobody Notices the Temp" (enemies take longer to spot you).
 
 ## Enemies [planned]
 
