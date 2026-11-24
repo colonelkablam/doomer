@@ -4,6 +4,7 @@ behind them, and things can stand on them."""
 import math
 
 import numpy as np
+import pytest
 
 from doomer.client.config import RenderConfig
 from doomer.client.palette import GREY, SAND, STEEL
@@ -233,3 +234,26 @@ def test_desk_pair_ends_are_half_pedestal_half_open_from_either_end() -> None:
 
         assert not see_through(0.25)  # left half: one desk's pedestal end panel
         assert see_through(0.75)  # right half: the other desk's open end
+
+
+def test_desk_pairs_show_a_seam_down_the_middle_of_their_top(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import doomer.client.render as render
+
+    # A row of desk pairs (d) facing north: the two desks meet along y = 2.5.
+    pod = parse_map(
+        "[walls]\n#######\n#.....#\n#.ddd.#\n#.....#\n#######\n\n"
+        "[floor]\n0000000\n0000000\n0022200\n\n[facing]\n.......\n.......\n..nnn..\n"
+    )
+    camera = Camera(3.5, 4.4, -math.pi / 2, pitch=-0.4)
+    with_seam = R.render_indices(pod, camera).copy()  # the frame buffer is reused
+    depth = R.zbuffer.copy()
+    monkeypatch.setattr(render, "TOP_SEAM_WALL_TYPES", frozenset())
+    without = R.render_indices(pod, camera)
+    cols, rows = np.nonzero(with_seam != without)
+    assert cols.size > 20
+    for col, row in zip(cols, rows, strict=True):
+        along = depth[col, row] / R._cos[col]
+        y = camera.y + math.sin(camera.angle + R._offsets[col]) * along
+        assert abs(y - 2.5) < 0.05

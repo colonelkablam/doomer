@@ -263,6 +263,13 @@ dm_spawn      1.5   3.5   0
   above the horizon. Stair cells are not drawn this way any more (their span
   draws nothing; it still carries heights for the spans around it): their
   steps are box models, below.
+- **Desk-pair seams**: the top of a back-to-back desk pair (`d`,
+  `textures.TOP_SEAM_WALL_TYPES`) gets a dark line across its middle,
+  perpendicular to its facing, where the two desks meet. Each top pixel is
+  put back into the world (camera + ray x distance) to test it against the
+  line; the line is at least half a pixel's footprint wide (depth^2 /
+  (projection x eye height above the top) along the ray, at a slant), or it
+  falls between pixel centres and vanishes.
 - **Railings** are drawn above balcony edges where the ray climbs onto the
   balcony (from below) or leaves it over a drop (from on top), as a masked
   texture.

@@ -524,6 +524,11 @@ def steel_desk_pair_end() -> tuple[U8Array, BoolArray]:
     return tex, opaque | panel
 
 
+# Low blocks whose top shows a seam across its middle, perpendicular to the
+# cell's facing: two desks pushed together back to back ('d').
+TOP_SEAM_WALL_TYPES: frozenset[int] = frozenset({13})
+
+
 # Colour of a low block's top surface, by wall type: a partition-fronted desk
 # pod has a beige laminate top, a panelled counter a wooden one. Types not
 # listed fall back to the commonest colour in the top of their texture.

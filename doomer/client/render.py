@@ -64,6 +64,7 @@ from doomer.client.textures import (
     TEX_MASK,
     TEX_SIZE,
     TOP_COLOURS,
+    TOP_SEAM_WALL_TYPES,
     UPPER,
     build_atlas,
     build_opacity,
@@ -97,6 +98,8 @@ BULKHEAD_TYPE = 1  # wall type whose upper texture faces a dropped ceiling
 NEAR_PLANE = 0.05  # sprites closer than this (in cells) aren't drawn
 MAX_BOX_DISTANCE = 16.0  # box models further than this (cells) aren't drawn: a few pixels
 UNDER_DESK_SHADOW = 12  # colormap levels darker (of 32) for the floor under a desk
+DESK_SEAM_DARKEN = 9  # colormap levels darker for the join between two desks' tops
+DESK_SEAM_WIDTH = 0.01  # half-width of that line, in cells (~3 cm wide)
 STEP_HEIGHT = 0.125  # a rise up to this is a step, not a drop that needs a railing
 # Ceiling light panels: half-size in cells, and colours (diffuser is full-bright).
 LIGHT_HALF = (0.22, 0.11)
@@ -267,6 +270,10 @@ class Renderer:
         horizon = self.config.height / 2 + math.tan(pitch) * self.projection
         eye = camera.z
         self.horizon = horizon
+        # For finding where a pixel of a horizontal surface is in the world.
+        self._frame_map, self._frame_camera = game_map, camera
+        ray = camera.angle + np.array(self._offsets)
+        self._ray_dx, self._ray_dy = np.cos(ray), np.sin(ray)
 
         # The space the camera is in. If it isn't the default (standing on a
         # desk, under the atrium's high ceiling), its own floor and ceiling are
@@ -708,6 +715,7 @@ class Renderer:
                     depth = row_depth[ci, ri]
                     colour = np.where(s.block, self.top_colour[s.slot], self.floor_colour)[ci]
                     lit = self._dithered_at(colour, depth, cols[ci], r0 + ri)
+                    lit = self._desk_seams(lit, hits, ci, cols[ci], depth, eye - s.top[ci])
                     sub_frame[ci, ri] = lit
                     sub_z[ci, ri] = depth
 
@@ -766,6 +774,44 @@ class Renderer:
         vi: IntArray = ((1.0 - np.mod(height, 1.0)) * TEX_SIZE).astype(np.intp) & TEX_MASK
         which: IntArray = np.where(height >= 1.0, upper, slot)
         return which, vi
+
+    def _desk_seams(
+        self,
+        lit: U8Array,
+        hits: list[RayHit],
+        ci: IntArray,
+        cols: IntArray,
+        depth: FloatArray,
+        drop: FloatArray,
+    ) -> U8Array:
+        """Darken a line across the top of desk pairs, where the two desks meet:
+        the middle of the cell, perpendicular to its facing. Pixels are put
+        back into the world (camera + ray * distance) to find which are on it.
+        `drop` is the eye's height above the surface."""
+        seam = np.array([h.wall_type in TOP_SEAM_WALL_TYPES for h in hits])
+        if not seam[ci].any():
+            return lit
+        game_map, camera = self._frame_map, self._frame_camera
+        # Facing north or south: the desks meet along y = middle of the cell.
+        along_y = np.array([game_map.facing_at(h.cell_x, h.cell_y) % 2 == 0 for h in hits])
+        middle = np.array(
+            [(h.cell_y if y else h.cell_x) + 0.5 for h, y in zip(hits, along_y, strict=True)]
+        )
+        t = depth / self._cos[cols]
+        coord = np.where(
+            along_y[ci], camera.y + self._ray_dy[cols] * t, camera.x + self._ray_dx[cols] * t
+        )
+        # At least half a pixel's footprint on the surface wide, or the line
+        # falls between pixel centres. A pixel covers depth / projection across
+        # the ray and, seen at a slant, depth^2 / (projection * drop) along it.
+        across = depth / self.projection / self._cos[cols]
+        along = across * depth / np.maximum(drop, 1e-6)
+        dx, dy = np.abs(self._ray_dx[cols]), np.abs(self._ray_dy[cols])
+        footprint = np.where(along_y[ci], along * dy + across * dx, along * dx + across * dy)
+        width = np.maximum(DESK_SEAM_WIDTH, 0.5 * footprint)
+        on = seam[ci] & (np.abs(coord - middle[ci]) < width)
+        result: U8Array = np.where(on, COLORMAP[DESK_SEAM_DARKEN, lit], lit)
+        return result
 
     def _dithered_at(
         self, colour: npt.NDArray[np.integer], depth: FloatArray, cols: IntArray, rows: IntArray
