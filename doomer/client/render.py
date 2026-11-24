@@ -373,14 +373,20 @@ class Renderer:
         game_map: GameMap,
         camera: Camera,
         sprites: Iterable[SpriteInstance] = (),
+        boxes: Iterable[PlacedBox] = (),
     ) -> None:
         """Draw into an 8-bit surface from make_frame_surface()."""
-        pygame.surfarray.blit_array(target, self.render_indices(game_map, camera, sprites))
+        pygame.surfarray.blit_array(target, self.render_indices(game_map, camera, sprites, boxes))
 
     def render_indices(
-        self, game_map: GameMap, camera: Camera, sprites: Iterable[SpriteInstance] = ()
+        self,
+        game_map: GameMap,
+        camera: Camera,
+        sprites: Iterable[SpriteInstance] = (),
+        boxes: Iterable[PlacedBox] = (),
     ) -> U8Array:
-        """The frame as a (width, height) array of palette indices."""
+        """The frame as a (width, height) array of palette indices. `boxes`:
+        moving geometry this frame (doors), drawn like box models."""
         w = self.config.width
         pitch = max(-MAX_PITCH, min(MAX_PITCH, camera.pitch))
         horizon = self.config.height / 2 + math.tan(pitch) * self.projection
@@ -510,12 +516,17 @@ class Renderer:
 
         self._draw_ceiling_lights(frame, zbuffer, game_map, camera, horizon, eye)
         sprites = list(sprites)
-        boxes = self._map_boxes_for(game_map) + [
-            PlacedBox(s.x, s.y, s.z, s.angle, box)
-            for s in sprites
-            for box in BOX_MODELS.get(s.name, ())
-            if (s.x - camera.x) ** 2 + (s.y - camera.y) ** 2 < MAX_BOX_DISTANCE**2
-        ]
+        moving = list(boxes)
+        boxes = (
+            moving
+            + self._map_boxes_for(game_map)
+            + [
+                PlacedBox(s.x, s.y, s.z, s.angle, box)
+                for s in sprites
+                for box in BOX_MODELS.get(s.name, ())
+                if (s.x - camera.x) ** 2 + (s.y - camera.y) ** 2 < MAX_BOX_DISTANCE**2
+            ]
+        )
         self._draw_boxes(frame, zbuffer, camera, boxes, horizon, eye)
         self._draw_sprites(frame, zbuffer, camera, sprites, horizon, eye)
         self.zbuffer = zbuffer

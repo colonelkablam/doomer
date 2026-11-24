@@ -27,6 +27,7 @@ class Action(Enum):
     TURN_RIGHT = "turn_right"
     JUMP = "jump"
     CROUCH = "crouch"
+    USE = "use"
 
 
 class InputSource(Protocol):
@@ -45,6 +46,7 @@ def compose_input(actions: Set[Action], angle: float, pitch: float = 0.0) -> Pla
         pitch=pitch,
         jump=Action.JUMP in actions,
         crouch=Action.CROUCH in actions,
+        use=Action.USE in actions,
     )
 
 

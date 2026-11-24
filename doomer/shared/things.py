@@ -43,6 +43,9 @@ for _name, _description, _blocking, _radius in (
     ("ficus", "Potted ficus", True, 0.16),
     # Drawn as a panel set into its cell's ceiling (not a sprite).
     ("ceiling_light", "Fluorescent ceiling light panel", False, 0.0),
+    # Doors (doomer/shared/doors.py): in a doorway cell; angle = the way it opens.
+    ("door_hinged", "Hinged office door: press use to open or close", False, 0.0),
+    ("door_sliding", "Sliding glass doors: open by themselves as you approach", False, 0.0),
     # Sits on a desk-pod cell (a low block), so it needs no footprint of its own.
     ("terminal", "Beige PC and CRT, for standing on a desk pod", False, 0.0),
     # Drawn as solid boxes (client/boxes.py); faces its map angle, like terminal.

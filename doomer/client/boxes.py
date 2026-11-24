@@ -19,6 +19,7 @@ from above with the front at the bottom of the image (v = 63).
 """
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import NamedTuple
 
@@ -40,6 +41,7 @@ from doomer.client.palette import (
     U8Array,
 )
 from doomer.client.pixelart import BoolArray, Canvas, noise
+from doomer.shared.doors import DOOR_HALF, DOOR_HEIGHT, HINGED, HINGED_LEAF, JAMB, SWING, Door
 from doomer.shared.mapfile import STAIR_RISE, STAIRS_WALL_TYPE, WALL_UNITS, GameMap
 from doomer.shared.screens import SCREEN_HALF, SCREEN_HEIGHT
 from doomer.shared.screens import desk_screens as shared_desk_screens
@@ -590,6 +592,110 @@ def _ficus() -> tuple[Box, ...]:
         )
     )
     return (*pot, *stems, *upright, *flat)
+
+
+# --- Doors (doomer/shared/doors.py has their state and collision) -------------------
+# Drawn from the simulation's door states each frame. A hinged door is two
+# fixed jambs and a leaf whose model origin is the hinge, turned by how far
+# open it is (so it really swings). Sliding doors are two glass leaves that
+# part into the walls either side (which hide them).
+
+
+def door_leaf(handle_on_right: bool) -> int:
+    """One face of a hinged door: wood veneer, a steel kick plate, and the
+    handle at the free end (right or left as you look at this face)."""
+    rng = np.random.default_rng(81)
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 8.0 + (noise(rng, 8) - 0.5) * 1.5)
+    c.paint(c.rect(0, 64, 0, 64) & ((c.u * 7 + c.v // 9) % 11 == 0), WOOD, 6.5)  # grain
+    c.paint(c.rect(0, 1, 0, 64) | c.rect(0, 64, 0, 1) | c.rect(0, 64, 63, 64), WOOD, 6.0)
+    c.paint(c.rect(54, 63, 3, 61), GREY, 10.0)  # kick plate
+    c.paint(c.rect(54, 55, 3, 61), GREY, 13.0)
+    u0 = 50 if handle_on_right else 6
+    c.paint(c.rect(29, 34, u0, u0 + 8), GREY, 12.0)  # lever handle
+    c.paint(c.rect(33, 34, u0, u0 + 8), GREY, 6.0)
+    c.paint(
+        c.rect(27, 36, u0 + (6 if handle_on_right else 0), u0 + (8 if handle_on_right else 2)),
+        GREY,
+        9.0,
+    )  # rose
+    return _texture(c)
+
+
+def door_edge() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 6.5)
+    return _texture(c)
+
+
+def jamb() -> int:
+    """The fixed panel beside a door: painted plaster with a wooden architrave
+    along both long edges."""
+    rng = np.random.default_rng(82)
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), SAND, 8.5 + (noise(rng, 8) - 0.5))
+    c.paint(c.rect(0, 64, 0, 5) | c.rect(0, 64, 59, 64), WOOD, 5.5)
+    c.paint(c.rect(60, 64, 0, 64), WOOD, 4.5)  # skirting
+    return _texture(c)
+
+
+def glass_leaf() -> int:
+    """A sliding glass door: an aluminium frame, a push bar, a frosted band
+    at eye height, and glass as a dither (every other texel), the old way to
+    draw see-through glass with a palette."""
+    c = Canvas()
+    frame = (
+        c.rect(0, 3, 0, 64) | c.rect(61, 64, 0, 64) | c.rect(0, 64, 0, 3) | c.rect(0, 64, 61, 64)
+    )
+    glass = ~frame & ((c.u + c.v) % 2 == 0)
+    c.paint(glass, BLUE, 12.0)
+    c.paint(~frame & c.rect(18, 22, 0, 64), CREAM, 11.0)  # frosted band
+    c.paint(frame, GREY, 10.0)
+    c.paint(c.rect(0, 1, 0, 64) | c.rect(0, 64, 0, 1), GREY, 13.0)
+    c.paint(c.rect(34, 36, 6, 58), GREY, 13.0)  # push bar
+    return _texture(c)
+
+
+def glass_edge() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 10.0)
+    return _texture(c)
+
+
+_LEAF_RIGHT, _LEAF_LEFT, _LEAF_EDGE = door_leaf(True), door_leaf(False), door_edge()
+_JAMB, _GLASS, _GLASS_EDGE = jamb(), glass_leaf(), glass_edge()
+_JAMB_HALF = 0.03  # jambs a little thicker than the leaf: a frame
+
+
+def door_boxes(doors: Iterable[Door]) -> list[PlacedBox]:
+    """Boxes for doors in their current state."""
+    out = []
+    h = (0.0, DOOR_HEIGHT)
+    t = (-DOOR_HALF, DOOR_HALF)
+    for door in doors:
+        f = door.facing
+        along = (-math.sin(f), math.cos(f))  # the doorway's direction (model +y at angle f)
+        if door.kind == HINGED:
+            # Jambs: model x across the doorway (thickness), y along it.
+            jt = (-_JAMB_HALF, _JAMB_HALF)
+            sides = (_JAMB, _JAMB, _JAMB, _JAMB, _JAMB)
+            for y in ((-0.5, -0.5 + JAMB), (0.5 - JAMB, 0.5)):
+                out.append(PlacedBox(door.x, door.y, 0.0, f, Box(jt, y, h, sides)))
+            # The leaf: model x along it from the hinge, closed along the
+            # doorway; opening swings its free end towards the facing.
+            hinge_x = door.x + along[0] * (-0.5 + JAMB)
+            hinge_y = door.y + along[1] * (-0.5 + JAMB)
+            angle = f + math.pi / 2 - door.open * SWING
+            faces = (_LEAF_EDGE, _LEAF_RIGHT, _LEAF_EDGE, _LEAF_LEFT, _LEAF_EDGE)
+            out.append(
+                PlacedBox(hinge_x, hinge_y, 0.0, angle, Box((0.0, HINGED_LEAF), t, h, faces))
+            )
+        else:
+            slide = 0.5 * door.open  # each leaf slides into the wall beside it
+            faces = (_GLASS, _GLASS_EDGE, _GLASS, _GLASS_EDGE, _GLASS_EDGE)
+            for y in ((-0.5 - slide, -slide), (slide, 0.5 + slide)):
+                out.append(PlacedBox(door.x, door.y, 0.0, f, Box(t, y, h, faces)))
+    return out
 
 
 # Keyed by thing type name, like SPRITES.

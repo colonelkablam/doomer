@@ -327,6 +327,19 @@ dm_spawn      1.5   3.5   0
   thin boxes with see-through leaf textures, four upright at 45 degrees to
   each other and two flat, as games have long done for plants. Big
   furniture stays as map cells.
+- **Doors** (prototype; `shared/doors.py`, drawn by `boxes.door_boxes`): a
+  door is a thing in a doorway cell (open floor between two wall cells),
+  standing in the plane through the cell's middle. State (how far open,
+  opening or closing) lives in the simulation's `World.doors`, so the server
+  will own it; the client draws boxes from it each frame (passed to the
+  renderer as `boxes`). Hinged: two fixed jambs and a leaf whose model
+  origin is the hinge, turned by how far open it is, so it really swings;
+  use (E) opens and closes it, and it won't shut on someone in the doorway.
+  Sliding: two glass leaves (a dithered, see-through texture) that part
+  into the walls either side, opening by themselves for anyone within 1.6
+  cells. Collision: the closed part of the doorway as thin walls. A lowered
+  ceiling over the doorway (6/8) gives a lintel through the existing
+  bulkhead drawing.
 - **Cubicle screens** (`shared/screens.py`, drawn by `boxes.desk_screens`):
   on `j` desk pairs, thin world-aligned panels (5 cm thick, to ~1.25 m) down
   the middle of each pair and across every cell edge (a shared edge once).

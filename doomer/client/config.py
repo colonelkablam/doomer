@@ -49,6 +49,7 @@ class ControlsConfig:
     turn_right: tuple[str, ...] = ("right",)
     jump: tuple[str, ...] = ("space",)
     crouch: tuple[str, ...] = ("left ctrl", "c")
+    use: tuple[str, ...] = ("e",)  # open and close doors
 
 
 @dataclass(frozen=True, slots=True)

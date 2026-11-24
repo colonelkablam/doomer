@@ -15,6 +15,8 @@ from collections.abc import Mapping
 
 from doomer.shared.collision import ThinWall, move_box
 from doomer.shared.config import MovementConfig
+from doomer.shared.doors import door_walls, try_use, update_doors
+from doomer.shared.events import DoorToggled
 from doomer.shared.mapfile import RAIL_HEIGHT, RAILING_WALL_TYPE, GameMap
 from doomer.shared.player import PlayerInput, PlayerState
 from doomer.shared.screens import SCREEN_HALF, screens_at_height
@@ -29,6 +31,8 @@ def step(world: World, inputs: Mapping[int, PlayerInput]) -> None:
     (but still fall)."""
     for player_id, player in world.players.items():
         apply_input(world, player, inputs.get(player_id, PlayerInput(angle=player.angle)))
+    positions = [(p.x, p.y) for p in world.players.values()]
+    update_doors(world.doors, positions, world.config.movement.radius, world.config.dt)
     world.tick += 1
 
 
@@ -38,6 +42,11 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
     player.angle = player_input.angle % TAU
     player.pitch = player_input.pitch
     _update_crouch(world.map, player, player_input.crouch, move)
+    if player_input.use and not player.use_held:  # a press, not a hold
+        door = try_use(world.doors, player.x, player.y, player.angle)
+        if door is not None:
+            world.events.append(DoorToggled(world.tick, door.id, player.id, door.opening))
+    player.use_held = player_input.use
 
     forward = _clamp(player_input.forward)
     strafe = _clamp(player_input.strafe)
@@ -58,6 +67,7 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
             ThinWall(sc.axis, sc.at, sc.lo, sc.hi, SCREEN_HALF)
             for sc in screens_at_height(world.screens, player.z)
         ]
+        walls += [wall for door in world.doors for wall in door_walls(door)]
         player.x, player.y = move_box(
             world.map,
             player.x,

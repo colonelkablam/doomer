@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from doomer.shared.collision import Obstacle
 from doomer.shared.config import SimConfig
+from doomer.shared.doors import Door, doors_from_map
 from doomer.shared.events import Event, PlayerSpawned
 from doomer.shared.mapfile import GameMap
 from doomer.shared.modes import GAME_MODES, missing_requirements
@@ -29,6 +30,8 @@ class World:
     obstacles: tuple[Obstacle, ...] = ()
     # Cubicle screens on desk tops (static, part of the map).
     screens: tuple[Screen, ...] = ()
+    # Doors and how far open each is (doomer/shared/doors.py).
+    doors: list[Door] = field(default_factory=list)
 
 
 class ModeNotSupported(ValueError):
@@ -53,6 +56,7 @@ def new_world(
         random.Random(seed),
         obstacles=obstacles,
         screens=tuple(desk_screens(game_map)),
+        doors=doors_from_map(game_map),
     )
 
 

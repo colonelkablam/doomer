@@ -13,6 +13,15 @@ class Event:
 
 
 @dataclass(frozen=True, slots=True)
+class DoorToggled(Event):
+    """A player pressed use on a door: it's now opening (or closing)."""
+
+    door_id: int
+    player_id: int
+    opening: bool
+
+
+@dataclass(frozen=True, slots=True)
 class PlayerSpawned(Event):
     player_id: int
     x: float

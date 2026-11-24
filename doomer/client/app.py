@@ -46,7 +46,7 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
             session.update(real_dt, player_input)  # events unused until sound/HUD exist
 
             camera = session.camera(controls.angle, controls.pitch)
-            renderer.render(frame, session.game_map, camera, session.sprites())
+            renderer.render(frame, session.game_map, camera, session.sprites(), session.boxes())
             # 8-bit frame -> window format, then nearest-neighbour scale into the window.
             pygame.transform.scale(frame.convert(window), window.get_size(), window)
             if rc.show_fps:

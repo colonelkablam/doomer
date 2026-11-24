@@ -7,6 +7,7 @@ interpolates snapshots, so the game loop doesn't change.
 
 from typing import Protocol
 
+from doomer.client.boxes import PlacedBox, door_boxes
 from doomer.client.render import Camera, SpriteInstance, sprites_from_things
 from doomer.shared.events import Event
 from doomer.shared.mapfile import GameMap
@@ -32,6 +33,10 @@ class GameSession(Protocol):
 
     def sprites(self) -> list[SpriteInstance]:
         """Things to draw this frame (the renderer skips names with no art)."""
+        ...
+
+    def boxes(self) -> list[PlacedBox]:
+        """Moving geometry to draw this frame: doors, as they are now."""
         ...
 
 
@@ -72,3 +77,6 @@ class LocalSession:
 
     def sprites(self) -> list[SpriteInstance]:
         return self._static_sprites
+
+    def boxes(self) -> list[PlacedBox]:
+        return door_boxes(self.world.doors)

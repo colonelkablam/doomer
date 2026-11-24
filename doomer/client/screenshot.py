@@ -13,6 +13,7 @@ use_dummy_video()
 
 import pygame  # noqa: E402
 
+from doomer.client.boxes import door_boxes  # noqa: E402
 from doomer.client.config import LightingConfig, RenderConfig  # noqa: E402
 from doomer.client.render import (  # noqa: E402
     Camera,
@@ -20,6 +21,7 @@ from doomer.client.render import (  # noqa: E402
     make_frame_surface,
     sprites_from_things,
 )
+from doomer.shared.doors import Door, doors_from_map  # noqa: E402
 from doomer.shared.mapfile import GameMap, load_map  # noqa: E402
 
 
@@ -29,13 +31,16 @@ def render_frame(
     config: RenderConfig | None = None,
     things: bool = True,
     lighting: LightingConfig | None = None,
+    doors: list[Door] | None = None,
 ) -> pygame.Surface:
     """Render one frame; `things=False` draws walls, floor and ceiling only;
-    `lighting` lights it from the map's ceiling panels."""
+    `lighting` lights it from the map's ceiling panels; `doors` in a given
+    state (default: the map's, shut)."""
     config = config or RenderConfig()
     frame = make_frame_surface(config)
     sprites = sprites_from_things(game_map) if things else []
-    Renderer(config, lighting).render(frame, game_map, camera, sprites)
+    boxes = door_boxes(doors if doors is not None else doors_from_map(game_map)) if things else []
+    Renderer(config, lighting).render(frame, game_map, camera, sprites, boxes)
     return frame
 
 

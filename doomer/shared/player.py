@@ -14,6 +14,7 @@ class PlayerState:
     crouching: bool = False
     pitch: float = 0.0  # radians, up is positive (for aiming)
     health: int = 100
+    use_held: bool = False  # last tick's use button, so one press is one use
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,7 +23,7 @@ class PlayerInput:
 
     The client owns its view direction, so `angle` and `pitch` are absolute
     rather than deltas. forward/strafe are in [-1, 1]; positive strafe is to the
-    right. `jump` and `crouch` are held buttons.
+    right. `jump`, `crouch` and `use` are held buttons.
     """
 
     forward: float = 0.0
@@ -31,3 +32,4 @@ class PlayerInput:
     pitch: float = 0.0
     jump: bool = False
     crouch: bool = False
+    use: bool = False  # open/close a door in front of you
