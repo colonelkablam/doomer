@@ -402,9 +402,15 @@ surface is still a single lookup.
 
 **Phases**:
 
-1. Bake (ambient, panels, falloff, wall occlusion) + tests (brighter under
-   a panel than between; a wall blocks light; a two-storey room is dimmer
-   under its panels); a top-down PNG of the map for tuning.
+1. ✅ Bake (ambient, panels, falloff, wall occlusion) + tests (brighter
+   under a panel than between; a wall blocks light; a two-storey room is
+   dimmer under its panels); a top-down PNG of the map for tuning:
+   `client/lighting.py`, `LightingConfig`, `python -m
+   doomer.client.lightmap_png maps/office.map --out out/light.png`. ~0.2 s
+   for the office. Panels also fade smoothly to nothing at the cutoff, so
+   there's no ring. First bake: the lobby and offices have pools; the open
+   plan (a panel every 2 cells) saturates past 1 everywhere, so phase 3
+   needs fewer panels there or a tighter falloff.
 2. Apply to walls, faces, boxes and sprites (per column / per thing).
 3. Floor-cast floors and ceilings with the map; tune falloff, ambient and
    fade; `RenderConfig.lighting` switch for slow machines; check frame time.

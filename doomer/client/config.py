@@ -19,6 +19,18 @@ class RenderConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class LightingConfig:
+    """The baked light map (doomer/client/lighting.py). Light values are
+    brightness factors: 1 = full brightness, before distance fade."""
+
+    ambient: float = 0.35  # light everywhere, with no panel in reach
+    panel_intensity: float = 1.0  # one ceiling panel, at distance 0
+    falloff_radius: float = 1.2  # cells: a panel's light halves at this distance
+    cutoff: float = 6.0  # cells: panels light nothing further away than this
+    samples_per_cell: int = 4  # light map resolution
+
+
+@dataclass(frozen=True, slots=True)
 class ControlsConfig:
     mouse_sensitivity: float = 0.0025  # radians per pixel of mouse movement
     invert_mouse_y: bool = False  # True: push the mouse forward to look down
@@ -38,3 +50,4 @@ class ControlsConfig:
 class ClientConfig:
     render: RenderConfig = field(default_factory=RenderConfig)
     controls: ControlsConfig = field(default_factory=ControlsConfig)
+    lighting: LightingConfig = field(default_factory=LightingConfig)
