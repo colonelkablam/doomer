@@ -13,12 +13,17 @@ Raspberry Pi 5 server), with co-op, deathmatch and a level editor.
 - **Model/view/input separation**: `doomer/shared` holds the map, player state
   and collision. It is standard library only (no pygame, no numpy), so the
   server runs it unchanged. `tests/test_architecture.py` enforces this.
-- **One code path for input**: input -> `apply_input(state, input, dt)` ->
-  new state. Single-player calls it locally; networked play calls it on the
-  server (and later on the client for prediction). Networking only changes
-  how the data travels.
-- **Fixed timestep**: the model advances in fixed steps. Rendering runs as fast
-  as it can and is decoupled from the model.
+- **One code path for input**: `PlayerInput` -> `step(world, inputs)`
+  (`shared/sim.py`) -> new world state. Single-player calls it in a
+  `LocalSession`; networked play calls it on the server (and later on the
+  client for prediction). The client game loop talks to a `GameSession`
+  Protocol, so swapping `LocalSession` for a `NetworkSession` doesn't change it.
+- **Fixed timestep**: the model advances in fixed steps (`shared/timestep.py`).
+  Rendering runs as fast as it can and interpolates the camera between the last
+  two simulation states, so a 60 Hz simulation looks smooth on a 144 Hz screen.
+- **Collision**: the player is an axis-aligned square (half-width 0.25 cells),
+  moved one axis at a time, which gives wall sliding for free. Moves are
+  sub-stepped so nothing can tunnel through a wall.
 
 ## Code design rules
 
@@ -32,7 +37,7 @@ means adding a module and registering it, not editing a dozen files.
    objects. Behaviour lives in functions that take state and return or mutate
    it. No god-objects with fifty methods.
 3. **The simulation is deterministic and side-effect free.** `step(world,
-   inputs, dt)` touches no clock, socket, file or random module. Randomness
+   inputs)` (fixed `dt` from the world's config) touches no clock, socket, file or random module. Randomness
    comes from a seeded `random.Random` stored in the world. This makes it
    testable, replayable, and usable for client prediction.
 4. **The simulation emits events, it doesn't call out.** A shot, a death or a
@@ -155,8 +160,8 @@ keys), later floor/ceiling heights; place things. Shows mode readiness
 
 | # | Milestone | Done when |
 |---|---|---|
-| 0 | Scaffold: layout, requirements, CLAUDE.md, pytest, headless PNG helper | `pytest` passes; a test frame saves as PNG |
-| 1 | Map loader, fixed-timestep model, movement with wall sliding, flat-colour DDA raycaster at 320x200, mouse look | Walkable test map at 60 fps on Fedora; ray-distance and collision tests pass |
+| 0 ✅ | Scaffold: layout, requirements, CLAUDE.md, pytest, headless PNG helper | `pytest` passes; a test frame saves as PNG |
+| 1 ✅ | Map loader, fixed-timestep model, movement with wall sliding, flat-colour DDA raycaster at 320x200, mouse look | Walkable test map at 60 fps on Fedora; ray-distance and collision tests pass |
 | 1b | Textured walls by wall type | Wall types visibly differ |
 | 2 | Billboard sprites, depth-clipped | A static thing renders correctly in front of and behind walls |
 | 3 | Server: handshake, 60 Hz tick, snapshots, interpolation, bot client | Two clients and a bot move together; protocol tests pass |
@@ -166,7 +171,10 @@ keys), later floor/ceiling heights; place things. Shows mode readiness
 
 ## Setup
 
-- Linux: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
+- Linux: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`,
+  then `.venv/bin/python -m doomer.client` (single-player, `maps/test.map`).
+- Client settings: copy `client.example.toml` to `client.toml` and pass
+  `--config client.toml`.
 - Windows: native Python (not WSL), venv, launched from `play.bat` which cds to
   its own folder, runs the client with `--host`/`--name` and ends with `pause`.
 - Use the Pi's IP rather than `.local` names (Windows mDNS is unreliable).

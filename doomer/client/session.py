@@ -1,0 +1,56 @@
+"""A game session: where the world lives, from the client's point of view.
+
+LocalSession runs the simulation in-process (single-player). Milestone 3 adds
+a NetworkSession with the same interface that sends inputs to the server and
+interpolates snapshots, so the game loop doesn't change.
+"""
+
+from typing import Protocol
+
+from doomer.client.render import Camera
+from doomer.shared.events import Event
+from doomer.shared.mapfile import GameMap
+from doomer.shared.player import PlayerInput
+from doomer.shared.sim import step
+from doomer.shared.timestep import FixedTimestep
+from doomer.shared.world import World, drain_events, spawn_player
+
+
+class GameSession(Protocol):
+    @property
+    def game_map(self) -> GameMap: ...
+
+    def update(self, real_dt: float, player_input: PlayerInput) -> list[Event]:
+        """Advance by real elapsed time; return events for sound/HUD."""
+        ...
+
+    def camera(self, view_angle: float) -> Camera:
+        """Where to draw from this frame. The client owns its view angle."""
+        ...
+
+
+class LocalSession:
+    def __init__(self, world: World, player_name: str, player_id: int = 1) -> None:
+        self.world = world
+        self.player = spawn_player(world, player_id, player_name)
+        self.timestep = FixedTimestep(world.config.dt)
+        self._prev = (self.player.x, self.player.y)
+
+    @property
+    def game_map(self) -> GameMap:
+        return self.world.map
+
+    def update(self, real_dt: float, player_input: PlayerInput) -> list[Event]:
+        for _ in range(self.timestep.advance(real_dt)):
+            self._prev = (self.player.x, self.player.y)
+            step(self.world, {self.player.id: player_input})
+        return drain_events(self.world)
+
+    def camera(self, view_angle: float) -> Camera:
+        # Interpolate between the last two simulation states: rendering at 144 fps
+        # with a 60 Hz simulation would otherwise judder.
+        a = self.timestep.alpha
+        px, py = self._prev
+        x = px + (self.player.x - px) * a
+        y = py + (self.player.y - py) * a
+        return Camera(x, y, view_angle)

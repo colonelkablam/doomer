@@ -1,0 +1,22 @@
+# Copy to client.toml, change what you like, and run with:
+#   python -m doomer.client --config client.toml
+# Anything you leave out keeps its default. Unknown keys are an error.
+
+[render]
+window_scale = 3        # window = 320x200 times this
+fov_degrees = 66.0
+max_fps = 144           # 0 = uncapped
+vsync = true
+show_fps = true
+# ceiling_colour = [52, 52, 60]
+# floor_colour = [78, 70, 60]
+
+[controls]
+mouse_sensitivity = 0.0025   # radians per pixel
+turn_speed = 2.6             # radians per second, keyboard turning
+forward = ["w", "up"]
+back = ["s", "down"]
+strafe_left = ["a"]
+strafe_right = ["d"]
+turn_left = ["left"]
+turn_right = ["right"]
