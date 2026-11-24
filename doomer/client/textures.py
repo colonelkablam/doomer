@@ -169,6 +169,61 @@ def raised_floor_edge(seed: int = 14) -> U8Array:
     return np.where(v >= 60, indices(WOOD, 5.0), tex).astype(np.uint8)
 
 
+# --- two-storey walls ----------------------------------------------------------------
+# Lower textures cover heights 0..1 (v = 63 at the floor, v = 0 at the storey
+# line); upper textures cover 1..2. Each draws half of the transom at the storey
+# line (lower: v 0..1, upper: v 62..63), so stacked they meet as one, and the
+# mullions are split evenly at u 0/63 and centred at 31/32 to tile sideways.
+
+
+def _glass(
+    rng: np.random.Generator, v: npt.NDArray[np.int64], u: npt.NDArray[np.int64], storey: int
+) -> U8Array:
+    """Tinted glazing: sky gradient over two storeys plus a diagonal reflection."""
+    height = (63 - v) / 64 + storey  # 0 at the floor, 2 at the top of the upper storey
+    shade = 7 + height * 1.5 + (noise(rng, 8) - 0.5)
+    glint = ((u + v + storey * 64) % 48) < 6
+    return np.where(glint, indices(STEEL, 13.0), indices(BLUE, shade)).astype(np.uint8)
+
+
+def _mullions(tex: U8Array, v: npt.NDArray[np.int64], u: npt.NDArray[np.int64]) -> U8Array:
+    frame = (u < 2) | (u >= 62) | ((u >= 31) & (u < 33))
+    shade = np.where((u == 0) | (u == 31), 12.0, 9.0)
+    return np.where(frame, indices(GREY, shade), tex).astype(np.uint8)
+
+
+def curtain_wall_lower(seed: int = 15) -> U8Array:
+    """Ground storey of a glazed curtain wall: glass between aluminium mullions."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    tex = _mullions(_glass(rng, v, u, 0), v, u)
+    tex = np.where(v < 2, indices(GREY, 10.0), tex)  # half the transom at the storey line
+    return np.where(v >= 60, indices(GREY, 5.0), tex).astype(np.uint8)  # base cill
+
+
+def curtain_wall_upper(seed: int = 16) -> U8Array:
+    """Upper storey of the curtain wall: the same mullions, the other half of the transom."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    tex = _mullions(_glass(rng, v, u, 1), v, u)
+    tex = np.where(v >= 62, indices(GREY, 10.0), tex)  # meets the lower transom
+    return np.where(v < 2, indices(GREY, 7.0), tex).astype(np.uint8)  # head at the ceiling
+
+
+def entrance_doors(seed: int = 17) -> U8Array:
+    """Main entrance: a pair of closed glass doors in aluminium frames, push bars."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    tex = _glass(rng, v, u, 0)
+    frame = (u < 4) | (u >= 60) | ((u >= 30) & (u < 34)) | (v < 4) | (v >= 58)
+    tex = np.where(frame, indices(GREY, np.where((u == 31) | (u == 32), 6.0, 10.0)), tex)
+    bar = (v >= 34) & (v < 37) & (((u >= 8) & (u < 28)) | ((u >= 36) & (u < 56)))
+    tex = np.where(bar, indices(GREY, 14.0), tex)  # push bars
+    kick = (v >= 50) & (v < 58) & ~frame
+    tex = np.where(kick, indices(GREY, 8.0), tex)  # kick plates
+    return tex.astype(np.uint8)
+
+
 def office_wall(seed: int = 1) -> U8Array:
     """Beige wallpaper above a dado rail, a darker painted panel below, skirting board."""
     rng = np.random.default_rng(seed)
@@ -487,6 +542,12 @@ for _wall_type, _make in DEFAULT_WALL_TEXTURES.items():
 # shaft wall continues up); other types repeat their own texture.
 register_wall_texture(1, office_wall_upper(), sides=(UPPER,))
 register_wall_texture(5, office_wall_upper(), sides=(UPPER,))
+# 'f' (15): glazed curtain wall, 'g' (16): main entrance doors; both carry on
+# as the curtain wall's upper storey above one storey.
+register_wall_texture(15, curtain_wall_lower())
+register_wall_texture(15, curtain_wall_upper(), sides=(UPPER,))
+register_wall_texture(16, entrance_doors())
+register_wall_texture(16, curtain_wall_upper(), sides=(UPPER,))
 # 'e' (14): raised floor (mezzanines, steps). Walkable once you're up.
 register_wall_texture(14, raised_floor_edge())
 register_wall_texture(14, office_wall_upper(), sides=(UPPER,))
