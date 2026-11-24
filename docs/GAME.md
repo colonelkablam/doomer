@@ -85,6 +85,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Double office doors: two such leaves meeting in the middle, for full-width doorways | yes, until opened | [built] (prototype) |
 | Sliding glass doors: aluminium frame, frosted band, push bar; open by themselves | yes, until open | [built] (prototype) |
 | Reception desk (box model): a cream laminate transaction ledge with a chrome edge over a slatted wood front, recessed plinth and a brass "OK" logo; behind, a grey work surface at desk height over a drawer pedestal, the switchboard phone; returns at both ends; the visitors' book on the ledge | yes | [built] |
+| "Welcome to Boomer Industries" sign: lit brass letters on a dark panel, on the lobby wall behind reception above the glass doors | no | [built] |
 | Card readers by locked doors: stripe in the pass colour, red/green lamp | no | [built] |
 | Water cooler (box model: cream cabinet, hot and cold taps, upturned octagonal bottle; faces its map angle) | yes | [built] |
 | Filing cabinet (box model: five steel drawers with pulls and label cards; faces its map angle) | yes | [built] |

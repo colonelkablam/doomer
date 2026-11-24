@@ -77,6 +77,9 @@ class Box:
     # Turned this far (radians) about the model's origin, on top of the
     # thing's angle (for an octagon's diagonal faces, see _octagon).
     turn: float = 0.0
+    # Lights itself (a lit sign): drawn at full brightness, ignoring the light
+    # map and the distance fade, as the ceiling panels and exit signs are.
+    glow: bool = False
 
 
 class PlacedBox(NamedTuple):
@@ -909,6 +912,93 @@ def _reception_desk() -> tuple[Box, ...]:
     return tuple(boxes)
 
 
+# --- "Welcome to Boomer Industries": brass letters on the lobby wall ---------------
+# Each letter is its own thin box with its own texture, see-through round the
+# letter (like real fixed letters), so it isn't smeared: a 64x64 texture
+# stretched across a 6 m sign would be. A dark panel behind them. Model x
+# points out of the wall; the thing stands at the wall's face.
+
+_FONT_5X7: dict[str, tuple[str, ...]] = {
+    "B": ("####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."),
+    "C": (".####", "#....", "#....", "#....", "#....", "#....", ".####"),
+    "D": ("####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."),
+    "E": ("#####", "#....", "#....", "####.", "#....", "#....", "#####"),
+    "I": ("#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"),
+    "L": ("#....", "#....", "#....", "#....", "#....", "#....", "#####"),
+    "M": ("#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"),
+    "N": ("#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#", "#...#"),
+    "O": (".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."),
+    "R": ("####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"),
+    "S": (".####", "#....", "#....", ".###.", "....#", "....#", "####."),
+    "T": ("#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."),
+    "U": ("#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."),
+    "W": ("#...#", "#...#", "#...#", "#.#.#", "#.#.#", "##.##", "#...#"),
+}
+
+
+def brass_letter(ch: str) -> int:
+    """One letter filling the texture, polished brass: lighter along the top
+    of each stroke, darker along the bottom."""
+    c = Canvas()
+    rows = _FONT_5X7[ch]
+    col = (c.u * 5) // 64
+    row = (c.v * 7) // 64
+    glyph = np.array([[bit == "#" for bit in line] for line in rows])
+    on = glyph[row, col]
+    within = c.v - (row * 64 + 6) // 7  # texels down from the top of this glyph row
+    shade = np.where(within < 2, 14.0, np.where(within > 6, 9.0, 12.0))
+    c.paint(on, OCHRE, shade)
+    return _texture(c)
+
+
+def sign_panel() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 2.5)
+    c.paint(c.rect(0, 2, 0, 64) | c.rect(62, 64, 0, 64), OCHRE, 9.0)  # brass trim
+    return _texture(c)
+
+
+def _letters(
+    text: str, centre: float, width: float, height: float, base: float, gap: float
+) -> list[Box]:
+    """A line of letters across the sign, reading left to right as you face
+    it: towards the model's -y (your right, facing the wall)."""
+    clear = _texture(Canvas())
+    total = len(text) * width + (len(text) - 1) * gap
+    out = []
+    for i, ch in enumerate(text):
+        if ch == " ":
+            continue
+        y1 = centre + total / 2 - i * (width + gap)
+        if ch not in _LETTERS:  # one texture per letter, shared by every use
+            _LETTERS[ch] = brass_letter(ch)
+        tex = _LETTERS[ch]
+        out.append(
+            Box(
+                (0.012, 0.02),
+                (y1 - width, y1),
+                (base, base + height),
+                (tex, clear, tex, clear, clear),
+                glow=True,
+            )
+        )
+    return out
+
+
+_LETTERS: dict[str, int] = {}
+
+
+def _welcome_sign() -> tuple[Box, ...]:
+    """Lit brass letters (they glow, as if spotlit) on a dark panel. Sized
+    for the lobby: legible from the entrance, ~8 cells away."""
+    panel, dark = sign_panel(), plinth()
+    letters = _letters("WELCOME TO", 0.0, 0.13, 0.14, 1.27, 0.04)
+    letters += _letters("BOOMER INDUSTRIES", 0.0, 0.19, 0.21, 0.98, 0.045)
+    half = (17 * 0.19 + 16 * 0.045) / 2 + 0.12
+    backing = Box((0.0, 0.012), (-half, half), (0.9, 1.48), (panel, dark, dark, dark, dark))
+    return (backing, *letters)
+
+
 # Keyed by thing type name, like SPRITES.
 BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "mac": _mac_se30(),
@@ -916,6 +1006,7 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "water_cooler": _water_cooler(),
     "ficus": _ficus(),
     "reception_desk": _reception_desk(),
+    "welcome_sign": _welcome_sign(),
 }
 BOX_TEXTURES: U8Array = np.stack(_TEXTURES)  # [texture][u][v]
 BOX_OPAQUE: BoolArray = np.stack(_OPAQUE)  # [texture][u][v]: False = see-through

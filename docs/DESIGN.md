@@ -326,7 +326,11 @@ dm_spawn      1.5   3.5   0
   cabinet, the water cooler and the ficus. A box can be turned about the
   model's origin (`Box.turn`); round things are octagonal prisms made of
   four strips, two of them turned 45 degrees (two squares would make an
-  eight-pointed star: a union keeps the corners). Foliage is crossed cards:
+  eight-pointed star: a union keeps the corners). `Box.glow`: lights itself
+  (lit signs), full brightness regardless of light map and distance. Text
+  is one thin box per letter, each with its own see-through letter texture
+  from a 5x7 font, since one texture stretched across a whole sign would
+  smear it. Foliage is crossed cards:
   thin boxes with see-through leaf textures, four upright at 45 degrees to
   each other and two flat, as games have long done for plants. Big
   furniture stays as map cells.

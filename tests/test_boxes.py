@@ -175,3 +175,23 @@ def test_ficus_leaf_cards_show_leaves_only_on_their_broad_faces() -> None:
         for face, tex in enumerate(box.faces):
             # Edges a few mm wide would squeeze the whole texture into a line.
             assert BOX_OPAQUE[tex].any() == (face in broad), (box, face)
+
+
+def test_glowing_boxes_ignore_lighting_and_others_dont() -> None:
+    from doomer.client.config import LightingConfig
+    from doomer.client.render import Renderer as _Renderer
+
+    room = parse_map("[walls]\n###########\n#.........#\n#.........#\n#.........#\n###########\n")
+    sign = SpriteInstance("welcome_sign", 9.99, 2.5, 0.0, math.pi)  # on the east wall
+    camera = Camera(4.0, 2.5, 0.0, pitch=0.35)
+    frames = {}
+    for name, ambient in (("dark", 0.1), ("bright", 1.0)):
+        r = _Renderer(RenderConfig(), LightingConfig(ambient=ambient, panel_intensity=0.0))
+        frames[name] = r.render_indices(room, camera, [sign]).copy()
+    plain = _Renderer(RenderConfig(), LightingConfig(ambient=1.0, panel_intensity=0.0))
+    empty = plain.render_indices(room, camera).copy()
+    drawn = frames["bright"] != empty
+    same = frames["dark"] == frames["bright"]
+    # The letters (glowing) look the same in the dark; the panel behind them doesn't.
+    assert (drawn & same).sum() > 20
+    assert (drawn & ~same).sum() > 20  # (a near-black panel: few shades to lose)

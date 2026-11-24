@@ -1287,6 +1287,8 @@ class Renderer:
         depths: list[FloatArray] = []
         texels: list[npt.NDArray[np.uint8]] = []
         solid: list[npt.NDArray[np.bool_]] = []  # False: see-through (leaves)
+        glow_b = np.array([p.box.glow for p in boxes])
+        glows: list[npt.NDArray[np.bool_]] = []  # lit signs: full brightness
         lights: list[FloatArray] = []
 
         # Sides: where the ray enters by one (not from inside the footprint).
@@ -1318,6 +1320,7 @@ class Renderer:
             texels.append(BOX_TEXTURES[tex, tu, tv])
             solid.append(BOX_OPAQUE[tex, tu, tv])
             lights.append(side_light[k])
+            glows.append(glow_b[bi[k]])
 
         # Top (seen from above) or bottom (from below): between entry and exit.
         for above in (True, False):
@@ -1345,6 +1348,7 @@ class Renderer:
             texels.append(BOX_TEXTURES[top_tex, tu, tv])
             solid.append(BOX_OPAQUE[top_tex, tu, tv])
             lights.append(np.full(k.size, 1.0 if above else Y_SIDE_SHADE))
+            glows.append(glow_b[bi[k]])
 
         if not cols:
             return
@@ -1352,6 +1356,7 @@ class Renderer:
         col, row = np.concatenate(cols)[keep], np.concatenate(rows)[keep]
         depth, texel = np.concatenate(depths)[keep], np.concatenate(texels)[keep]
         light = np.concatenate(lights)[keep]
+        glow = np.concatenate(glows)[keep]
         # Where boxes overlap on screen, keep the nearest pixel (sort by pixel
         # then depth, take the first of each pixel), then z-test it.
         key = col * h + row
@@ -1362,7 +1367,8 @@ class Renderer:
         pick = pick[depth[pick] < zbuffer[col[pick], row[pick]]]
         col, row, depth = col[pick], row[pick], depth[pick]
         lit = self._ray_light(col, depth / self._cos[col], backoff=0.0)
-        level = light_level(self._brightness(depth) * light[pick] * lit)
+        shade = np.where(glow[pick], 1.0, self._brightness(depth) * light[pick] * lit)
+        level = light_level(shade)
         frame[col, row] = COLORMAP[level, texel[pick]]
         zbuffer[col, row] = depth
 
