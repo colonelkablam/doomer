@@ -1,5 +1,7 @@
 """The baked light map (doomer/client/lighting.py)."""
 
+import math
+
 import numpy as np
 import pytest
 
@@ -96,3 +98,83 @@ def test_office_bakes_quickly_enough_to_do_at_load() -> None:
     m = bake_light_map(office, CONFIG)
     assert time.perf_counter() - start < 2.0  # ~0.2 s here; generous for CI
     assert len(m.patches) == sum(t.type == "ceiling_light" for t in office.things)
+
+
+# --- applied by the renderer (phase 2: walls, faces, box models, sprites) ---
+
+# A long room, panel only at the east end; desks and a railing-free low block
+# so block faces are drawn too.
+LIT_ROOM = """\
+[walls]
+################
+#..............#
+#..2........2..#
+#..............#
+################
+
+[floor]
+0000000000000000
+0000000000000000
+0003000000003000
+
+[things]
+ceiling_light 13.5 2.5 0
+"""
+
+
+def _shade(frame: np.ndarray, mask: np.ndarray | None = None) -> float:
+    """Mean shade (low nibble: brightness within the ramp), over a mask."""
+    return float(np.mean((frame if mask is None else frame[mask]) & 0x0F))
+
+
+def test_full_light_everywhere_renders_exactly_as_unlit() -> None:
+    from doomer.client.config import RenderConfig
+    from doomer.client.render import Camera, Renderer, SpriteInstance
+
+    game_map = parse_map(LIT_ROOM.replace("ceiling_light 13.5 2.5 0\n", ""))
+    camera = Camera(1.5, 1.5, 0.3)
+    things = [SpriteInstance("mac", 6.5, 2.5, 0.0, 3.0), SpriteInstance("desk", 9.5, 1.5)]
+    unlit = Renderer(RenderConfig()).render_indices(game_map, camera, things).copy()
+    full = Renderer(RenderConfig(), LightingConfig(ambient=1.0))
+    assert (full.render_indices(game_map, camera, things) == unlit).all()
+
+
+def test_walls_and_block_faces_near_a_panel_are_brighter() -> None:
+    from doomer.client.config import RenderConfig
+    from doomer.client.render import Camera, Renderer
+
+    game_map = parse_map(LIT_ROOM)
+    lit = Renderer(RenderConfig(), LightingConfig())
+    unlit = Renderer(RenderConfig())
+    # The same view of each end of the room: the counter and the end wall
+    # behind it, 2.5 cells away. Only the east end has a panel.
+    east = Camera(12.5, 1.5, math.pi / 2)
+    west = Camera(3.5, 1.5, math.pi / 2)
+    rows = slice(90, 130)  # around eye level: counter front and wall
+    shades = {}
+    for name, camera in (("east", east), ("west", west)):
+        frame = lit.render_indices(game_map, camera)[:, rows].copy()
+        plain = unlit.render_indices(game_map, camera)[:, rows]
+        shades[name] = _shade(frame, np.ones_like(frame, dtype=bool))
+        assert _shade(frame, np.ones_like(frame, dtype=bool)) <= _shade(
+            plain, np.ones_like(plain, dtype=bool)
+        )
+    assert shades["east"] > shades["west"] + 1.0
+
+
+def test_things_are_lit_where_they_stand() -> None:
+    from doomer.client.config import RenderConfig
+    from doomer.client.render import Camera, Renderer, SpriteInstance
+
+    game_map = parse_map(LIT_ROOM)
+    lit = Renderer(RenderConfig(), LightingConfig())
+    for name in ("filing_cabinet", "desk"):  # a box model and a sprite
+        shades = []
+        for x in (13.5, 4.5):  # under the panel; far from it
+            camera = Camera(x - 2.0, 2.5, 0.0)
+            empty = lit.render_indices(game_map, camera).copy()
+            frame = lit.render_indices(
+                game_map, camera, [SpriteInstance(name, x, 2.5, 0.0, math.pi)]
+            )
+            shades.append(_shade(frame, frame != empty))
+        assert shades[0] > shades[1] + 1.0, name

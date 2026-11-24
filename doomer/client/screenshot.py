@@ -13,7 +13,7 @@ use_dummy_video()
 
 import pygame  # noqa: E402
 
-from doomer.client.config import RenderConfig  # noqa: E402
+from doomer.client.config import LightingConfig, RenderConfig  # noqa: E402
 from doomer.client.render import (  # noqa: E402
     Camera,
     Renderer,
@@ -24,13 +24,18 @@ from doomer.shared.mapfile import GameMap, load_map  # noqa: E402
 
 
 def render_frame(
-    game_map: GameMap, camera: Camera, config: RenderConfig | None = None, things: bool = True
+    game_map: GameMap,
+    camera: Camera,
+    config: RenderConfig | None = None,
+    things: bool = True,
+    lighting: LightingConfig | None = None,
 ) -> pygame.Surface:
-    """Render one frame; `things=False` draws walls, floor and ceiling only."""
+    """Render one frame; `things=False` draws walls, floor and ceiling only;
+    `lighting` lights it from the map's ceiling panels."""
     config = config or RenderConfig()
     frame = make_frame_surface(config)
     sprites = sprites_from_things(game_map) if things else []
-    Renderer(config).render(frame, game_map, camera, sprites)
+    Renderer(config, lighting).render(frame, game_map, camera, sprites)
     return frame
 
 
@@ -40,6 +45,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--at", help="x,y,angle_degrees (default: first spawn point)")
     parser.add_argument("--out", type=Path, default=Path("out/frame.png"))
     parser.add_argument("--scale", type=int, default=2)
+    parser.add_argument("--no-lighting", action="store_true", help="distance fade only")
     args = parser.parse_args(argv)
 
     game_map = load_map(args.map)
@@ -49,7 +55,8 @@ def main(argv: list[str] | None = None) -> None:
     else:
         t = game_map.things[0]
         camera = Camera(t.x, t.y, t.angle)
-    print(save_png(render_frame(game_map, camera), args.out, scale=args.scale))
+    lighting = None if args.no_lighting else LightingConfig()
+    print(save_png(render_frame(game_map, camera, lighting=lighting), args.out, scale=args.scale))
 
 
 if __name__ == "__main__":

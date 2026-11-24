@@ -23,6 +23,7 @@ class LightingConfig:
     """The baked light map (doomer/client/lighting.py). Light values are
     brightness factors: 1 = full brightness, before distance fade."""
 
+    enabled: bool = True  # False: distance fade only (as before lighting; slow machines)
     ambient: float = 0.35  # light everywhere, with no panel in reach
     panel_intensity: float = 1.0  # one ceiling panel, at distance 0
     falloff_radius: float = 1.2  # cells: a panel's light halves at this distance

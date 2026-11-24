@@ -411,7 +411,14 @@ surface is still a single lookup.
    there's no ring. First bake: the lobby and offices have pools; the open
    plan (a panel every 2 cells) saturates past 1 everywhere, so phase 3
    needs fewer panels there or a tighter falloff.
-2. Apply to walls, faces, boxes and sprites (per column / per thing).
+2. ✅ Apply to walls, faces, boxes and sprites: `Renderer(config,
+   lighting)`; faces take the light `FACE_LIGHT_BACKOFF` (0.13 cell) back
+   along the ray from where it meets them, in the space they face; box
+   pixels at their own position, sprites at the thing's. Light is clamped
+   to 1 and multiplies the distance fade (one colormap lookup still).
+   `LightingConfig.enabled` switches it off. ~1 ms in the lobby. Floors and
+   ceilings are still unlit until phase 3, so dark walls stand on a bright
+   floor for now.
 3. Floor-cast floors and ceilings with the map; tune falloff, ambient and
    fade; `RenderConfig.lighting` switch for slow machines; check frame time.
 4. Dynamic: flicker, muzzle flash, power events (after networking, since

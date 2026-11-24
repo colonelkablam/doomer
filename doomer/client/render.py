@@ -59,7 +59,8 @@ from doomer.client.boxes import (
     desk_screens,
     stair_boxes,
 )
-from doomer.client.config import RenderConfig
+from doomer.client.config import LightingConfig, RenderConfig
+from doomer.client.lighting import LightMap, bake_light_map
 from doomer.client.palette import (
     COLORMAP,
     CREAM,
@@ -106,6 +107,10 @@ MAX_PITCH = math.radians(25)  # y-shearing looks wrong much beyond this
 BAYER_4X4 = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]])
 BULKHEAD_TYPE = 1  # wall type whose upper texture faces a dropped ceiling
 NEAR_PLANE = 0.05  # sprites closer than this (in cells) aren't drawn
+# A face is lit by the light map this far back along the ray from where the
+# ray meets it: in the open space it faces (the first light sample in front
+# of a wall is 1/8 cell out), not inside the wall, which no light reaches.
+FACE_LIGHT_BACKOFF = 0.13
 MAX_BOX_DISTANCE = 16.0  # box models further than this (cells) aren't drawn: a few pixels
 UNDER_DESK_SHADOW = 12  # colormap levels darker (of 32) for the floor under a desk
 DESK_SEAM_DARKEN = 9  # colormap levels darker for the join between two desks' tops
@@ -175,8 +180,14 @@ def make_frame_surface(config: RenderConfig) -> pygame.Surface:
 
 
 class Renderer:
-    def __init__(self, config: RenderConfig) -> None:
+    def __init__(self, config: RenderConfig, lighting: LightingConfig | None = None) -> None:
+        """`lighting`: light surfaces by a light map baked from the map's
+        ceiling panels (doomer/client/lighting.py). None: distance fade only."""
         self.config = config
+        self.lighting = lighting
+        self._light_map_map: GameMap | None = None
+        self._light_map: LightMap | None = None
+        self._light: LightMap | None = None  # this frame's
         w, h = config.width, config.height
         tan_half_fov = math.tan(math.radians(config.fov_degrees) / 2)
         # Distance from the eye to a virtual screen, in pixels.
@@ -258,6 +269,31 @@ class Renderer:
         result: U8Array = ((colour[:, None] & 0xF0) | shade).astype(np.uint8)
         return result
 
+    def _light_map_for(self, game_map: GameMap) -> LightMap | None:
+        """The map's light map, baked once per map (None without lighting)."""
+        if self.lighting is None:
+            return None
+        if self._light_map_map is not game_map:
+            self._light_map = bake_light_map(game_map, self.lighting)
+            self._light_map_map = game_map
+        return self._light_map
+
+    def _ray_light(
+        self, cols: IntArray, along: FloatArray, backoff: float = FACE_LIGHT_BACKOFF
+    ) -> FloatArray:
+        """Light (0..1) at a distance `along` each column's ray (moved back
+        `backoff` towards the camera), from this frame's light map; 1 without
+        one. Light over 1 (overlapping pools) is clamped: the colormap can
+        darken, not brighten."""
+        if self._light is None:
+            return np.ones(np.shape(cols))
+        t = np.clip(np.nan_to_num(along - backoff, posinf=64.0), 0.0, 64.0)
+        camera = self._frame_camera
+        x = camera.x + self._ray_dx[cols] * t
+        y = camera.y + self._ray_dy[cols] * t
+        result: FloatArray = np.minimum(self._light.at(x, y), 1.0)
+        return result
+
     def _brightness(self, distance: FloatArray) -> FloatArray:
         result: FloatArray = np.maximum(MIN_SHADE, 1.0 - distance / self.config.shade_distance)
         return result
@@ -287,6 +323,7 @@ class Renderer:
         self._frame_map, self._frame_camera = game_map, camera
         ray = camera.angle + np.array(self._offsets)
         self._ray_dx, self._ray_dy = np.cos(ray), np.sin(ray)
+        self._light = self._light_map_for(game_map)
 
         # The space the camera is in. If it isn't the default (standing on a
         # desk, under the atrium's high ceiling), its own floor and ceiling are
@@ -371,6 +408,7 @@ class Renderer:
         perp = np.array(dist) * self._cos
         frame, zbuffer = self._draw_walls(
             perp,
+            self._ray_light(np.arange(w), np.array(dist)),
             np.array(wall_slot, dtype=np.intp),
             np.array(upper_slot, dtype=np.intp),
             np.array(tex_u),
@@ -529,6 +567,7 @@ class Renderer:
     def _draw_walls(
         self,
         perp: FloatArray,
+        light: FloatArray,
         slot: IntArray,
         upper: IntArray,
         tex_u: FloatArray,
@@ -541,7 +580,7 @@ class Renderer:
         has_wall = np.isfinite(perp)
         depth = np.where(has_wall, perp, 1.0)
         u = _texel_u(tex_u)
-        brightness = self._brightness(perp) * np.where(y_side, Y_SIDE_SHADE, 1.0)
+        brightness = self._brightness(perp) * np.where(y_side, Y_SIDE_SHADE, 1.0) * light
         level = light_level(brightness)
         y_top = self._rows(top, depth, horizon, eye)
         y_bottom = self._rows(base, depth, horizon, eye)
@@ -597,6 +636,7 @@ class Renderer:
             level_near=light_level(
                 self._brightness(near)
                 * np.where(np.array([h.side is Side.Y for h in hits]), Y_SIDE_SHADE, 1.0)
+                * self._ray_light(cols, np.array([h.distance for h in hits]))
             ),
         )
         if span.block.any() or (span.top > 0).any() or (span.exit_top > 0).any():
@@ -695,6 +735,8 @@ class Renderer:
                 keep = self.opacity[which, uu, vi]
                 ci, ri, which, uu, vi = ci[keep], ri[keep], which[keep], uu[keep], vi[keep]
                 shade = self._brightness(far[ci]) * np.where(back_y_side[ci], Y_SIDE_SHADE, 1.0)
+                exits = np.array([h.exit_distance for h in hits])[ci]
+                shade = shade * self._ray_light(cols[ci], exits)
                 sub_frame[ci, ri] = COLORMAP[light_level(shade), self.atlas[which, uu, vi]]
                 sub_z[ci, ri] = far[ci]
 
@@ -779,7 +821,8 @@ class Renderer:
                 ru = rail_u[ci]
                 keep = self.rail_opaque[ru, rv]
                 ci, ri, ru, rv, depth = ci[keep], ri[keep], ru[keep], rv[keep], depth[keep]
-                level = light_level(self._brightness(depth))
+                rail_light = self._ray_light(cols[ci], depth / self._cos[cols[ci]], backoff=0.0)
+                level = light_level(self._brightness(depth) * rail_light)
                 sub_frame[ci, ri] = COLORMAP[level, self.rail_tex[ru, rv]]
                 sub_z[ci, ri] = depth
 
@@ -1219,7 +1262,8 @@ class Renderer:
         pick = order[first]
         pick = pick[depth[pick] < zbuffer[col[pick], row[pick]]]
         col, row, depth = col[pick], row[pick], depth[pick]
-        level = light_level(self._brightness(depth) * light[pick])
+        lit = self._ray_light(col, depth / self._cos[col], backoff=0.0)
+        level = light_level(self._brightness(depth) * light[pick] * lit)
         frame[col, row] = COLORMAP[level, texel[pick]]
         zbuffer[col, row] = depth
 
@@ -1310,7 +1354,8 @@ class Renderer:
                 continue
             index = texels[su[:, None], sv[None, :]]
             if not art.fullbright:
-                level = light_level(self._brightness(np.array(depth)))
+                lit = self._light.at(np.array([s.x]), np.array([s.y])) if self._light else 1.0
+                level = light_level(self._brightness(np.array(depth)) * np.minimum(lit, 1.0))
                 index = COLORMAP[level, index]
             region = frame[c0:c1, r0:r1]
             region[draw] = index[draw]

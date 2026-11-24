@@ -22,7 +22,7 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
         pygame.display.set_caption("OK Doomer")
         frame = make_frame_surface(rc)
         font = pygame.font.Font(None, 22)
-        renderer = Renderer(rc)
+        renderer = Renderer(rc, config.lighting if config.lighting.enabled else None)
         controls = KeyboardMouseInput(config.controls, start_angle, MAX_PITCH)
         controls.set_captured(True)
         clock = pygame.time.Clock()
