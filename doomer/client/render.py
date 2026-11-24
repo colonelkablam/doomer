@@ -75,7 +75,14 @@ from doomer.shared.mapfile import (
     WALL_UNITS,
     GameMap,
 )
-from doomer.shared.raycast import RayHit, Side, cast_ray, cell_exit_distance, start_heights
+from doomer.shared.raycast import (
+    RayHit,
+    Side,
+    cast_ray,
+    cell_exit_distance,
+    cell_exit_u,
+    start_heights,
+)
 
 MIN_SHADE = 0.25
 Y_SIDE_SHADE = 0.72  # north/south faces darker than east/west, so corners read clearly
@@ -317,6 +324,9 @@ class Renderer:
                             exit_top=leave,
                             wall_type=game_map.wall_at(cx, cy),
                             cell=(cx, cy),
+                            # Where it leaves, for railings and back faces on
+                            # that edge (u = 0 put every column between balusters).
+                            exit_u=cell_exit_u(camera.x, camera.y, ray_angle),
                         )
                     )
                 hits[0:0] = own
@@ -972,6 +982,7 @@ def _own_space(
     exit_top: float | None = None,
     wall_type: int = 0,
     cell: tuple[int, int] = (0, 0),
+    exit_u: float = 0.0,
 ) -> RayHit:
     """A pseudo-hit at distance 0 for the space the camera is in, so its own
     floor and ceiling (if not the defaults) get drawn like any other span.
@@ -990,6 +1001,7 @@ def _own_space(
         ceiling=ceiling,
         prev_ceiling=ceiling,
         exit_top=floor if exit_top is None else exit_top,
+        exit_u=exit_u,
     )
 
 

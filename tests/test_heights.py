@@ -231,3 +231,24 @@ def test_no_railing_or_step_at_the_top_of_the_stairs_when_standing_on_them() -> 
     x, y = 3.5, 2.5  # halfway up the upper flight, looking north at the opening
     camera = Camera(x, y, -math.pi / 2, z=room.floor_at(x, y) + EYE_HEIGHT)
     assert (on.render_indices(room, camera) == off.render_indices(room, camera)).all()
+
+
+def test_balusters_drawn_on_the_edge_of_the_balcony_cell_you_stand_in() -> None:
+    from doomer.client.render import Renderer as _R
+
+    # Balcony along y = 1 dropping to the floor at y = 2. Stand on it near the
+    # edge, looking down at the railing in your own cell.
+    room = parse_map(
+        "[walls]\n#######\n#iiiii#\n#.....#\n#.....#\n#######\n\n"
+        "[floor]\n0000000\n0888880\n\n"
+        "[ceiling]\nggggggg\nggggggg\nggggggg\nggggggg\nggggggg\n"
+    )
+    on = _R(CFG)
+    off = _R(CFG)
+    off.rail_opaque = np.zeros_like(off.rail_opaque)
+    camera = Camera(3.3, 1.6, math.pi / 2, z=1.0 + EYE_HEIGHT, pitch=-0.35)
+    per_column = (on.render_indices(room, camera) != off.render_indices(room, camera)).sum(axis=1)
+    drawn = per_column[per_column > 0]
+    # Handrail and bottom rail alone give every column about the same count;
+    # balusters make some columns solid from top to bottom.
+    assert drawn.size and drawn.max() > 2 * drawn.min()

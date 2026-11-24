@@ -285,3 +285,15 @@ def cell_exit_distance(x: float, y: float, angle: float) -> float:
     to_x = ((cx + 1 - x) / dx if dx > 0 else (x - cx) / -dx) if dx != 0.0 else math.inf
     to_y = ((cy + 1 - y) / dy if dy > 0 else (y - cy) / -dy) if dy != 0.0 else math.inf
     return min(to_x, to_y)
+
+
+def cell_exit_u(x: float, y: float, angle: float) -> float:
+    """Where along the edge (0..1, oriented as `RayHit.u`) a ray from (x, y)
+    leaves the cell it starts in."""
+    dx, dy = math.cos(angle), math.sin(angle)
+    cx, cy = math.floor(x), math.floor(y)
+    to_x = ((cx + 1 - x) / dx if dx > 0 else (x - cx) / -dx) if dx != 0.0 else math.inf
+    to_y = ((cy + 1 - y) / dy if dy > 0 else (y - cy) / -dy) if dy != 0.0 else math.inf
+    if to_x < to_y:
+        return _wall_u(x, y, dx, dy, to_x, Side.X)
+    return _wall_u(x, y, dx, dy, to_y, Side.Y)
