@@ -39,6 +39,10 @@ class GameSession(Protocol):
         """Moving geometry to draw this frame: doors, as they are now."""
         ...
 
+    def passes(self) -> frozenset[str]:
+        """The ID passes the team holds, for the HUD."""
+        ...
+
 
 class LocalSession:
     def __init__(self, world: World, player_name: str, player_id: int = 1) -> None:
@@ -49,8 +53,11 @@ class LocalSession:
         # Eye height eases towards standing/crouching height rather than
         # snapping, so crouching dips the view over ~0.1 s.
         self._eye = eye_height(self.player, world.config.movement)
-        # Map things never move; later, enemies and pickups come from the world.
-        self._static_sprites = sprites_from_things(world.map)
+        # Map things never move; pickups come from the world (they get taken).
+        pickup_types = {p.type for p in world.pickups}
+        self._static_sprites = [
+            s for s in sprites_from_things(world.map) if s.name not in pickup_types
+        ]
 
     @property
     def game_map(self) -> GameMap:
@@ -76,7 +83,11 @@ class LocalSession:
         return Camera(x, y, view_angle, z=z + self._eye, pitch=pitch)
 
     def sprites(self) -> list[SpriteInstance]:
-        return self._static_sprites
+        lying = [SpriteInstance(p.type, p.x, p.y, p.z) for p in self.world.pickups if not p.taken]
+        return self._static_sprites + lying
 
     def boxes(self) -> list[PlacedBox]:
-        return door_boxes(self.world.doors)
+        return door_boxes(self.world.doors, self.world.passes)
+
+    def passes(self) -> frozenset[str]:
+        return frozenset(self.world.passes)

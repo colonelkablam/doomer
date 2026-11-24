@@ -56,7 +56,7 @@ f.......1.jjj...jjj....4
 888888888888888888888888
 888888888888688888888888
 888888888888888888888888
-888888888888888888888888
+888888888886888888888888
 888888888888888888888888
 888888888888888888888888
 888888888888888888888888
@@ -84,10 +84,16 @@ f.......1.jjj...jjj....4
 # Entrance lobby: two storeys, glazed, entrance doors on the west, the
 # reception desk facing them, stairs up to a railed balcony along the north
 coop_start      1.5   3.5   0
-# Doors (prototype): glass doors from the lobby into the offices, and an
+# Doors (prototype): glass doors from the lobby into the offices (staff
+# pass: blue, on the reception counter), and a
 # double office door from the corridor into the open plan (swings north, into it)
-door_sliding    8.5   4.5   0
+door_sliding    8.5   4.5   0     lock=blue
 door_double     12.5  10.5  270
+# The plant room (for now, the small room south of the corridor): facilities
+# pass (red), which is on the boss's desk
+door_hinged     11.5  12.5  90    lock=red
+pass_blue       4.3   4.4   0
+pass_red        4.2   10.3  0
 mac             4.5   3.5   0
 ficus           1.5   1.5   0
 ficus           5.5   5.5   0

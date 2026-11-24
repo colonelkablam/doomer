@@ -5,6 +5,7 @@ import logging
 import pygame
 
 from doomer.client.config import ClientConfig
+from doomer.client.hud import Hud
 from doomer.client.input import KeyboardMouseInput
 from doomer.client.render import MAX_PITCH, Renderer, make_frame_surface
 from doomer.client.session import GameSession
@@ -23,6 +24,7 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
         frame = make_frame_surface(rc)
         font = pygame.font.Font(None, 22)
         renderer = Renderer(rc, config.lighting if config.lighting.enabled else None)
+        hud = Hud(font)
         controls = KeyboardMouseInput(config.controls, start_angle, MAX_PITCH)
         controls.set_captured(True)
         clock = pygame.time.Clock()
@@ -43,12 +45,14 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
                     controls.set_captured(False)
 
             player_input = controls.poll(real_dt)
-            session.update(real_dt, player_input)  # events unused until sound/HUD exist
+            now = pygame.time.get_ticks() / 1000.0
+            hud.handle(session.update(real_dt, player_input), now)
 
             camera = session.camera(controls.angle, controls.pitch)
             renderer.render(frame, session.game_map, camera, session.sprites(), session.boxes())
             # 8-bit frame -> window format, then nearest-neighbour scale into the window.
             pygame.transform.scale(frame.convert(window), window.get_size(), window)
+            hud.draw(window, session.passes(), now)
             if rc.show_fps:
                 window.blit(font.render(f"{clock.get_fps():.0f} fps", True, HUD_COLOUR), (8, 8))
             if not controls.captured:

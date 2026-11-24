@@ -16,8 +16,9 @@ from collections.abc import Mapping
 from doomer.shared.collision import ThinWall, move_box
 from doomer.shared.config import MovementConfig
 from doomer.shared.doors import door_walls, try_use, update_doors
-from doomer.shared.events import DoorToggled
+from doomer.shared.events import DoorLocked, DoorToggled, PassPickedUp
 from doomer.shared.mapfile import RAIL_HEIGHT, RAILING_WALL_TYPE, GameMap
+from doomer.shared.pickups import take_pickups
 from doomer.shared.player import PlayerInput, PlayerState
 from doomer.shared.screens import SCREEN_HALF, screens_at_height
 from doomer.shared.world import World
@@ -32,7 +33,9 @@ def step(world: World, inputs: Mapping[int, PlayerInput]) -> None:
     for player_id, player in world.players.items():
         apply_input(world, player, inputs.get(player_id, PlayerInput(angle=player.angle)))
     positions = [(p.x, p.y) for p in world.players.values()]
-    update_doors(world.doors, positions, world.config.movement.radius, world.config.dt)
+    update_doors(
+        world.doors, positions, world.config.movement.radius, world.config.dt, world.passes
+    )
     world.tick += 1
 
 
@@ -43,9 +46,13 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
     player.pitch = player_input.pitch
     _update_crouch(world.map, player, player_input.crouch, move)
     if player_input.use and not player.use_held:  # a press, not a hold
-        door = try_use(world.doors, player.x, player.y, player.angle)
-        if door is not None:
-            world.events.append(DoorToggled(world.tick, door.id, player.id, door.opening))
+        used = try_use(world.doors, player.x, player.y, player.angle, world.passes)
+        if used is not None:
+            door, allowed = used
+            if allowed:
+                world.events.append(DoorToggled(world.tick, door.id, player.id, door.opening))
+            elif door.lock is not None:
+                world.events.append(DoorLocked(world.tick, door.id, player.id, door.lock))
     player.use_held = player_input.use
 
     forward = _clamp(player_input.forward)
@@ -87,6 +94,11 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
         player.z_velocity = move.jump_speed
         player.on_ground = False
     _apply_gravity(world.map, player, move, dt)
+    for pickup in take_pickups(world.pickups, player.x, player.y, player.z):
+        colour = pickup.pass_colour
+        if colour is not None and colour not in world.passes:
+            world.passes.add(colour)
+            world.events.append(PassPickedUp(world.tick, player.id, colour))
 
 
 def body_height(player: PlayerState, move: MovementConfig) -> float:

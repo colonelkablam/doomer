@@ -19,7 +19,7 @@ from above with the front at the bottom of the image (v = 63).
 """
 
 import math
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 from typing import NamedTuple
 
@@ -673,19 +673,50 @@ def glass_edge() -> int:
     return _texture(c)
 
 
+def card_reader(ramp: int, unlocked: bool) -> int:
+    """A card reader by a locked door: dark plastic, a stripe in the colour of
+    the pass it wants, a lamp (red until the team has that pass, then green),
+    and the card slot."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 4.0)
+    c.paint(c.rect(0, 12, 0, 64), ramp, 11.0)
+    c.paint(c.rect(18, 28, 22, 42), GREEN if unlocked else BRICK, 15.0)
+    c.paint(c.rect(38, 42, 10, 54), GREY, 1.0)  # slot
+    c.paint(c.rect(37, 38, 10, 54), GREY, 7.0)
+    return _texture(c)
+
+
+_PASS_RAMPS = {"blue": BLUE, "red": BRICK, "gold": OCHRE}
+_READERS = {
+    (colour, unlocked): card_reader(ramp, unlocked)
+    for colour, ramp in _PASS_RAMPS.items()
+    for unlocked in (False, True)
+}
+READER_HEIGHT = (0.38, 0.47)  # walls (~1.0-1.25 m): at hand height
+READER_ALONG = 0.65  # from the doorway's centre: on the wall just beside it
+
 _LEAF_RIGHT, _LEAF_LEFT, _LEAF_EDGE = door_leaf(True), door_leaf(False), door_edge()
 _JAMB, _GLASS, _GLASS_EDGE = jamb(), glass_leaf(), glass_edge()
 _JAMB_HALF = 0.03  # jambs a little thicker than the leaf: a frame
 
 
-def door_boxes(doors: Iterable[Door]) -> list[PlacedBox]:
-    """Boxes for doors in their current state."""
+def door_boxes(doors: Iterable[Door], passes: Collection[str] = ()) -> list[PlacedBox]:
+    """Boxes for doors in their current state; and, by each locked door, a
+    card reader on the wall either side, lit green once the team (`passes`)
+    can open it."""
     out = []
     h = (0.0, DOOR_HEIGHT)
     t = (-DOOR_HALF, DOOR_HALF)
     for door in doors:
         f = door.facing
         along = (-math.sin(f), math.cos(f))  # the doorway's direction (model +y at angle f)
+        if door.lock is not None:
+            tex = _READERS[(door.lock, door.lock in passes)]
+            rx, ry = door.x + along[0] * READER_ALONG, door.y + along[1] * READER_ALONG
+            # On the wall faces either side of the doorway (0.5 out across it).
+            for across in ((0.5, 0.52), (-0.52, -0.5)):
+                reader = Box(across, (-0.035, 0.035), READER_HEIGHT, (tex,) * 5)
+                out.append(PlacedBox(rx, ry, 0.0, f, reader))
         if door.kind == HINGED:
             # Jambs: model x across the doorway (thickness), y along it.
             jt = (-_JAMB_HALF, _JAMB_HALF)

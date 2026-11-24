@@ -64,7 +64,8 @@ units at most). Anything higher with no stairs is unreachable.
 | `desk`, `water_cooler`, `filing_cabinet`, `ficus` | Blocking furniture | Square footprints, half-widths 0.32 / 0.12 / 0.16 / 0.16. Cabinets, coolers and ficuses are box models: set the angle so the front faces into the room (away from the wall they stand against); the ficus's crown spreads wider than its footprint |
 | `terminal` | PC on a desk | Put it in a desk/counter cell; it stands on the top. Its angle is where the screen faces (towards the sitter): in a pod, 270 on the north half, 90 on the south |
 | `mac` | Macintosh SE/30, keyboard and mouse | As `terminal` (same angle rule). Solid boxes: costs more than a sprite per thing in view, fine for dozens |
-| `door_hinged`, `door_double`, `door_sliding` | Office door / double office doors (use to open) / automatic glass doors | In a doorway cell: open floor between two full walls, the doorway one cell wide. Angle: across the doorway, the way a hinged door swings open. Give the doorway cell a ceiling of `6` (a lintel at ~2 m). Not in a two-storey cell, and nothing blocking within a cell either side |
+| `pass_blue`, `pass_red`, `pass_gold` | ID passes: staff, facilities, executive | Walk over (or reach) to take; the team shares it. On a counter or desk, put it within 0.5 of the edge you approach from (you're stopped at the edge; reach is 0.75 from your centre) |
+| `door_hinged`, `door_double`, `door_sliding` | Office door / double office doors (use to open) / automatic glass doors | In a doorway cell: open floor between two full walls, the doorway one cell wide. Angle: across the doorway, the way a hinged door swings open. Give the doorway cell a ceiling of `6` (a lintel at ~2 m). `lock=blue` (or red, gold): opens only for a team with that pass; card readers appear beside it. Not in a two-storey cell, and nothing blocking within a cell either side |
 | `ceiling_light` | Light panel in the ceiling; lights the room (baked light map) | Marks the cell; drawn at that cell's ceiling height. Space them 3-6 cells apart for pools of light with darker gaps (every 2 cells saturates a room flat). Light stops at full walls, goes through doorways, and reaches ~6 cells. A room with none sits at ambient (dark): use that on purpose |
 
 - Positions are cell coordinates (`3.5` = centre of cell 3). Use cell centres
@@ -127,7 +128,10 @@ What costs:
    (>= 4 `dm_spawn`).
 3. **Reachable on foot**: from `coop_start`, the `exit` and every `dm_spawn`
    can be reached by walking (steps of 1 unit, stairs from the low end; no
-   jumping assumed), with headroom >= 6 units all the way.
+   jumping assumed), with headroom >= 6 units all the way. Locked doors
+   count as walls until their pass is reachable: every pass must be
+   reachable before the door it opens (no pass behind its own door), and the
+   exit after them all.
 4. **No blocked passages**: no blocking furniture in a 1-cell-wide passage or
    at the ends of stairs.
 5. **Stairs are well formed**: the cell before the low end is at the low

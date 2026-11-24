@@ -6,7 +6,12 @@ thing looks is the client's business (doomer/client/sprites.py), keyed by the
 same name.
 """
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+
+# ID passes, by colour: staff, facilities, executive (docs/GAME.md). A pass
+# thing is a pickup; a door's `lock` names the pass that opens it.
+PASS_COLOURS = ("blue", "red", "gold")
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,6 +20,9 @@ class ThingType:
     description: str
     blocking: bool = False  # stops players (and later shots and enemies)
     radius: float = 0.0  # half-width of the square footprint, in cells
+    # Properties a map may give this thing (`key=value` after its angle), each
+    # with the values allowed. Anything else is a map error.
+    properties: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 THING_TYPES: dict[str, ThingType] = {}
@@ -43,13 +51,23 @@ for _name, _description, _blocking, _radius in (
     ("ficus", "Potted ficus", True, 0.16),
     # Drawn as a panel set into its cell's ceiling (not a sprite).
     ("ceiling_light", "Fluorescent ceiling light panel", False, 0.0),
-    # Doors (doomer/shared/doors.py): in a doorway cell; angle = the way it opens.
-    ("door_hinged", "Hinged office door: press use to open or close", False, 0.0),
-    ("door_double", "Double office doors: press use to open or close", False, 0.0),
-    ("door_sliding", "Sliding glass doors: open by themselves as you approach", False, 0.0),
     # Sits on a desk-pod cell (a low block), so it needs no footprint of its own.
     ("terminal", "Beige PC and CRT, for standing on a desk pod", False, 0.0),
     # Drawn as solid boxes (client/boxes.py); faces its map angle, like terminal.
     ("mac", "Apple Macintosh SE/30 with keyboard and mouse, for a desk", False, 0.0),
 ):
     register_thing_type(ThingType(_name, _description, _blocking, _radius))
+
+# Doors (doomer/shared/doors.py): in a doorway cell; angle = the way it opens.
+# `lock=<colour>`: only opens for a team holding that pass.
+for _name, _description in (
+    ("door_hinged", "Hinged office door: press use to open or close"),
+    ("door_double", "Double office doors: press use to open or close"),
+    ("door_sliding", "Sliding glass doors: open by themselves as you approach"),
+):
+    register_thing_type(ThingType(_name, _description, properties={"lock": PASS_COLOURS}))
+
+# ID passes (doomer/shared/pickups.py): walk over one to pick it up; the team
+# shares it. Drawn as a sprite on whatever it lies on.
+for _colour in PASS_COLOURS:
+    register_thing_type(ThingType(f"pass_{_colour}", f"{_colour.capitalize()} ID pass"))

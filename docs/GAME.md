@@ -84,6 +84,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Office door: wood veneer, lever handle, kick plate; swings open on use (E) | yes, until opened | [built] (prototype) |
 | Double office doors: two such leaves meeting in the middle, for full-width doorways | yes, until opened | [built] (prototype) |
 | Sliding glass doors: aluminium frame, frosted band, push bar; open by themselves | yes, until open | [built] (prototype) |
+| Card readers by locked doors: stripe in the pass colour, red/green lamp | no | [built] |
 | Water cooler (box model: cream cabinet, hot and cold taps, upturned octagonal bottle; faces its map angle) | yes | [built] |
 | Filing cabinet (box model: five steel drawers with pulls and label cards; faces its map angle) | yes | [built] |
 | Potted ficus (box model: octagonal terracotta pot, two stems, a crown of crossed see-through leaf cards) | yes | [built] |
@@ -123,13 +124,18 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | i (18) | Balcony floor: raised floor with a railing along edges that drop away | Lobby balcony |
 | j (19) | Desk pair with cubicle screens: as `d`, plus fabric screens to seated head height (~1.25 m) down the middle and across each cell edge (box models; they block you on the desk tops) | Open-plan cubicles |
 
-## Pickups [planned]
+## Pickups
 
-- **Health**: cup of coffee (small), box of doughnuts (large), sick note (full).
-- **Armour**: shoulder pads.
-- **Ammo**: box of floppies (IT Guy), staples (Temp), fire extinguisher refill
-  (Caretaker).
-- **Keys**: colour-coded security passes (red, blue, yellow) for locked doors.
+- **ID passes** [built]: lanyard passes in three colours, staff (blue),
+  facilities (red), executive (gold), for locked doors. Shared by the team:
+  one player picks it up, everyone can use it. A floor's loop: the staff
+  pass gets you off the lobby, the facilities pass into the plant room,
+  where the power comes on (planned) and the lifts wake up.
+- **Health** [planned]: cup of coffee (small), box of doughnuts (large), sick
+  note (full).
+- **Armour** [planned]: shoulder pads.
+- **Ammo** [planned]: box of floppies (IT Guy), tea bags (Tea Trolley), fire
+  extinguisher refill (Caretaker).
 
 ## NPC design (how enemies will work in code)
 

@@ -167,8 +167,11 @@ dm_spawn      1.5   3.5   0
 - `[facing]` (optional): one of `n`, `e`, `s`, `w` per cell (`.` or missing =
   `s`): which way a cell's front faces, for wall types with different
   textures per side (desks: the front is where you sit).
-- `[things]`: one per line. Positions are floats in cell units (`1.5` = centre
-  of cell 1). Unknown types are an error at load time.
+- `[things]`: one per line, `type x y angle [key=value ...]`. Positions are
+  floats in cell units (`1.5` = centre of cell 1). Unknown types are an
+  error at load time. Properties after the angle are declared per thing
+  type (`ThingType.properties`, with their allowed values): a door's
+  `lock=blue|red|gold`. An unknown property or value is a load error.
 - Supported modes are derived, not declared: **co-op** if there is a
   `coop_start` and an `exit`; **deathmatch** if there are at least 4
   `dm_spawn`s. The server ignores things not relevant to the current mode.
@@ -344,6 +347,15 @@ dm_spawn      1.5   3.5   0
   bulkhead drawing; with lighting on, a ceiling lower than a storey (the
   lintel's soffit) takes the plain light times `soffit_shade` (0.85), not
   the square root other ceilings get, so it sits in shadow like the walls.
+- **ID passes and locks** (`shared/pickups.py`, `door lock=`): passes are
+  pickups (walk within 0.75 cells, about an arm's reach beyond your box, at
+  most 0.5 storeys above or below your feet); the team shares them
+  (`World.passes`), so any player can open a door locked with that colour.
+  A locked door stays shut for a team without its pass (using it emits
+  `DoorLocked`, which the HUD shows); a card reader on the wall either side
+  shows the colour wanted and a lamp, red until the team holds that pass.
+  Deathmatch (`GameMode.all_passes`) starts with every pass. The HUD
+  (`client/hud.py`) shows passes held and messages from events.
 - **Cubicle screens** (`shared/screens.py`, drawn by `boxes.desk_screens`):
   on `j` desk pairs, thin world-aligned panels (5 cm thick, to ~1.25 m) down
   the middle of each pair and across every cell edge (a shared edge once).

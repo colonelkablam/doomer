@@ -74,7 +74,7 @@ def test_partial_height_grid_is_padded_with_default() -> None:
         ("[walls]\n###\n#.#\n###\n[things]\nbarrel 1.5 1.5 0\n", "unknown thing type"),
         ("[walls]\n###\n#.#\n###\n[things]\nexit 0.5 0.5 0\n", "inside a wall"),
         ("[walls]\n###\n#.#\n###\n[things]\nexit 9 9 0\n", "outside the map"),
-        ("[walls]\n###\n#.#\n###\n[things]\nexit 1.5 1.5\n", "expected 'type x y angle'"),
+        ("[walls]\n###\n#.#\n###\n[things]\nexit 1.5 1.5\n", "expected 'type x y angle"),
         ("[walls]\n#\n[walls]\n#\n", "duplicate section"),
         ("[sprites]\n", "unknown section"),
         ("hello\n", "expected 'name: ...'"),
@@ -193,3 +193,30 @@ def test_heights_above_nine_use_letters_and_ceilings_per_cell() -> None:
 def test_height_errors(text: str, message: str) -> None:
     with pytest.raises(MapError, match=message):
         parse_map(text)
+
+
+DOOR_ROOM = "[walls]\n#####\n#...#\n#####\n[things]\n"
+
+
+def test_things_take_properties_and_write_them_back() -> None:
+    text = DOOR_ROOM + "door_hinged 2.5 1.5 90 lock=red\npass_red 1.5 1.5 0\n"
+    game_map = parse_map(text)
+    door, card = game_map.things
+    assert door.prop("lock") == "red" and door.props == (("lock", "red"),)
+    assert card.prop("lock") is None
+    again = parse_map(format_map(game_map))
+    assert again.things == game_map.things
+
+
+@pytest.mark.parametrize(
+    "line, message",
+    [
+        ("door_hinged 2.5 1.5 90 lock=bleu", "expected one of blue, red, gold"),
+        ("door_hinged 2.5 1.5 90 colour=red", "has no property 'colour'"),
+        ("pass_red 1.5 1.5 0 lock=red", "has no property 'lock' (has: none)"),
+        ("door_hinged 2.5 1.5 90 red", "expected key=value"),
+    ],
+)
+def test_bad_thing_properties_are_errors(line: str, message: str) -> None:
+    with pytest.raises(MapError, match=re.escape(message)):
+        parse_map(DOOR_ROOM + line + "\n")

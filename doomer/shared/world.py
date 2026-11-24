@@ -10,9 +10,10 @@ from doomer.shared.doors import Door, doors_from_map
 from doomer.shared.events import Event, PlayerSpawned
 from doomer.shared.mapfile import GameMap
 from doomer.shared.modes import GAME_MODES, missing_requirements
+from doomer.shared.pickups import Pickup, pickups_from_map
 from doomer.shared.player import PlayerState
 from doomer.shared.screens import Screen, desk_screens
-from doomer.shared.things import THING_TYPES
+from doomer.shared.things import PASS_COLOURS, THING_TYPES
 
 
 @dataclass(slots=True)
@@ -32,6 +33,9 @@ class World:
     screens: tuple[Screen, ...] = ()
     # Doors and how far open each is (doomer/shared/doors.py).
     doors: list[Door] = field(default_factory=list)
+    # Pickups (ID passes) and the passes the team holds (doomer/shared/pickups.py).
+    pickups: list[Pickup] = field(default_factory=list)
+    passes: set[str] = field(default_factory=set)
 
 
 class ModeNotSupported(ValueError):
@@ -57,6 +61,8 @@ def new_world(
         obstacles=obstacles,
         screens=tuple(desk_screens(game_map)),
         doors=doors_from_map(game_map),
+        pickups=pickups_from_map(game_map),
+        passes=set(PASS_COLOURS) if GAME_MODES[mode].all_passes else set(),
     )
 
 

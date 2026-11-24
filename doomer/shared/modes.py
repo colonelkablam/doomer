@@ -19,6 +19,9 @@ class GameMode:
     spawn_thing: str
     # Returns human-readable unmet requirements; empty means the map supports the mode.
     requirements: Callable[[GameMap], list[str]]
+    # Everyone holds every ID pass from the start, so no door stays locked
+    # (deathmatch: spawn points are all over the map, not behind a key hunt).
+    all_passes: bool = False
 
 
 GAME_MODES: dict[str, GameMode] = {}
@@ -56,4 +59,6 @@ def _dm_requirements(game_map: GameMap) -> list[str]:
 
 
 COOP = register_game_mode(GameMode("coop", COOP_START.name, _coop_requirements))
-DEATHMATCH = register_game_mode(GameMode("deathmatch", DM_SPAWN.name, _dm_requirements))
+DEATHMATCH = register_game_mode(
+    GameMode("deathmatch", DM_SPAWN.name, _dm_requirements, all_passes=True)
+)

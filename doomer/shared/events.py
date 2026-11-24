@@ -22,6 +22,23 @@ class DoorToggled(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class DoorLocked(Event):
+    """A player tried a locked door without its pass."""
+
+    door_id: int
+    player_id: int
+    lock: str  # the pass colour it needs
+
+
+@dataclass(frozen=True, slots=True)
+class PassPickedUp(Event):
+    """A player picked up an ID pass; the whole team now holds it."""
+
+    player_id: int
+    colour: str
+
+
+@dataclass(frozen=True, slots=True)
 class PlayerSpawned(Event):
     player_id: int
     x: float

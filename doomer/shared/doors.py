@@ -12,6 +12,8 @@ Kinds:
   close. It won't close on a player standing in the doorway.
 - double: two leaves, each hinged at its own side of the doorway, meeting
   in the middle, both swinging the same way; narrow jambs. Use, as hinged.
+- Any of them can be locked (`lock=blue` in the map): it opens only for a
+  team holding that ID pass (doomer/shared/pickups.py).
 - sliding: two glass leaves, each half the cell, that part into the walls
   either side. Automatic: they open while any player is near.
 
@@ -22,6 +24,7 @@ doorway is still closed.
 """
 
 import math
+from collections.abc import Collection
 from dataclasses import dataclass
 
 from doomer.shared.collision import ThinWall
@@ -54,6 +57,10 @@ class Door:
     facing: float  # radians: across the doorway, the way a hinged door opens
     open: float = 0.0  # 0 shut .. 1 open
     opening: bool = False  # moving towards open (else towards shut)
+    lock: str | None = None  # the pass colour that opens it, if locked
+
+    def unlocked_by(self, passes: Collection[str]) -> bool:
+        return self.lock is None or self.lock in passes
 
     @property
     def across_x(self) -> bool:
@@ -71,7 +78,7 @@ def doors_from_map(game_map: GameMap) -> list[Door]:
             continue
         cx, cy = math.floor(t.x), math.floor(t.y)
         facing = round(t.angle / (math.pi / 2)) % 4 * (math.pi / 2)
-        out.append(Door(len(out), kind, cx + 0.5, cy + 0.5, facing))
+        out.append(Door(len(out), kind, cx + 0.5, cy + 0.5, facing, lock=t.prop("lock")))
     return out
 
 
@@ -103,13 +110,18 @@ def in_doorway(door: Door, x: float, y: float, radius: float) -> bool:
     return abs(x - door.x) < 0.5 + radius and abs(y - door.y) < 0.5 + radius
 
 
-def try_use(doors: list[Door], x: float, y: float, angle: float) -> Door | None:
-    """The hinged or double door a player at (x, y) facing `angle` is using: the
-    nearest within reach, roughly in front of them. Toggles it."""
+def try_use(
+    doors: list[Door], x: float, y: float, angle: float, passes: Collection[str]
+) -> tuple[Door, bool] | None:
+    """The door a player at (x, y) facing `angle` is using: the nearest within
+    reach, roughly in front of them; and whether they could. A hinged or
+    double door the team can open is toggled. A locked one stays as it is
+    (False: say which pass it needs). Sliding doors open by themselves, so
+    using one only matters when it's locked."""
     best: Door | None = None
     best_d = USE_REACH
     for door in doors:
-        if door.kind == SLIDING:  # automatic, not used
+        if door.kind == SLIDING and door.unlocked_by(passes):
             continue
         dx, dy = door.x - x, door.y - y
         d = math.hypot(dx, dy)
@@ -118,19 +130,27 @@ def try_use(doors: list[Door], x: float, y: float, angle: float) -> Door | None:
         if (dx * math.cos(angle) + dy * math.sin(angle)) / d < USE_CONE:
             continue
         best, best_d = door, d
-    if best is not None:
-        best.opening = not best.opening
-    return best
+    if best is None:
+        return None
+    if not best.unlocked_by(passes):
+        return best, False
+    best.opening = not best.opening
+    return best, True
 
 
 def update_doors(
-    doors: list[Door], players: list[tuple[float, float]], radius: float, dt: float
+    doors: list[Door],
+    players: list[tuple[float, float]],
+    radius: float,
+    dt: float,
+    passes: Collection[str] = (),
 ) -> None:
-    """Advance every door one tick. Sliding doors open for anyone near; a
-    door that's closing stops (and reopens) rather than shut on someone."""
+    """Advance every door one tick. Sliding doors open for anyone near (if
+    the team can open them); a door that's closing stops (and reopens)
+    rather than shut on someone."""
     for door in doors:
         if door.kind == SLIDING:
-            door.opening = any(
+            door.opening = door.unlocked_by(passes) and any(
                 math.hypot(px - door.x, py - door.y) < SLIDING_SENSE for px, py in players
             )
         elif (

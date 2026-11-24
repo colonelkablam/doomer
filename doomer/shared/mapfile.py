@@ -53,6 +53,11 @@ class Thing:
     x: float
     y: float
     angle: float  # radians
+    # `key=value` properties after the angle (e.g. a door's lock), in file order.
+    props: tuple[tuple[str, str], ...] = ()
+
+    def prop(self, key: str) -> str | None:
+        return next((v for k, v in self.props if k == key), None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -237,10 +242,11 @@ def format_map(game_map: GameMap) -> str:
         out += ["", "[facing]"]
         out += ["".join(_FACING_CHARS[c] for c in row) for row in game_map.facing]
     if game_map.things:
-        out += ["", "[things]", "# type x y angle"]
+        out += ["", "[things]", "# type x y angle [key=value ...]"]
         for t in game_map.things:
             deg = round(math.degrees(t.angle), 6) % 360
-            out.append(f"{t.type} {t.x:g} {t.y:g} {deg:g}")
+            props = "".join(f" {k}={v}" for k, v in t.props)
+            out.append(f"{t.type} {t.x:g} {t.y:g} {deg:g}{props}")
     return "\n".join(out) + "\n"
 
 
@@ -340,11 +346,13 @@ def _optional_grid(
 
 def _parse_thing(lineno: int, line: str, game_map: GameMap) -> Thing:
     parts = line.split()
-    if len(parts) != 4:
-        raise MapError(f"line {lineno}: expected 'type x y angle', got {line!r}")
+    if len(parts) < 4:
+        raise MapError(f"line {lineno}: expected 'type x y angle [key=value ...]', got {line!r}")
     type_name = parts[0]
     if type_name not in THING_TYPES:
         raise MapError(f"line {lineno}: unknown thing type {type_name!r}")
+    props = _parse_props(lineno, type_name, parts[4:])
+    parts = parts[:4]
     try:
         x, y, angle_deg = (float(p) for p in parts[1:])
     except ValueError:
@@ -354,4 +362,21 @@ def _parse_thing(lineno: int, line: str, game_map: GameMap) -> Thing:
         raise MapError(f"line {lineno}: {type_name} at ({x:g}, {y:g}) is outside the map")
     if game_map.is_solid(cx, cy) and not game_map.is_low_block(cx, cy):
         raise MapError(f"line {lineno}: {type_name} at ({x:g}, {y:g}) is inside a wall")
-    return Thing(type_name, x, y, math.radians(angle_deg))
+    return Thing(type_name, x, y, math.radians(angle_deg), props)
+
+
+def _parse_props(lineno: int, type_name: str, tokens: list[str]) -> tuple[tuple[str, str], ...]:
+    allowed = THING_TYPES[type_name].properties
+    props = []
+    for token in tokens:
+        key, sep, value = token.partition("=")
+        if not sep:
+            raise MapError(f"line {lineno}: expected key=value after the angle, got {token!r}")
+        if key not in allowed:
+            known = ", ".join(sorted(allowed)) or "none"
+            raise MapError(f"line {lineno}: {type_name} has no property {key!r} (has: {known})")
+        if value not in allowed[key]:
+            choices = ", ".join(allowed[key])
+            raise MapError(f"line {lineno}: {type_name} {key}={value!r}: expected one of {choices}")
+        props.append((key, value))
+    return tuple(props)

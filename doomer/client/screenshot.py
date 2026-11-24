@@ -32,6 +32,7 @@ def render_frame(
     things: bool = True,
     lighting: LightingConfig | None = None,
     doors: list[Door] | None = None,
+    passes: frozenset[str] = frozenset(),
 ) -> pygame.Surface:
     """Render one frame; `things=False` draws walls, floor and ceiling only;
     `lighting` lights it from the map's ceiling panels; `doors` in a given
@@ -39,7 +40,8 @@ def render_frame(
     config = config or RenderConfig()
     frame = make_frame_surface(config)
     sprites = sprites_from_things(game_map) if things else []
-    boxes = door_boxes(doors if doors is not None else doors_from_map(game_map)) if things else []
+    shown = doors if doors is not None else doors_from_map(game_map)
+    boxes = door_boxes(shown, passes) if things else []
     Renderer(config, lighting).render(frame, game_map, camera, sprites, boxes)
     return frame
 
