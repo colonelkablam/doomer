@@ -145,3 +145,39 @@ def test_a_shut_door_hides_what_is_behind_it_and_an_open_one_doesnt() -> None:
         # Glass is a dither: check a few pixels across, so one hits a solid texel.
         near = (r.zbuffer[centre_col - 3 : centre_col + 3, centre_row] < 2.1).any()
         assert near == expect_door, (fraction, depth)
+
+
+def test_double_doors_block_open_on_use_and_let_you_through() -> None:
+    from doomer.shared.doors import DOUBLE
+
+    double = ROOMS.replace("door_hinged 3.5 4.5 270", "door_double 3.5 4.5 270")
+    world = new_world(parse_map(double), "coop")
+    p = spawn_player(world, 1, "p")
+    assert world.doors[0].kind == DOUBLE
+    p.x, p.y = 3.5, 6.0
+    run(world, 90, forward=1.0, angle=NORTH)
+    assert p.y == pytest.approx(4.5 + DOOR_HALF + MOVE.radius)  # shut: stopped
+    p.y = 5.4
+    run(world, 1, use=True, angle=NORTH)
+    run(world, ticks_for(DOUBLE), angle=NORTH)
+    run(world, 90, forward=1.0, angle=NORTH)
+    assert p.y < 3.0
+
+
+def test_double_door_leaves_swing_from_their_hinges_towards_the_facing() -> None:
+    import dataclasses
+
+    from doomer.client.boxes import door_boxes
+
+    door = doors_from_map(parse_map(ROOMS.replace("door_hinged", "door_double")))[0]
+    for fraction in (0.0, 1.0):
+        boxes = door_boxes([dataclasses.replace(door, open=fraction)])
+        leaves = [b for b in boxes if b.box.x[0] == 0.0]  # leaves start at their hinge
+        assert len(leaves) == 2
+        for leaf in leaves:
+            end_x = leaf.x + math.cos(leaf.angle) * leaf.box.x[1]
+            end_y = leaf.y + math.sin(leaf.angle) * leaf.box.x[1]
+            if fraction == 0.0:  # shut: the free ends meet in the middle
+                assert end_x == pytest.approx(3.5, abs=0.01) and end_y == pytest.approx(4.5)
+            else:  # open: swung north (the facing), out of the doorway
+                assert end_y < 4.5 - 0.4

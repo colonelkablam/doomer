@@ -335,11 +335,15 @@ dm_spawn      1.5   3.5   0
   renderer as `boxes`). Hinged: two fixed jambs and a leaf whose model
   origin is the hinge, turned by how far open it is, so it really swings;
   use (E) opens and closes it, and it won't shut on someone in the doorway.
+  Double: two leaves hinged at either side of the doorway, meeting in the
+  middle and swinging the same way, between narrow jambs; used the same way.
   Sliding: two glass leaves (a dithered, see-through texture) that part
   into the walls either side, opening by themselves for anyone within 1.6
   cells. Collision: the closed part of the doorway as thin walls. A lowered
   ceiling over the doorway (6/8) gives a lintel through the existing
-  bulkhead drawing.
+  bulkhead drawing; with lighting on, a ceiling lower than a storey (the
+  lintel's soffit) takes the plain light times `soffit_shade` (0.85), not
+  the square root other ceilings get, so it sits in shadow like the walls.
 - **Cubicle screens** (`shared/screens.py`, drawn by `boxes.desk_screens`):
   on `j` desk pairs, thin world-aligned panels (5 cm thick, to ~1.25 m) down
   the middle of each pair and across every cell edge (a shared edge once).

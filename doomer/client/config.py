@@ -33,6 +33,9 @@ class LightingConfig:
     # gentler, since the light map does the local darkening and the two
     # multiply (at 14 cells, lit rooms go murky in the distance).
     shade_distance: float = 20.0
+    # Ceilings lower than a storey (the soffit over a doorway) sit in shadow:
+    # they take the plain light times this, not the square root ceilings get.
+    soffit_shade: float = 0.85
 
 
 @dataclass(frozen=True, slots=True)

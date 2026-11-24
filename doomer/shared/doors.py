@@ -10,6 +10,8 @@ Kinds:
 - hinged: one leaf, `HINGED_LEAF` wide, on a hinge at one side of the
   doorway, with fixed jambs filling the rest. Press use near it to open or
   close. It won't close on a player standing in the doorway.
+- double: two leaves, each hinged at its own side of the doorway, meeting
+  in the middle, both swinging the same way; narrow jambs. Use, as hinged.
 - sliding: two glass leaves, each half the cell, that part into the walls
   either side. Automatic: they open while any player is near.
 
@@ -25,16 +27,18 @@ from dataclasses import dataclass
 from doomer.shared.collision import ThinWall
 from doomer.shared.mapfile import GameMap
 
-HINGED, SLIDING = "hinged", "sliding"
-DOOR_THING_KINDS = {"door_hinged": HINGED, "door_sliding": SLIDING}
+HINGED, DOUBLE, SLIDING = "hinged", "double", "sliding"
+DOOR_THING_KINDS = {"door_hinged": HINGED, "door_double": DOUBLE, "door_sliding": SLIDING}
 
 HINGED_LEAF = 0.6  # cells (~1.6 m: the player is 0.5 wide)
 JAMB = (1.0 - HINGED_LEAF) / 2  # fixed panel either side of a hinged leaf
+DOUBLE_JAMB = 0.04  # a double door's frame either side
+DOUBLE_LEAF = (1.0 - 2 * DOUBLE_JAMB) / 2  # each of its two leaves
 DOOR_HALF = 0.01  # half-thickness, cells (~5 cm doors)
 DOOR_HEIGHT = 0.75  # walls (~2 m): up to the lintel (a doorway's ceiling is 6/8)
 SWING = math.pi / 2  # a hinged door opens a quarter turn
 
-OPEN_SECONDS = {HINGED: 0.6, SLIDING: 0.5}  # from shut to fully open
+OPEN_SECONDS = {HINGED: 0.6, DOUBLE: 0.6, SLIDING: 0.5}  # from shut to fully open
 USE_REACH = 1.3  # cells from the door's centre
 USE_CONE = math.cos(math.radians(50))  # must be roughly facing it
 SLIDING_SENSE = 1.6  # cells: sliding doors open for anyone this near
@@ -81,10 +85,11 @@ def door_walls(door: Door) -> list[ThinWall]:
     def wall(a: float, b: float) -> ThinWall:
         return ThinWall(axis, at, a, b, DOOR_HALF)
 
-    if door.kind == HINGED:
-        walls = [wall(lo, lo + JAMB), wall(hi - JAMB, hi)]  # jambs never move
+    if door.kind in (HINGED, DOUBLE):
+        jamb = JAMB if door.kind == HINGED else DOUBLE_JAMB
+        walls = [wall(lo, lo + jamb), wall(hi - jamb, hi)]  # jambs never move
         if door.open < PASSABLE:
-            walls.append(wall(lo + JAMB, hi - JAMB))
+            walls.append(wall(lo + jamb, hi - jamb))
         return walls
     # Sliding: each leaf covers its half, less how far it has slid into the wall.
     closed = 0.5 * (1.0 - door.open)
@@ -99,12 +104,12 @@ def in_doorway(door: Door, x: float, y: float, radius: float) -> bool:
 
 
 def try_use(doors: list[Door], x: float, y: float, angle: float) -> Door | None:
-    """The hinged door a player at (x, y) facing `angle` is using, if any: the
+    """The hinged or double door a player at (x, y) facing `angle` is using: the
     nearest within reach, roughly in front of them. Toggles it."""
     best: Door | None = None
     best_d = USE_REACH
     for door in doors:
-        if door.kind != HINGED:
+        if door.kind == SLIDING:  # automatic, not used
             continue
         dx, dy = door.x - x, door.y - y
         d = math.hypot(dx, dy)

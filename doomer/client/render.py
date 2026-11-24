@@ -320,10 +320,14 @@ class Renderer:
         result: U8Array = ((colour[:, None] & 0xF0) | shade).astype(np.uint8)
         return result
 
-    def _ceiling_light(self, cols: IntArray, depth: FloatArray) -> FloatArray | float:
+    def _ceiling_light(
+        self, cols: IntArray, depth: FloatArray, height: FloatArray
+    ) -> FloatArray | float:
         """Light on a ceiling at per-pixel `depth` in columns `cols` (a block
-        of rows): the light map below it, square-rooted (as the background's
-        ceiling), or 1 without lighting."""
+        of rows), each column's ceiling at `height`: the light map below it,
+        square-rooted (bounce light, as the background's ceiling), or 1
+        without lighting. A ceiling lower than a storey (the soffit of a
+        lintel over a door) sits in shadow: the plain light, a little less."""
         if self._light is None:
             return 1.0
         along = np.minimum(
@@ -332,7 +336,10 @@ class Renderer:
         camera = self._frame_camera
         x = camera.x + self._ray_dx[cols][:, None] * along
         y = camera.y + self._ray_dy[cols][:, None] * along
-        result: FloatArray = np.sqrt(np.minimum(self._light.at(x, y), 1.0))
+        light = np.minimum(self._light.at(x, y), 1.0)
+        low = (height < 1.0)[:, None]
+        shade = self.lighting.soffit_shade if self.lighting else 1.0
+        result: FloatArray = np.where(low, light * shade, np.sqrt(light))
         return result
 
     def _light_map_for(self, game_map: GameMap) -> LightMap | None:
@@ -1069,7 +1076,7 @@ class Renderer:
             if on_ceiling.any():
                 colour = np.full(len(cols), self.ceiling_colour)
                 lit = self._dithered(
-                    colour, row_depth, cols, r0, r1, self._ceiling_light(cols, row_depth)
+                    colour, row_depth, cols, r0, r1, self._ceiling_light(cols, row_depth, s.ceiling)
                 )
                 sub_frame = np.where(on_ceiling, lit, sub_frame)
                 sub_z = np.where(on_ceiling, row_depth, sub_z)

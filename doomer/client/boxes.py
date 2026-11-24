@@ -41,7 +41,18 @@ from doomer.client.palette import (
     U8Array,
 )
 from doomer.client.pixelart import BoolArray, Canvas, noise
-from doomer.shared.doors import DOOR_HALF, DOOR_HEIGHT, HINGED, HINGED_LEAF, JAMB, SWING, Door
+from doomer.shared.doors import (
+    DOOR_HALF,
+    DOOR_HEIGHT,
+    DOUBLE,
+    DOUBLE_JAMB,
+    DOUBLE_LEAF,
+    HINGED,
+    HINGED_LEAF,
+    JAMB,
+    SWING,
+    Door,
+)
 from doomer.shared.mapfile import STAIR_RISE, STAIRS_WALL_TYPE, WALL_UNITS, GameMap
 from doomer.shared.screens import SCREEN_HALF, SCREEN_HEIGHT
 from doomer.shared.screens import desk_screens as shared_desk_screens
@@ -690,6 +701,20 @@ def door_boxes(doors: Iterable[Door]) -> list[PlacedBox]:
             out.append(
                 PlacedBox(hinge_x, hinge_y, 0.0, angle, Box((0.0, HINGED_LEAF), t, h, faces))
             )
+        elif door.kind == DOUBLE:
+            jt = (-_JAMB_HALF, _JAMB_HALF)
+            sides = (_JAMB, _JAMB, _JAMB, _JAMB, _JAMB)
+            for y in ((-0.5, -0.5 + DOUBLE_JAMB), (0.5 - DOUBLE_JAMB, 0.5)):
+                out.append(PlacedBox(door.x, door.y, 0.0, f, Box(jt, y, h, sides)))
+            faces = (_LEAF_EDGE, _LEAF_RIGHT, _LEAF_EDGE, _LEAF_LEFT, _LEAF_EDGE)
+            leaf = Box((0.0, DOUBLE_LEAF), t, h, faces)
+            # Each leaf's model x runs from its hinge towards the middle; both
+            # free ends swing towards the facing.
+            for side, closed, turn in ((-1, f + math.pi / 2, -1), (1, f - math.pi / 2, 1)):
+                offset = side * (0.5 - DOUBLE_JAMB)
+                hx, hy = door.x + along[0] * offset, door.y + along[1] * offset
+                angle = closed + turn * door.open * SWING
+                out.append(PlacedBox(hx, hy, 0.0, angle, leaf))
         else:
             slide = 0.5 * door.open  # each leaf slides into the wall beside it
             faces = (_GLASS, _GLASS_EDGE, _GLASS, _GLASS_EDGE, _GLASS_EDGE)

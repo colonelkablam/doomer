@@ -195,9 +195,10 @@ def test_full_light_renders_every_surface_of_the_office_exactly_as_unlit() -> No
     things = sprites_from_things(office)
     unlit = Renderer(RenderConfig())
     fade = RenderConfig().shade_distance
-    full = Renderer(
-        RenderConfig(), LightingConfig(ambient=1.0, panel_intensity=0.0, shade_distance=fade)
+    no_panels = LightingConfig(
+        ambient=1.0, panel_intensity=0.0, shade_distance=fade, soffit_shade=1.0
     )
+    full = Renderer(RenderConfig(), no_panels)
     for camera in (
         Camera(3.0, 5.0, math.radians(-20)),
         Camera(11.5, 4.3, math.radians(-90), pitch=-0.3),

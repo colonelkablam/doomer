@@ -82,6 +82,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Apple Macintosh SE/30 with keyboard and mouse (on a desk; solid box model, faces its map angle) | no | [built] |
 | Desk with beige PC (single desk, sprite) | yes | [built] |
 | Office door: wood veneer, lever handle, kick plate; swings open on use (E) | yes, until opened | [built] (prototype) |
+| Double office doors: two such leaves meeting in the middle, for full-width doorways | yes, until opened | [built] (prototype) |
 | Sliding glass doors: aluminium frame, frosted band, push bar; open by themselves | yes, until open | [built] (prototype) |
 | Water cooler (box model: cream cabinet, hot and cold taps, upturned octagonal bottle; faces its map angle) | yes | [built] |
 | Filing cabinet (box model: five steel drawers with pulls and label cards; faces its map angle) | yes | [built] |
