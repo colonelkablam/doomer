@@ -22,7 +22,7 @@ Suggested floor order:
 | Floor | Theme | New things introduced |
 |---|---|---|
 | B1 | Mailroom and post | Staplers, photocopiers |
-| G | Reception and lobby | Swivel chairs, water coolers |
+| G | Double-height entrance lobby with a gallery, reception | Swivel chairs, water coolers |
 | 1 | Open-plan sales floor | Middle managers |
 | 2 | Accounts (all filing cabinets) | Fax swarms |
 | 3 | IT and the server room | Haywire mainframe terminals |
@@ -111,6 +111,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | b (11) | Executive desk: kneehole between drawer pedestals at the front; solid wood modesty panel and sides (low block, height 2, uses [facing]) | Executive offices |
 | c (12) | 1980s steel desk: mahogany laminate top, grey steel frame and legs, one drawer pedestal at its left end; open underneath (low block, height 2, uses [facing]) | Single desks |
 | d (13) | Two steel desks back to back in one cell, sitters facing each other: both long sides show a desk front (pedestal on the right), both ends are half pedestal panel, half open (low block, height 2; [facing] sets the axis) | Open-plan pods |
+| e (14) | Raised floor: plain sides with a nosing line every 1/8, blue carpet top (low block; walk up 1/8 steps) | Lobby gallery and its steps |
 
 ## Pickups [planned]
 

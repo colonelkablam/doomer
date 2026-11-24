@@ -2,14 +2,15 @@ name: Ground Floor
 # [floor] values on wall cells make low blocks, in eighths of a wall:
 # 2 = desk (0.68 m), 3 = counter (1 m). Wall types: b = executive desk,
 # d = two 1980s steel desks back to back. [facing] says which way a desk's
-# front (where you sit) faces; see docs/GAME.md.
+# front (where you sit) faces. e = raised floor (gallery, steps); [ceiling] g =
+# 16/8, a double-height space. See docs/GAME.md.
 
 [walls]
 144444441444444444444441
-4.......1..............4
-4...2...1.ddd...ddd....4
-4...2...1..............4
-4...2..................4
+4eeeeeee1..............4
+4...2..e1.ddd...ddd....4
+4...2..e1..............4
+4...2..e...............4
 4.......1..............4
 4.......1.ddd...ddd....4
 222222222..............4
@@ -24,10 +25,10 @@ name: Ground Floor
 
 [floor]
 000000000000000000000000
-000000000000000000000000
-000030000022200022200000
-000030000000000000000000
-000030000000000000000000
+044444440000000000000000
+000030030022200022200000
+000030020000000000000000
+000030010000000000000000
 000000000000000000000000
 000000000022200022200000
 000000000000000000000000
@@ -39,6 +40,24 @@ name: Ground Floor
 000000000000000000000000
 000000000000000000000000
 000000000000000000000000
+
+[ceiling]
+888888888888888888888888
+8ggggggg8888888888888888
+8ggggggg8888888888888888
+8ggggggg8888888888888888
+8ggggggg8888888888888888
+8ggggggg8888888888888888
+8ggggggg8888888888888888
+888888888888888888888888
+888888888888888888888888
+888888888888888888888888
+888888888888888888888888
+888888888888888888888888
+888888888888888888888888
+888888888888888888888888
+888888888888888888888888
+888888888888888888888888
 
 [facing]
 ........................
@@ -60,10 +79,11 @@ name: Ground Floor
 
 [things]
 # type          x     y     angle
-# Reception: a counter with a terminal
+# Entrance lobby: double height, a raised gallery along the north wall,
+# steps up beside the door, the reception counter below
 coop_start      2.5   2.5   0
 ficus           1.5   1.5   0
-ficus           7.5   1.5   0
+ficus           6.5   5.5   0
 terminal        4.5   3.5   0
 water_cooler    7.5   6.5   0
 ceiling_light   2.5   3.5   0

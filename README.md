@@ -9,8 +9,9 @@ editor.
 - Setting, characters, enemies, furniture: [docs/GAME.md](docs/GAME.md)
 - Engine, code design and milestones: [docs/DESIGN.md](docs/DESIGN.md)
 
-Current state: single-player walking around the ground floor, with solid desk
-pods and counters (milestone 2b).
+Current state: single-player on the ground floor: a double-height lobby with
+a gallery, desk pods you can jump onto, look up/down, jump and crouch
+(milestone 2c). Networking is next.
 
 ## Play (Linux)
 
@@ -22,8 +23,9 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m doomer.client
 ```
 
-Controls: mouse to look, WASD to move, arrow keys also work. Esc releases the
-mouse; Esc again quits. Click to recapture.
+Controls: mouse to look around (including up and down), WASD to move, arrow
+keys also work, Space to jump (you can get onto desks), Ctrl or C to crouch.
+Esc releases the mouse; Esc again quits. Click to recapture.
 
 Options: a map path as the first argument (default `maps/office.map`),
 `--mode coop|deathmatch`, `--config client.toml` (see `client.example.toml`).

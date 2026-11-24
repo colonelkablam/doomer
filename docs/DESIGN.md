@@ -97,8 +97,17 @@ means adding a module and registering it, not editing a dozen files.
   the file (south), so the file reads like a top-down view.
 - Angles: degrees in map files, radians in code. 0 = east; with `y` pointing
   down, positive angles turn clockwise on the top-down view (90 = south).
-- Players have `z` and `z_velocity` from the start (zero until heights exist),
-  so the protocol and collision code don't change shape later.
+- Heights are in walls (1 = one storey, 2.7 m; a cell is as wide as a storey
+  is tall). Players have feet height `z`, `z_velocity`, `on_ground`,
+  `crouching` and `pitch`.
+- **Vertical movement** (`shared/sim.py`, `MovementConfig`): gravity ~3.4 g;
+  jump apex 0.32 (clears a desk at 0.25, not a counter at 0.375); body 0.67
+  standing / 0.42 crouched, eye 0.6 / 0.35; steps up to 0.125 climbed
+  automatically; crouching halves speed and holds while there's no headroom.
+  Collision is height-aware: a cell blocks you if its floor is above your feet
+  plus the step height, or its ceiling leaves no room for your body. You
+  stand on the highest floor under your collision box. A box may always move
+  out of a cell it's already in. Furniture obstacles still block at any height.
 
 ## Map format
 
@@ -125,17 +134,26 @@ dm_spawn      1.5   3.5   0
 - `[walls]`: `.` = empty floor, `1`-`9` then `a`-`z` = wall types 1-35
   (texture), `#` = alias for `1`. Rows may be ragged; missing cells are walls. The map edge is treated as
   solid.
-- `[floor]` / `[ceiling]` (optional): one digit `0`-`9` per cell, defaults
-  0 and 8; same dimensions as `[walls]`. Heights are in **eighths of a wall**
-  (~34 cm with a 2.7 m office ceiling).
+- `[floor]` / `[ceiling]` (optional): one character per cell, `0`-`9` then
+  `a`-`z` for 10-35; defaults 0 and 8; same dimensions as `[walls]`. Heights
+  are in **eighths of a wall** (~34 cm with a 2.7 m office ceiling), so a
+  double-height atrium has `[ceiling]` `g` (16).
 - **Low blocks (raised floors)**: a wall cell (digit in `[walls]`) whose
   `[floor]` value is 1-7 is a block of that height instead of a full wall:
   2 = desk (0.68 m), 3 = counter (1 m). Its sides use the wall type's texture;
   its top colour comes from `TOP_COLOURS` in `client/textures.py`. `0` (or 8+)
-  keeps the full-height wall, so maps without `[floor]` are unchanged. Blocks
-  are solid (no climbing yet). Things may stand on a low block and are drawn
-  on its top. `[floor]` values on empty cells (walkable raised floors) and
-  `[ceiling]` are parsed but not yet used.
+  keeps the full-height wall, so maps without `[floor]` are unchanged. A low
+  block is also a raised floor: you can stand on it if you can get up (steps
+  of 1 unit are climbed automatically; a desk needs a jump). Wall type `e` is a
+  plain raised floor (galleries, steps). Things may stand on a low block and
+  are drawn on its top. A raised floor must have a wall type (its sides need a
+  texture), so `[floor]` on an empty `.` cell is an error.
+- **Ceilings**: `[ceiling]` sets each cell's ceiling. Walls are drawn up to the
+  ceiling of the space in front of them; where the ceiling drops between cells
+  a bulkhead face is drawn. Wall types may register an `UPPER` texture for
+  the part above one storey (plain wallpaper above an office wall's dado).
+  **No room over room**: one floor and one ceiling per cell, as in Doom. Other
+  storeys of the building are separate maps.
 - `[facing]` (optional): one of `n`, `e`, `s`, `w` per cell (`.` or missing =
   `s`): which way a cell's front faces, for wall types with different
   textures per side (desks: the front is where you sit).
@@ -204,7 +222,21 @@ dm_spawn      1.5   3.5   0
   (quantised to the palette).
 - Ceiling and floor darken with distance, with 4x4 ordered (Bayer) dithering to
   hide banding. Precomputed, so free per frame.
-- Look up/down by y-shearing (moving the horizon), limited to about +/-30 deg.
+- **Camera**: position, angle, eye height `z` and pitch. A point at height h and
+  perpendicular depth d is drawn at row `horizon + (eye - h) * projection / d`;
+  everything uses that formula or its inverse.
+- **Look up/down by y-shearing**: `horizon = middle + tan(pitch) * projection`,
+  clamped to +/-25 deg. Verticals stay vertical (not true pitch, as in Heretic
+  and Duke Nukem 3D).
+- **Span renderer**: the raycaster reports changes of space (low blocks,
+  ceiling changes); each change can draw a riser face, a bulkhead face, and
+  floor/ceiling surfaces at its heights until the next change, z-tested. The
+  default floor (0) and ceiling (1) are a background cached per (horizon, eye
+  height). Runs of identical blocks are merged into one hit. Each layer is
+  drawn in a lower pass (risers, back faces, shadows, floors) and an upper
+  pass (bulkheads, ceilings), each cropped to its rows. Explicit surfaces are
+  dithered like the background. ~4 ms in corridors, ~9 ms among desk pods,
+  ~11 ms in the double-height lobby.
 - **Sprites** (`client/sprites.py`): 64x64 palette art with an opacity mask,
   spanning one cell wide by one wall tall and standing on the floor, so texel
   size matches the walls; ceiling-hung things are drawn at the top of the
@@ -243,11 +275,14 @@ keys), later floor/ceiling heights; place things. Shows mode readiness
 | 4 | Enemies: entities, behaviours, sight, flow-field pathing, projectiles (see GAME.md "NPC design") | Co-op floor with staplers, chairs and a photocopier |
 | 5 | Level editor | Round-trips a map; shows mode readiness |
 | 2b ✅ | Raised floors: low blocks (desk pods, counters) rendered with faces and tops, per-pixel z-buffer, things on blocks | Desks hide what's behind them; terminals sit on desks |
-| 6 | Walkable raised floors, ceiling heights, step-up/gravity, y-shearing | Stairs and ledges render and are walkable |
+| 2c ✅ | Heights and movement: per-cell ceilings, span renderer, look up/down, jump, crouch, stand on desks, stairs; double-height lobby with a gallery | Walk up the steps to the gallery, jump onto a desk |
+| 6 | Ramp cells (sloped floors) for proper-looking stairs and full-storey mezzanines | A storey-high mezzanine reached by a ramp/stair |
 
-Most of the heights work was pulled forward as 2b (desks). What's left in 6
-matters less for an office game: floors are flat, and stairs between floors
-are level transitions.
+Heights were pulled forward (2b, 2c) because they changed how the renderer
+and collision work, and the network protocol carries the results (`z`, pitch,
+jump, crouch). Steps are a whole cell deep (2.7 m), so stairs look terraced;
+ramp cells (a sloped floor, drawn with a closed-form ray-plane intersection)
+are the fix.
 
 ## Setup
 
