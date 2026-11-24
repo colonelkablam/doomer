@@ -60,9 +60,9 @@ def test_ragged_rows_are_padded_with_walls_and_outside_is_solid() -> None:
 
 
 def test_partial_height_grid_is_padded_with_default() -> None:
-    m = parse_map("[walls]\n###\n#.#\n###\n\n[floor]\n000\n020\n")
-    assert m.floor[1] == (0, 2, 0)
-    assert m.floor[2] == (DEFAULT_FLOOR,) * 3
+    m = parse_map("[walls]\n####\n#.3#\n####\n\n[floor]\n0000\n0020\n")
+    assert m.floor[1] == (0, 0, 2, 0)
+    assert m.floor[2] == (DEFAULT_FLOOR,) * 4
 
 
 @pytest.mark.parametrize(
@@ -91,7 +91,7 @@ def test_error_includes_line_number() -> None:
 
 
 def test_round_trip() -> None:
-    original = parse_map(SMALL + "\n[floor]\n00000\n01200\n")
+    original = parse_map(SMALL + "\n[floor]\n00000\n00020\n")
     assert parse_map(format_map(original)) == original
 
 
@@ -124,7 +124,7 @@ BLOCKS = """\
 [floor]
 000000
 002300
-000800
+008000
 
 [things]
 coop_start 1.5 1.5 0
@@ -167,3 +167,29 @@ def test_facing_grid_parses_defaults_and_round_trips() -> None:
     assert "[facing]" not in format_map(parse_map("[walls]\n###\n"))
     with pytest.raises(MapError, match="bad character 'x'"):
         parse_map("[walls]\n###\n[facing]\n.x.\n")
+
+
+def test_heights_above_nine_use_letters_and_ceilings_per_cell() -> None:
+    m = parse_map(
+        "[walls]\n#####\n#...#\n#.3.#\n#####\n\n"
+        "[floor]\n00000\n00000\n00a00\n\n"  # 10/8: a block taller than a storey...
+        "[ceiling]\n88888\n8gg88\n8gg88\n"  # ...under a 16/8 = two-storey ceiling
+    )
+    assert m.ceiling_height(1, 1) == 2.0 and m.ceiling_height(3, 1) == 1.0
+    assert m.floor_height(2, 2) == 10 / WALL_UNITS
+    assert m.is_low_block(2, 2)  # 10 < its ceiling of 16, so not a full wall
+    assert m.floor_height(1, 1) == 0.0
+    assert m.floor_height(0, 0) == math.inf and m.is_full_wall(0, 0)
+    assert parse_map(format_map(m)) == m
+
+
+@pytest.mark.parametrize(
+    ("text", "message"),
+    [
+        ("[walls]\n###\n#.#\n###\n[floor]\n000\n010\n", "needs a wall type"),
+        ("[walls]\n###\n#.#\n###\n[ceiling]\n888\n808\n", "ceiling must be above"),
+    ],
+)
+def test_height_errors(text: str, message: str) -> None:
+    with pytest.raises(MapError, match=message):
+        parse_map(text)

@@ -93,7 +93,8 @@ DESKS = parse_map(
 
 def test_ray_continues_through_low_blocks_to_the_wall() -> None:
     hits = cast_ray(DESKS, 1.5, 2.5, 0.0)
-    assert [(h.cell_x, h.top) for h in hits] == [(3, 0.25), (4, 0.375), (6, 0.625), (9, 1.0)]
+    assert [(h.cell_x, h.top) for h in hits[:-1]] == [(3, 0.25), (4, 0.375), (6, 0.625)]
+    assert hits[-1].cell_x == 9 and hits[-1].full
     first, second, third, wall = hits
     assert (first.distance, first.exit_distance) == pytest.approx((1.5, 2.5))
     assert (second.distance, second.exit_distance) == pytest.approx((2.5, 3.5))
@@ -127,3 +128,21 @@ def test_entry_and_exit_faces(angle: float, face: int, exit_face: int) -> None:
     hit = cast_ray(block, x, y, angle)[0]
     assert (hit.cell_x, hit.cell_y) == (2, 2)
     assert (hit.face, hit.exit_face) == (face, exit_face)
+
+
+def test_ceiling_changes_are_reported_with_both_heights() -> None:
+    # A double-height stretch (ceiling 16/8 = 2) between ordinary rooms.
+    atrium = parse_map(
+        "[walls]\n##########\n#........#\n##########\n\n[ceiling]\n8888888888\n888gggg888\n"
+    )
+    hits = cast_ray(atrium, 1.5, 1.5, 0.0)
+    into, out_of, wall = hits
+    assert (into.cell_x, into.wall_type, into.prev_ceiling, into.ceiling) == (3, 0, 1.0, 2.0)
+    assert into.exit_distance == pytest.approx(out_of.distance)  # the stretch ends there
+    assert (out_of.cell_x, out_of.prev_ceiling, out_of.ceiling) == (7, 2.0, 1.0)  # a bulkhead
+    assert wall.full and wall.cell_x == 9
+
+
+def test_stepping_off_a_desk_onto_the_same_floor_is_not_a_hit() -> None:
+    hits = cast_ray(DESKS, 1.5, 2.5, 0.0)
+    assert all(h.wall_type != 0 for h in hits)  # only desks and the wall

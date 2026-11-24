@@ -9,13 +9,27 @@ apart). Keep a running "distance to the next vertical line" and "distance to
 the next horizontal line", always step to whichever is nearer, and check the
 cell you've entered. Each step is a couple of additions, and you never test a
 cell the ray doesn't actually pass through.
+
+Heights: every cell has a floor and a ceiling (doomer/shared/mapfile.py). The
+ray reports a hit wherever the space it's passing through changes:
+
+- it enters a low block (a desk, a counter, a raised floor): one hit per
+  cell, because each has its own faces and textures;
+- it enters open floor whose floor or ceiling height differs from where it
+  came from (into a double-height atrium, under a bulkhead);
+- it reaches a full-height wall, where it stops.
+
+Each hit records the floor and ceiling of the space the ray came from and of
+the space it entered: everything a renderer needs for a riser face where the
+floor goes up, a bulkhead face where the ceiling comes down, and the floor and
+ceiling surfaces of each stretch between hits.
 """
 
 import math
 from enum import Enum
 from typing import NamedTuple
 
-from doomer.shared.mapfile import DEFAULT_WALL, EAST, NORTH, SOUTH, WEST, GameMap
+from doomer.shared.mapfile import EAST, EMPTY, NORTH, SOUTH, WALL_UNITS, WEST, GameMap
 
 
 class Side(Enum):
@@ -24,23 +38,26 @@ class Side(Enum):
 
 
 class RayHit(NamedTuple):
-    # A NamedTuple rather than a frozen dataclass: the renderer creates ~1,000 of
-    # these per frame, and tuple construction is several times cheaper.
+    """Where a ray enters a new kind of space. A NamedTuple rather than a frozen
+    dataclass: the renderer creates ~1,000 of these per frame, and tuple
+    construction is several times cheaper."""
+
     distance: float  # Euclidean, along the ray. Renderers correct for fisheye themselves.
     cell_x: int
     cell_y: int
-    wall_type: int
+    wall_type: int  # 0 when entering open floor with different heights
     side: Side
-    # Where along the wall face the ray hit, 0..1, for texture lookup. Oriented so
-    # textures read left-to-right when you face the wall.
+    # Where along the face the ray hit, 0..1, for texture lookup. Oriented so
+    # textures read left-to-right when you face it.
     u: float
-    # Heights as fractions of a wall. A full wall has top 1. A low block (desk)
-    # has its own top, and `base` is the top of the cell the ray came from, so
-    # the visible front face spans base..top (nothing if base >= top).
-    top: float = 1.0
+    # Heights in walls (1 = a storey). `top` is the entered cell's floor: the
+    # top of a low block, the floor of open space, or inf for a full wall.
+    # `base` is the floor of the space the ray came from, so a riser face spans
+    # base..top (nothing if base >= top).
+    top: float = math.inf
     base: float = 0.0
-    # Where the ray leaves the cell: the far edge of a low block's top surface,
-    # and the back face it leaves through (seen through an open desk).
+    # Where the ray leaves the low block, or the stretch of open space with
+    # these heights: the far edge of its floor and ceiling surfaces.
     exit_distance: float = math.inf
     exit_side: Side = Side.X
     exit_u: float = 0.0
@@ -48,6 +65,13 @@ class RayHit(NamedTuple):
     # (mapfile.NORTH/EAST/SOUTH/WEST), for per-side textures.
     face: int = 0
     exit_face: int = 0
+    ceiling: float = 1.0  # ceiling of the entered space
+    prev_ceiling: float = 1.0  # ceiling of the space the ray came from
+
+    @property
+    def full(self) -> bool:
+        """A full-height wall: the ray stops here."""
+        return math.isinf(self.top)
 
 
 def cast_ray(
@@ -55,9 +79,7 @@ def cast_ray(
 ) -> list[RayHit]:
     """Cast a ray and return the hits along it, nearest first.
 
-    Low blocks don't stop the ray: each one is reported and the ray carries on,
-    so the renderer can draw the desk and the wall behind it. The list ends at
-    the first full-height wall, or at max_distance.
+    The list ends at the first full-height wall, or at max_distance.
     """
     dx, dy = math.cos(angle), math.sin(angle)
     cell_x, cell_y = math.floor(x), math.floor(y)
@@ -75,11 +97,21 @@ def cast_ray(
     else:
         step_y, next_y = 1, (cell_y + 1 - y) * delta_y if dy != 0.0 else math.inf
 
-    # Hot loop (320+ rays a frame): local variables and an inlined grid lookup
-    # instead of method calls.
-    walls, width, height = game_map.walls, game_map.width, game_map.height
+    # Hot loop (320+ rays a frame): local variables and inlined grid lookups
+    # instead of method calls. Heights stay in integer units (eighths) until a
+    # hit is made, so comparisons are exact.
+    walls, floors, ceilings = game_map.walls, game_map.floor, game_map.ceiling
+    width, height = game_map.width, game_map.height
     hits: list[RayHit] = []
-    current_top = 0.0  # top of the cell the ray is in (0 = open floor)
+
+    # The space the ray starts in (the camera may be standing on a desk), and
+    # the ceiling of the last open (non-block) space it was in: stepping off a
+    # desk back onto the same floor isn't a change worth reporting.
+    floor_now, ceiling_now = start_heights(game_map, cell_x, cell_y)
+    open_ceiling = ceiling_now
+    open_hit = -1  # index of the open-space hit whose exit distance is still open
+    facing = game_map.facing
+
     while True:
         if next_x < next_y:
             distance, side = next_x, Side.X
@@ -91,23 +123,55 @@ def cast_ray(
             cell_y += step_y
         if distance > max_distance:
             return hits
+
         if 0 <= cell_x < width and 0 <= cell_y < height:
             wall = walls[cell_y][cell_x]
+            floor_units, ceiling_units = floors[cell_y][cell_x], ceilings[cell_y][cell_x]
         else:
-            wall = DEFAULT_WALL  # outside the map is solid
-        if not wall:
-            current_top = 0.0
-            continue
-        top = game_map.top_height(cell_x, cell_y)
-        u = _wall_u(x, y, dx, dy, distance, side)
-        # The ray leaves this cell at the next grid line it crosses.
+            wall, floor_units, ceiling_units = 1, 0, WALL_UNITS  # outside the map is solid
+        full = wall != EMPTY and not 0 < floor_units < ceiling_units
+        low_block = wall != EMPTY and not full
+        new_floor = 0 if wall == EMPTY else floor_units
+
+        if not (full or low_block):
+            if ceiling_units == open_ceiling:
+                floor_now, ceiling_now = new_floor, ceiling_units
+                continue  # same kind of open space as before: nothing to report
+            open_ceiling = ceiling_units
+
+        if open_hit >= 0:  # close the open stretch we were in
+            hits[open_hit] = hits[open_hit]._replace(exit_distance=distance)
+            open_hit = -1
+
         if next_x < next_y:
             exit_distance, exit_side = next_x, Side.X
         else:
             exit_distance, exit_side = next_y, Side.Y
         exit_u = _wall_u(x, y, dx, dy, exit_distance, exit_side)
-        face = _entry_face(side, dx, dy)
         exit_face = (_entry_face(exit_side, dx, dy) + 2) % 4  # leave by the opposite kind
+
+        if low_block and hits:
+            last = hits[-1]
+            if (
+                last.wall_type == wall
+                and last.exit_distance == distance
+                and floor_units == floor_now
+                and ceiling_units == ceiling_now
+                and facing[last.cell_y][last.cell_x] == facing[cell_y][cell_x]
+            ):
+                # A run of identical blocks (a desk pod, a mezzanine): the faces
+                # between them have zero height, so extend one hit instead.
+                hits[-1] = last._replace(
+                    exit_distance=exit_distance,
+                    exit_side=exit_side,
+                    exit_u=exit_u,
+                    exit_face=exit_face,
+                )
+                continue
+
+        u = _wall_u(x, y, dx, dy, distance, side)
+        face = _entry_face(side, dx, dy)
+
         hits.append(
             RayHit(
                 distance,
@@ -116,18 +180,31 @@ def cast_ray(
                 wall,
                 side,
                 u,
-                top,
-                current_top,
-                exit_distance,
+                math.inf if full else new_floor / WALL_UNITS,
+                floor_now / WALL_UNITS,
+                exit_distance if low_block else math.inf,
                 exit_side,
                 exit_u,
                 face,
                 exit_face,
+                ceiling_units / WALL_UNITS,
+                ceiling_now / WALL_UNITS,
             )
         )
-        if top >= 1.0:
+        if full:
             return hits
-        current_top = top
+        if not low_block:
+            open_hit = len(hits) - 1  # its exit is where this stretch of space ends
+        floor_now, ceiling_now = new_floor, ceiling_units
+
+
+def start_heights(game_map: GameMap, x: int, y: int) -> tuple[int, int]:
+    """(floor, ceiling) in units of the space in cell (x, y): where a ray (or a
+    camera) starts. A low block's floor is its top: you're standing on it."""
+    if not game_map.in_bounds(x, y):
+        return 0, WALL_UNITS
+    floor = game_map.floor[y][x] if game_map.is_low_block(x, y) else 0
+    return floor, game_map.ceiling[y][x]
 
 
 def _entry_face(side: Side, dx: float, dy: float) -> int:
@@ -147,3 +224,12 @@ def _wall_u(x: float, y: float, dx: float, dy: float, distance: float, side: Sid
         return u if dx > 0 else 1.0 - u
     u = (x + dx * distance) % 1.0
     return 1.0 - u if dy > 0 else u
+
+
+def cell_exit_distance(x: float, y: float, angle: float) -> float:
+    """How far a ray from (x, y) travels before leaving the cell it starts in."""
+    dx, dy = math.cos(angle), math.sin(angle)
+    cx, cy = math.floor(x), math.floor(y)
+    to_x = ((cx + 1 - x) / dx if dx > 0 else (x - cx) / -dx) if dx != 0.0 else math.inf
+    to_y = ((cy + 1 - y) / dy if dy > 0 else (y - cy) / -dy) if dy != 0.0 else math.inf
+    return min(to_x, to_y)

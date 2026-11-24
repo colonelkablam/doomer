@@ -64,11 +64,9 @@ def test_floor_darkens_towards_the_horizon() -> None:
 
 
 def test_unknown_wall_type_uses_missing_texture() -> None:
-    odd = parse_map("[walls]\n#####\n#...#\n#####\n")
-    # Wall type 1 is registered; poke an unregistered type in via the slot table.
-    renderer = Renderer(CFG)
-    renderer.slot_table = renderer.slot_table[:1]  # only type 0 known
-    frame = renderer.render_indices(odd, Camera(1.5, 1.5, 0.0))
+    # 'z' (wall type 35) has no texture registered.
+    odd = parse_map("[walls]\n#####\n#...z\n#####\n")
+    frame = Renderer(CFG).render_indices(odd, Camera(1.5, 1.5, 0.0))
     assert (int(frame[CFG.width // 2, CFG.height // 2]) >> 4) == MAGENTA
 
 

@@ -66,21 +66,34 @@ class GameMap:
         return self.walls[y][x]
 
     def is_solid(self, x: int, y: int) -> bool:
-        """Blocks movement: full walls and low blocks alike (no climbing yet)."""
+        """A wall cell: a full wall or a low block (which you can only get onto
+        from above). Height-aware movement uses floor_height instead."""
         return self.wall_at(x, y) != EMPTY
 
-    def top_height(self, x: int, y: int) -> float:
-        """Height of a cell's top, as a fraction of a wall.
+    def is_full_wall(self, x: int, y: int) -> bool:
+        return self.is_solid(x, y) and not self.is_low_block(x, y)
 
-        Empty cells: 0. Full walls: 1. A wall cell whose [floor] value is between
-        1 and WALL_UNITS - 1 is a low block (a desk, a counter) of that height.
-        """
+    def floor_height(self, x: int, y: int) -> float:
+        """Height of the surface you'd stand on in a cell, in walls (1 = one
+        storey, 2.7 m). Empty cells: their [floor] (0 unless raised). Low blocks
+        (desks, counters, raised floors): their top. Full walls: infinite."""
+        if not self.in_bounds(x, y):
+            return math.inf
+        units = self.floor[y][x]
+        if self.walls[y][x] == EMPTY:
+            return units / WALL_UNITS
+        return units / WALL_UNITS if 0 < units < self.ceiling[y][x] else math.inf
+
+    def ceiling_height(self, x: int, y: int) -> float:
+        """Height of a cell's ceiling, in walls. Default 1 (one storey)."""
         if not self.in_bounds(x, y):
             return 1.0
-        if self.walls[y][x] == EMPTY:
-            return 0.0
-        units = self.floor[y][x]
-        return units / WALL_UNITS if 0 < units < WALL_UNITS else 1.0
+        return self.ceiling[y][x] / WALL_UNITS
+
+    def top_height(self, x: int, y: int) -> float:
+        """Height of a cell's top for rendering: its floor height, but 1 for a
+        full wall (which reaches the default ceiling)."""
+        return min(self.floor_height(x, y), 1.0)
 
     def facing_at(self, x: int, y: int) -> int:
         """Which way a cell's front faces (NORTH/EAST/SOUTH/WEST)."""
@@ -89,7 +102,10 @@ class GameMap:
         return self.facing[y][x]
 
     def is_low_block(self, x: int, y: int) -> bool:
-        return 0.0 < self.top_height(x, y) < 1.0
+        """A wall cell raised only part way: [floor] between 1 and its ceiling."""
+        if not self.in_bounds(x, y) or self.walls[y][x] == EMPTY:
+            return False
+        return 0 < self.floor[y][x] < self.ceiling[y][x]
 
     def things_of_type(self, type_name: str) -> list[Thing]:
         return [t for t in self.things if t.type == type_name]
@@ -161,8 +177,23 @@ def parse_map(text: str) -> GameMap:
         things=(),
         facing=facing,
     )
+    _check_heights(game_map)
     things = tuple(_parse_thing(n, line, game_map) for n, line in sections.get("things", []))
     return replace(game_map, things=things)
+
+
+def _check_heights(m: GameMap) -> None:
+    for y in range(m.height):
+        for x in range(m.width):
+            floor, ceiling = m.floor[y][x], m.ceiling[y][x]
+            if m.walls[y][x] == EMPTY:
+                if floor:
+                    raise MapError(
+                        f"cell ({x}, {y}): a raised floor needs a wall type in [walls] "
+                        "(it textures the sides)"
+                    )
+                if ceiling <= floor:
+                    raise MapError(f"cell ({x}, {y}): ceiling must be above the floor")
 
 
 def format_map(game_map: GameMap) -> str:
@@ -175,7 +206,7 @@ def format_map(game_map: GameMap) -> str:
     ):
         if any(c != default for row in grid for c in row):
             out += ["", f"[{section}]"]
-            out += ["".join(str(c) for c in row) for row in grid]
+            out += ["".join(height_char(c) for c in row) for row in grid]
     if any(c != DEFAULT_FACING for row in game_map.facing for c in row):
         out += ["", "[facing]"]
         out += ["".join(_FACING_CHARS[c] for c in row) for row in game_map.facing]
@@ -229,8 +260,21 @@ def _facing_cell(ch: str) -> int | None:
     return _FACING_CHARS.index(ch) if ch in _FACING_CHARS else None
 
 
+def height_char(units: int) -> str:
+    """The [floor]/[ceiling] character for a height: '0'-'9', then 'a'-'z' (10-35)."""
+    if 0 <= units <= 9:
+        return str(units)
+    if 10 <= units <= 35:
+        return _LETTERS[units - 10]
+    raise ValueError(f"height {units} has no map character")
+
+
 def _height_cell(ch: str) -> int | None:
-    return int(ch) if ch in "0123456789" else None
+    if ch in "0123456789":
+        return int(ch)
+    if ch in _LETTERS:
+        return 10 + _LETTERS.index(ch)
+    return None
 
 
 def _parse_grid(

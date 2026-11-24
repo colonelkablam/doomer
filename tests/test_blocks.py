@@ -141,7 +141,7 @@ def test_open_desk_shows_the_floor_through_the_gap_under_it() -> None:
     # drawn over the background, so the z-buffer is still infinite there.
     assert math.isinf(R.zbuffer[col, gap_row])
     # ...in the desk's contact shadow: same colour ramp as the open floor, darker.
-    floor = int(R.background[col, gap_row])
+    floor = int(R.background(R.horizon, EYE_HEIGHT)[col, gap_row])
     shadowed = int(frame[col, gap_row])
     assert shadowed >> 4 == floor >> 4
     assert (shadowed & 0x0F) < (floor & 0x0F)

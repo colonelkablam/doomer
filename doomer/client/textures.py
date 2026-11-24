@@ -56,6 +56,10 @@ BoolArray = npt.NDArray[np.bool_]
 # from north; see doomer/shared/mapfile.py.
 FRONT, RIGHT, BACK, LEFT = range(4)
 ALL_SIDES = (FRONT, RIGHT, BACK, LEFT)
+# Not a side: the texture for any part of a wall above one storey (a double-
+# height atrium), so the dado rail and skirting don't repeat halfway up.
+# Wall types without one repeat their front texture.
+UPPER = 4
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,11 +98,17 @@ def build_atlas() -> tuple[U8Array, npt.NDArray[np.intp]]:
     """
     max_type = max((r.wall_type for r in _REGISTRATIONS), default=0)
     slots = [missing_texture()]
-    slot_table = np.zeros((max_type + 1, 4), dtype=np.intp)
+    slot_table = np.zeros((max_type + 1, 5), dtype=np.intp)
+    upper_given: set[int] = set()
     for reg in _REGISTRATIONS:
         for side in reg.sides:
             slot_table[reg.wall_type, side] = len(slots)
+            if side == UPPER:
+                upper_given.add(reg.wall_type)
         slots.append(reg.texture)
+    for wall_type in range(max_type + 1):
+        if wall_type not in upper_given:
+            slot_table[wall_type, UPPER] = slot_table[wall_type, FRONT]
     atlas = np.stack([s.T for s in slots])  # (n, u, v)
     return np.ascontiguousarray(atlas), slot_table
 
@@ -138,6 +148,25 @@ def missing_texture() -> U8Array:
     v, u = grid()
     checker = ((u >> 3) ^ (v >> 3)) & 1
     return indices(MAGENTA, np.where(checker == 1, 15.0, 3.0))
+
+
+def office_wall_upper(seed: int = 1) -> U8Array:
+    """The same striped wallpaper as office_wall, without the dado and skirting,
+    for walls taller than a storey."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    stripes = np.where((u % 8) < 4, 0.6, 0.0)
+    return indices(SAND, 10 + stripes + (noise(rng, 16) - 0.5) * 1.2)
+
+
+def raised_floor_edge(seed: int = 14) -> U8Array:
+    """Side of a raised floor (mezzanine, steps): painted plaster with a
+    carpet-gripper strip at the top edge and skirting at the bottom."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    tex = indices(SAND, 8.5 + (noise(rng, 8) - 0.5))
+    tex = np.where(v % 8 == 0, indices(GREY, 10.0), tex)  # nosing at each 1/8 step edge
+    return np.where(v >= 60, indices(WOOD, 5.0), tex).astype(np.uint8)
 
 
 def office_wall(seed: int = 1) -> U8Array:
@@ -436,6 +465,7 @@ TOP_COLOURS: dict[int, int] = {
     11: indices(WOOD, 10.0).item(),  # executive desk
     12: indices(WOOD, 6.0).item(),  # 1980s steel desk: dark mahogany laminate
     13: indices(WOOD, 6.0).item(),  # pair of steel desks back to back
+    14: indices(BLUE, 6.0).item(),  # raised floor: 1980s corporate blue carpet
 }
 
 DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {
@@ -452,6 +482,14 @@ DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {
 
 for _wall_type, _make in DEFAULT_WALL_TEXTURES.items():
     register_wall_texture(_wall_type, _make())
+
+# Above one storey: plain wallpaper over office walls and lift doors (the lift
+# shaft wall continues up); other types repeat their own texture.
+register_wall_texture(1, office_wall_upper(), sides=(UPPER,))
+register_wall_texture(5, office_wall_upper(), sides=(UPPER,))
+# 'e' (14): raised floor (mezzanines, steps). Walkable once you're up.
+register_wall_texture(14, raised_floor_edge())
+register_wall_texture(14, office_wall_upper(), sides=(UPPER,))
 
 # Desks, per side (from the desk's own point of view; its front is where you
 # sit). Map characters: 'a' (10) office desk, 'b' (11) executive desk,

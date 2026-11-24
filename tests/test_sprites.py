@@ -75,10 +75,13 @@ def test_nearer_sprite_is_drawn_over_farther_one() -> None:
 
 
 def test_fullbright_sprites_are_not_darkened() -> None:
-    depth = 7.0
+    # Near enough that the light's 2-texel diffuser covers whole pixels (further
+    # away it falls between pixel centres), far enough to be well shaded if lit.
+    depth = 4.0
     frame = R.render_indices(OPEN, CAM, [SpriteInstance("ceiling_light", 1.5 + depth, 2.5)])
     left, top, size = screen_rect(depth)
-    y = int(top + 2.0 * size / 64)  # the lit diffuser rows
+    # The screen row whose centre samples texel row 2: the lit diffuser.
+    y = round(top + 2.5 * size / 64 - 0.5)
     pixel = int(frame[CFG.width // 2, y])
     assert pixel >> 4 == CREAM and pixel & 0x0F == 15
 
