@@ -12,7 +12,8 @@ package keeps the short name `doomer`.
 - **Server** (Pi 5): authoritative. Owns player positions, health, scores and
   hits. Never renders. asyncio TCP, JSON lines, 60 Hz fixed tick.
   `TCP_NODELAY` on every socket.
-- **Clients**: render locally with pygame-ce (numpy for per-column maths).
+- **Clients**: render locally with pygame-ce (numpy for per-pixel maths,
+  numba to compile the ray casting).
   They send inputs and receive state snapshots. Never pixels.
 - **Model/view/input separation**: `doomer/shared` holds the map, player state
   and collision. It is standard library only (no pygame, no numpy), so the
@@ -179,10 +180,22 @@ dm_spawn      1.5   3.5   0
 ## Rendering
 
 - Grid raycaster (DDA) at 320x200 internal resolution, scaled up to the window.
-- **Two-phase frame**: the DDA is a Python loop (one ray per column, 320 a
-  frame); everything per-pixel is vectorised numpy over the whole frame.
-  About 3 ms per frame for the office without blocks in view, ~6 ms with desk
-  pods filling the view.
+- **Two-phase frame**: the DDA (one ray per column, 320 a frame) is compiled;
+  everything per-pixel is vectorised numpy over the whole frame.
+- **Compiled ray casting** (`client/fastcast.py`): the renderer's DDA is the
+  same algorithm as `shared/raycast.py`, compiled to machine code with numba
+  (`@njit(cache=True)`: ~3 s to compile on first launch, cached on disk
+  after). All 320 rays in one call, written as struct-of-arrays (field x span
+  x column) that the numpy passes read directly; it also adds the camera's
+  own-space spans, face texture slots and back-face flags. Why: in Python the
+  per-column loop was ~40% of a frame, nearly all interpreter overhead (~17k
+  Python calls a frame, an object per hit); compiled it's ~0.3 ms, and frames
+  went from 12.5 to 8.4 ms in the lobby (9.0 -> 5.9 ms open plan) on the
+  cloud VM. `shared/raycast.py` stays pure Python (the server will use it
+  for hitscan, and it's the readable reference); `tests/test_fastcast.py`
+  checks the two agree exactly, ray for ray. numba over C/C++: no compiler
+  toolchain needed on Windows (wheels for Linux x86/ARM and Windows), and it
+  stays Python. `NUMBA_DISABLE_JIT=1` runs it uncompiled, for debugging.
 - **Per-pixel z-buffer** (w x h perpendicular distances). Walls write it;
   low blocks and sprites draw only where nearer, so a desk hides the bottom
   of the wall and of any sprite behind it regardless of draw order. (Doom used

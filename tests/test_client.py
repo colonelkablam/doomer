@@ -159,4 +159,5 @@ def test_renderer_caches_follow_the_map_not_its_id() -> None:
             "[walls]\n" + "#" * width + "\n#" + "." * (width - 2) + "#\n" + "#" * width + "\n"
         )
         renderer.render_indices(m, Camera(1.5, 1.5, 0.0))
-        assert renderer._cell_slots and len(renderer._cell_slots[0]) == width
+        assert renderer._map_arrays is not None
+        assert renderer._map_arrays.walls.shape == (3, width)

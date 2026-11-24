@@ -43,12 +43,12 @@ import functools
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import NamedTuple
 
 import numpy as np
 import numpy.typing as npt
 import pygame
 
+from doomer.client import fastcast as fc
 from doomer.client.boxes import (
     BOX_MODELS,
     BOX_OPAQUE,
@@ -86,16 +86,7 @@ from doomer.shared.mapfile import (
     RAIL_HEIGHT,
     RAILING_WALL_TYPE,
     STAIRS_WALL_TYPE,
-    WALL_UNITS,
     GameMap,
-)
-from doomer.shared.raycast import (
-    RayHit,
-    Side,
-    cast_ray,
-    cell_exit_distance,
-    cell_exit_u,
-    start_heights,
 )
 
 MIN_SHADE = 0.25
@@ -127,6 +118,7 @@ _BACKGROUND_CACHE_SIZE = 64
 
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.intp]
+Int64Array = npt.NDArray[np.int64]
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,16 +156,6 @@ def sprites_from_things(game_map: GameMap) -> list[SpriteInstance]:
     return out
 
 
-class SpanHit(NamedTuple):
-    """A change of space on one column's ray, with what the renderer needs."""
-
-    hit: RayHit
-    exits_to_floor: bool  # a low block left into open floor: its back face may show
-    slot: int  # atlas slot of the face the ray enters by
-    back_slot: int  # ... and of the face it leaves by
-    upper_slot: int  # texture for a bulkhead face above it
-
-
 def make_frame_surface(config: RenderConfig) -> pygame.Surface:
     """An 8-bit surface carrying the game palette, for Renderer.render to fill."""
     surface = pygame.Surface((config.width, config.height), depth=8)
@@ -197,7 +179,8 @@ class Renderer:
         # Distance from the eye to a virtual screen, in pixels.
         self.projection = (w / 2) / tan_half_fov
         self._offsets = [math.atan((2 * (c + 0.5) / w - 1) * tan_half_fov) for c in range(w)]
-        self._cos = np.cos(np.array(self._offsets))
+        self._offsets_array = np.array(self._offsets)
+        self._cos = np.cos(self._offsets_array)
         self._pixel_y = np.arange(h, dtype=np.float64) + 0.5  # pixel centres
         # slot_table[wall_type, side] -> atlas slot; side = FRONT/RIGHT/BACK/LEFT/UPPER
         self.atlas, self.slot_table = build_atlas()
@@ -220,7 +203,7 @@ class Renderer:
         self._seam_map: GameMap | None = None
         self._seam_grid: IntArray = np.zeros((0, 0), dtype=np.intp)
         self._map_boxes: list[PlacedBox] = []
-        self._cell_slots: list[list[list[int]]] = []
+        self._map_arrays: fc.MapArrays | None = None
         self._light_list: list[tuple[float, float, float, bool]] = []
         # Last frame's per-pixel perpendicular distances, and its horizon row.
         self.zbuffer: FloatArray = np.full((w, h), np.inf)
@@ -414,7 +397,7 @@ class Renderer:
         self.horizon = horizon
         # For finding where a pixel of a horizontal surface is in the world.
         self._frame_map, self._frame_camera = game_map, camera
-        ray = camera.angle + np.array(self._offsets)
+        ray = camera.angle + self._offsets_array
         self._ray_dx, self._ray_dy = np.cos(ray), np.sin(ray)
         self._light = self._light_map_for(game_map)
         if self._light is not None and not power:
@@ -425,96 +408,28 @@ class Renderer:
             else self._lit_background(self._light, camera, horizon, eye)
         )
 
-        # The space the camera is in. If it isn't the default (standing on a
-        # desk, under the atrium's high ceiling), its own floor and ceiling are
-        # drawn too, as a span that starts at distance 0.
-        cx, cy = math.floor(camera.x), math.floor(camera.y)
-        floor0, ceiling0 = start_heights(game_map, camera.x, camera.y)
-        own_space = (floor0, ceiling0) != (0.0, WALL_UNITS)
-        on_block = game_map.is_low_block(cx, cy)
-
-        # 1. One ray per column (Python loop). The last hit is the full wall;
-        # the others are changes of space, sorted into layers: layer k holds
-        # each column's k-th change.
-        dist = [math.inf] * w
-        wall_slot = [0] * w
-        upper_slot = [0] * w
-        tex_u = [0.0] * w
-        y_side = [False] * w
-        wall_base = [0.0] * w
-        wall_top = [1.0] * w
-        layers: list[list[SpanHit | None]] = []
-        ceiling_changes = False  # any open stretch with a non-default ceiling?
-        bulkhead = int(self.slot_table[BULKHEAD_TYPE, UPPER])
-        for col in range(w):
-            hits = cast_ray(game_map, camera.x, camera.y, camera.angle + self._offsets[col])
-            if hits and hits[-1].full:
-                hit = hits.pop()
-                dist[col] = hit.distance
-                cell = self._cell_slots_for(game_map, hit)
-                wall_slot[col] = cell[hit.face]
-                upper_slot[col] = cell[4]
-                tex_u[col] = hit.u
-                y_side[col] = hit.side is Side.Y
-                wall_base[col] = hit.base
-                wall_top[col] = hit.prev_ceiling
-            if own_space:
-                # The camera's own space, as up to two pseudo-spans from distance
-                # 0: its ceiling (if not the default) runs to the next change of
-                # ceiling or a wall, carrying on over any desks in between; the
-                # floor it's standing on (a desk, a gallery) ends where the ray
-                # leaves that cell.
-                own: list[RayHit] = []
-                if ceiling0 != WALL_UNITS:
-                    open_change = next((h.distance for h in hits if h.wall_type == 0), dist[col])
-                    own.append(_own_space(0.0, ceiling0, open_change))
-                if on_block:
-                    ray_angle = camera.angle + self._offsets[col]
-                    edge = cell_exit_distance(camera.x, camera.y, ray_angle)
-                    first = hits[0].distance if hits else dist[col]
-                    end = min(first, edge)
-                    # The surface you're standing on: your cell's wall type (a
-                    # desk top's colour, not the carpet's) and, on stairs, its
-                    # height where this column's ray leaves the cell.
-                    leave = _floor_at_ray(game_map, camera, ray_angle, end, cx, cy)
-                    own.append(
-                        _own_space(
-                            floor0,
-                            WALL_UNITS,
-                            end,
-                            exit_top=leave,
-                            wall_type=game_map.wall_at(cx, cy),
-                            cell=(cx, cy),
-                            # Where it leaves, for railings and back faces on
-                            # that edge (u = 0 put every column between balusters).
-                            exit_u=cell_exit_u(camera.x, camera.y, ray_angle),
-                        )
-                    )
-                hits[0:0] = own
-            for k, span in enumerate(hits):
-                if k == len(layers):
-                    layers.append([None] * w)
-                block = span.wall_type != 0
-                if span.ceiling != 1.0:
-                    ceiling_changes = True
-                after = hits[k + 1].distance if k + 1 < len(hits) else dist[col]
-                layers[k][col] = SpanHit(
-                    span,
-                    block and after > span.exit_distance + 1e-9,
-                    *self._span_slots(game_map, span, block, bulkhead),
-                )
+        # 1. One ray per column, compiled (doomer/client/fastcast.py): per
+        # column, the full wall it ends at and the changes of space before it,
+        # nearest first (the camera's own space first of all), sorted into
+        # layers: layer k holds each column's k-th change.
+        columns = fc.cast_columns(
+            self._map_arrays_for(game_map), camera.x, camera.y, camera.angle + self._offsets_array
+        )
+        dist = columns.wall_floats[fc.W_DIST]
+        present = np.arange(columns.layers)[:, None] < columns.counts[None, :]
+        ceiling_changes = bool((present & (columns.floats[fc.CEILING] != 1.0)).any())
 
         # 2. Walls, floor to ceiling of the space in front of them (numpy).
-        perp = np.array(dist) * self._cos
+        perp = dist * self._cos
         frame, zbuffer = self._draw_walls(
             perp,
-            self._ray_light(np.arange(w), np.array(dist)),
-            np.array(wall_slot, dtype=np.intp),
-            np.array(upper_slot, dtype=np.intp),
-            np.array(tex_u),
-            np.array(y_side),
-            np.array(wall_base),
-            np.array(wall_top),
+            self._ray_light(np.arange(w), dist),
+            columns.wall_ints[fc.W_SLOT].astype(np.intp),
+            columns.wall_ints[fc.W_UPPER].astype(np.intp),
+            columns.wall_floats[fc.W_U],
+            columns.wall_ints[fc.W_Y_SIDE] != 0,
+            columns.wall_floats[fc.W_BASE],
+            columns.wall_floats[fc.W_TOP],
             horizon,
             eye,
         )
@@ -528,13 +443,13 @@ class Renderer:
         # the wall: a wall in a tall room is drawn up to that room's ceiling,
         # but from a low room you only see it below your own ceiling.
         if ceiling_changes:
-            self._ceiling_depths(frame, zbuffer, layers, horizon, eye)
+            self._ceiling_depths(frame, zbuffer, columns, present, horizon, eye)
         else:
             self._default_ceiling_depths(zbuffer, horizon, eye)
 
         # 3. Changes of space, one layer at a time, z-tested.
-        for layer in layers:
-            self._draw_span_layer(frame, zbuffer, layer, horizon, eye)
+        for k in range(columns.layers):
+            self._draw_span_layer(frame, zbuffer, columns, present[k], k, horizon, eye)
 
         self._draw_ceiling_lights(frame, zbuffer, game_map, camera, horizon, eye)
         sprites = list(sprites)
@@ -554,33 +469,30 @@ class Renderer:
         self.zbuffer = zbuffer
         return frame
 
-    def _cell_slots_for(self, game_map: GameMap, hit: RayHit) -> list[int]:
-        """[slot for each compass face 0-3, upper slot] of the hit's cell, from a
-        per-map table (a cell's textures never change during a map). Plain
-        nested lists: single-element lookups are much faster than numpy's."""
-        if self._slots_map is not game_map:
-            self._cell_slots = [
+    def _map_arrays_for(self, game_map: GameMap) -> fc.MapArrays:
+        """The map's grids as arrays for the compiled caster, with each cell's
+        atlas slots [face 0-3, upper] (a cell's textures never change during
+        a map). Outside the map counts as wall type 1."""
+        if self._map_arrays is None or self._slots_map is not game_map:
+            slots = np.array(
                 [
-                    [self._slot_for(game_map, x, y, f) for f in range(4)]
-                    + [self._upper_slot(game_map.walls[y][x])]
-                    for x in range(game_map.width)
-                ]
-                for y in range(game_map.height)
-            ]
+                    [
+                        [self._slot_for(game_map, x, y, f) for f in range(4)]
+                        + [self._upper_slot(game_map.walls[y][x])]
+                        for x in range(game_map.width)
+                    ]
+                    for y in range(game_map.height)
+                ],
+                dtype=np.int64,
+            ).reshape(game_map.height, game_map.width, 5)
+            outside = np.array(
+                [int(self.slot_table[1, side]) for side in range(4)] + [self._upper_slot(1)],
+                dtype=np.int64,
+            )
+            bulkhead = int(self.slot_table[BULKHEAD_TYPE, UPPER])
+            self._map_arrays = fc.map_arrays(game_map, slots, outside, bulkhead)
             self._slots_map = game_map
-        if 0 <= hit.cell_y < game_map.height and 0 <= hit.cell_x < game_map.width:
-            return self._cell_slots[hit.cell_y][hit.cell_x]
-        # Outside the map (solid): wall type 1.
-        return [int(self.slot_table[1, side]) for side in range(4)] + [self._upper_slot(1)]
-
-    def _span_slots(
-        self, game_map: GameMap, span: RayHit, block: bool, bulkhead: int
-    ) -> tuple[int, int, int]:
-        """(entry slot, exit slot, upper slot) for a change of space."""
-        if not block:
-            return 0, 0, bulkhead
-        cell = self._cell_slots_for(game_map, span)
-        return cell[span.face], cell[span.exit_face], cell[4]
+        return self._map_arrays
 
     def _slot_for(self, game_map: GameMap, x: int, y: int, face: int) -> int:
         wall_type = game_map.walls[y][x]
@@ -588,14 +500,6 @@ class Renderer:
             return 0  # unknown wall type -> missing texture
         side = (face - game_map.facing_at(x, y)) % 4
         return int(self.slot_table[wall_type, side])
-
-    def _slot(self, game_map: GameMap, hit: RayHit, face: int) -> int:
-        """Atlas slot for one face of a wall cell: which side of the cell that
-        face is (from the cell's own point of view) picks the texture."""
-        if hit.wall_type >= len(self.slot_table):
-            return 0  # unknown wall type -> missing texture
-        side = (face - game_map.facing_at(hit.cell_x, hit.cell_y)) % 4
-        return int(self.slot_table[hit.wall_type, side])
 
     def _upper_slot(self, wall_type: int) -> int:
         if wall_type >= len(self.slot_table):
@@ -630,24 +534,20 @@ class Renderer:
         self,
         frame: U8Array,
         zbuffer: FloatArray,
-        layers: list[list[SpanHit | None]],
+        columns: fc.Columns,
+        present: npt.NDArray[np.bool_],
         horizon: float,
         eye: float,
     ) -> None:
         rows = min(self.config.height, math.floor(horizon))
         if rows <= 0 or eye >= 1.0:
             return  # no default ceiling above the eye on screen
-        w = self.config.width
         # Per column, the [near, far] perpendicular intervals where the ceiling
         # isn't the default: open stretches, the camera's own space, and blocks
         # (a step or desk under the atrium's high ceiling is under it too).
-        lo = np.full((len(layers), w), np.nan)
-        hi = np.full((len(layers), w), np.nan)
-        for k, layer in enumerate(layers):
-            for col, entry in enumerate(layer):
-                if entry is not None and entry.hit.ceiling != 1.0:
-                    lo[k, col] = entry.hit.distance * self._cos[col]
-                    hi[k, col] = entry.hit.exit_distance * self._cos[col]
+        changed = present & (columns.floats[fc.CEILING] != 1.0)
+        lo = np.where(changed, columns.floats[fc.DISTANCE] * self._cos, np.nan)
+        hi = np.where(changed, columns.floats[fc.EXIT_DISTANCE] * self._cos, np.nan)
         depth = (1.0 - eye) * self.projection / (horizon - self._pixel_y[:rows])  # (rows,)
         inside = (lo[:, :, None] <= depth[None, None, :]) & (depth[None, None, :] <= hi[:, :, None])
         real = ~inside.any(axis=0)  # (w, rows)
@@ -703,7 +603,9 @@ class Renderer:
         self,
         frame: U8Array,
         zbuffer: FloatArray,
-        layer: list[SpanHit | None],
+        columns: fc.Columns,
+        present: npt.NDArray[np.bool_],
+        k: int,
         horizon: float,
         eye: float,
     ) -> None:
@@ -712,14 +614,16 @@ class Renderer:
         band (bulkheads, ceiling surfaces). Each pass is cropped to the rows it
         can touch and skipped if the layer has nothing of its kind, which keeps
         a desk layer from paying for the whole screen."""
-        cols = np.array([c for c, entry in enumerate(layer) if entry is not None], dtype=np.intp)
-        entries = [entry for entry in layer if entry is not None]
-        hits = [e.hit for e in entries]
+        cols = np.nonzero(present)[0]
+        f = columns.floats[:, k, cols]
+        i = columns.ints[:, k, cols]
         cos = self._cos[cols]
+        distance = f[fc.DISTANCE]
+        wall_type = i[fc.WALL_TYPE]
         # Perpendicular distances. The camera's own space starts at 0: nudge it
         # so the formulas don't divide by zero (it has no faces to draw anyway).
-        near = np.maximum(np.array([h.distance for h in hits]), 1e-6) * cos
-        far = np.array([h.exit_distance for h in hits]) * cos
+        near = np.maximum(distance, 1e-6) * cos
+        far = f[fc.EXIT_DISTANCE] * cos
         span = _Span(
             cols=cols,
             near=near,
@@ -727,25 +631,31 @@ class Renderer:
             # Never closer than `near` (a camera exactly on a cell boundary can
             # give a zero-length span), never infinite (open-ended stretches).
             finite_far=np.maximum(np.where(np.isfinite(far), far, 1e9), near),
-            top=np.array([h.top for h in hits]),
-            exit_top=np.array([h.exit_top for h in hits]),
-            base=np.array([h.base for h in hits]),
-            stairs=np.array([h.wall_type == STAIRS_WALL_TYPE for h in hits]),
-            rail=np.array([h.wall_type == RAILING_WALL_TYPE for h in hits]),
-            ceiling=np.array([h.ceiling for h in hits]),
-            prev_ceiling=np.array([h.prev_ceiling for h in hits]),
-            block=np.array([h.wall_type != 0 for h in hits]),
-            slot=np.array([e.slot for e in entries], dtype=np.intp),
-            upper=np.array([e.upper_slot for e in entries], dtype=np.intp),
-            u=_texel_u(np.array([h.u for h in hits])),
+            top=f[fc.TOP],
+            exit_top=f[fc.EXIT_TOP],
+            base=f[fc.BASE],
+            stairs=wall_type == STAIRS_WALL_TYPE,
+            rail=wall_type == RAILING_WALL_TYPE,
+            ceiling=f[fc.CEILING],
+            prev_ceiling=f[fc.PREV_CEILING],
+            block=wall_type != 0,
+            slot=i[fc.SLOT].astype(np.intp),
+            upper=i[fc.UPPER_SLOT].astype(np.intp),
+            u=_texel_u(f[fc.U]),
             level_near=light_level(
                 self._brightness(near)
-                * np.where(np.array([h.side is Side.Y for h in hits]), Y_SIDE_SHADE, 1.0)
-                * self._ray_light(cols, np.array([h.distance for h in hits]))
+                * np.where(i[fc.Y_SIDE] != 0, Y_SIDE_SHADE, 1.0)
+                * self._ray_light(cols, distance)
             ),
+            wall_type=wall_type,
+            exit_distance=f[fc.EXIT_DISTANCE],
+            exit_u=f[fc.EXIT_U],
+            exit_y_side=i[fc.EXIT_Y_SIDE] != 0,
+            exits_to_floor=i[fc.EXITS_TO_FLOOR] != 0,
+            back_slot=i[fc.BACK_SLOT].astype(np.intp),
         )
         if span.block.any() or (span.top > 0).any() or (span.exit_top > 0).any():
-            self._draw_lower(frame, zbuffer, span, entries, horizon, eye)
+            self._draw_lower(frame, zbuffer, span, horizon, eye)
         if (span.ceiling != 1.0).any() or (span.prev_ceiling > span.ceiling).any():
             self._draw_upper(frame, zbuffer, span, horizon, eye)
 
@@ -762,7 +672,6 @@ class Renderer:
         frame: U8Array,
         zbuffer: FloatArray,
         s: "_Span",
-        entries: list[SpanHit],
         horizon: float,
         eye: float,
     ) -> None:
@@ -774,7 +683,6 @@ class Renderer:
         Faces and surfaces usually cover a small part of the band, so this is
         several times faster than evaluating textures for every pixel.
         """
-        hits = [e.hit for e in entries]
         y_top = self._rows(s.top, s.near, horizon, eye)  # riser top / floor near edge
         y_base = self._rows(s.base, s.near, horizon, eye)  # riser bottom
         exit_top = np.where(np.isfinite(s.exit_top), s.exit_top, s.top)
@@ -817,7 +725,7 @@ class Renderer:
 
         # Back face of see-through blocks (an open desk's back legs), from the
         # floor up to its top at the exit distance: only shows through the gaps.
-        exits_to_floor = np.array([e.exits_to_floor for e in entries])
+        exits_to_floor = s.exits_to_floor
         back_cols = s.block & exits_to_floor & ~self.opacity[s.slot].all(axis=(1, 2))
         if back_cols.any():
             back = (
@@ -828,10 +736,10 @@ class Renderer:
             )
             ci, ri = np.nonzero(back)
             if ci.size:
-                back_slot = np.array([e.back_slot for e in entries], dtype=np.intp)
+                back_slot = s.back_slot
                 # Seen from inside the cell, so mirror u to match the outside view.
-                back_u = _texel_u(1.0 - np.array([h.exit_u for h in hits]))
-                back_y_side = np.array([h.exit_side is Side.Y for h in hits])
+                back_u = _texel_u(1.0 - s.exit_u)
+                back_y_side = s.exit_y_side
                 depth = s.finite_far[ci]
                 which, vi = self._texel_at(
                     rows_y[ri], depth, back_slot[ci], s.upper[ci], horizon, eye
@@ -840,7 +748,7 @@ class Renderer:
                 keep = self.opacity[which, uu, vi]
                 ci, ri, which, uu, vi = ci[keep], ri[keep], which[keep], uu[keep], vi[keep]
                 shade = self._brightness(far[ci]) * np.where(back_y_side[ci], Y_SIDE_SHADE, 1.0)
-                exits = np.array([h.exit_distance for h in hits])[ci]
+                exits = s.exit_distance[ci]
                 shade = shade * self._ray_light(cols[ci], exits)
                 sub_frame[ci, ri] = COLORMAP[light_level(shade), self.atlas[which, uu, vi]]
                 sub_z[ci, ri] = far[ci]
@@ -890,7 +798,7 @@ class Renderer:
                     colour = np.where(s.block, self.top_colour[s.slot], self.floor_colour)[ci]
                     on_light = self._ray_light(cols[ci], depth / self._cos[cols[ci]], backoff=0.0)
                     lit = self._dithered_at(colour, depth, cols[ci], r0 + ri, on_light)
-                    lit = self._desk_seams(lit, hits, ci, cols[ci], depth, eye - s.top[ci])
+                    lit = self._desk_seams(lit, s.wall_type, ci, cols[ci], depth, eye - s.top[ci])
                     sub_frame[ci, ri] = lit
                     sub_z[ci, ri] = depth
 
@@ -902,7 +810,7 @@ class Renderer:
             drop_out = s.rail & exits_to_floor
             # Leaving, the ray sees that edge from inside: mirror u (as for
             # desks' back faces) so the balusters line up with the outside view.
-            exit_u = _texel_u(1.0 - np.array([h.exit_u for h in hits]))
+            exit_u = _texel_u(1.0 - s.exit_u)
             for mask, edge_top, depth_cols, rail_u in (
                 (drop_in, s.top, near, s.u),
                 (drop_out, exit_top, s.finite_far, exit_u),
@@ -954,7 +862,7 @@ class Renderer:
     def _desk_seams(
         self,
         lit: U8Array,
-        hits: list[RayHit],
+        wall_type: Int64Array,
         ci: IntArray,
         cols: IntArray,
         depth: FloatArray,
@@ -965,7 +873,7 @@ class Renderer:
         a fainter join at the cell edges between neighbouring pairs in a row.
         Pixels are put back into the world (camera + ray * distance) to find
         which are on a line. `drop` is the eye's height above the surface."""
-        seam = np.array([h.wall_type in TOP_SEAM_WALL_TYPES for h in hits])[ci]
+        seam = np.isin(wall_type, list(TOP_SEAM_WALL_TYPES))[ci]
         if not seam.any():
             return lit
         camera = self._frame_camera
@@ -1176,7 +1084,7 @@ class Renderer:
         cols = np.arange(c0, c1)
         up = horizon - self._pixel_y[None, r0:r1]  # > 0 above the horizon
         depth = (ceiling - eye) * self.projection / up  # (1, rows) perpendicular
-        angles = camera.angle + np.array(self._offsets)[cols]
+        angles = camera.angle + self._offsets_array[cols]
         along = depth / self._cos[cols][:, None]  # (cols, rows) along each ray
         wx = camera.x + np.cos(angles)[:, None] * along
         wy = camera.y + np.sin(angles)[:, None] * along
@@ -1254,7 +1162,7 @@ class Renderer:
         pair_col = (
             c0[pair_box] + np.arange(pair_box.size) - np.repeat(np.cumsum(counts) - counts, counts)
         )
-        ray = camera.angle + np.array(self._offsets)[pair_col]
+        ray = camera.angle + self._offsets_array[pair_col]
         wx, wy = np.cos(ray), np.sin(ray)
         cb, sb = ca[pair_box], sa[pair_box]
         dx, dy = wx * cb + wy * sb, -wx * sb + wy * cb
@@ -1511,48 +1419,12 @@ class _Span:
     upper: IntArray
     u: IntArray
     level_near: IntArray
-
-
-def _own_space(
-    floor: float,
-    ceiling_units: int,
-    exit_distance: float,
-    exit_top: float | None = None,
-    wall_type: int = 0,
-    cell: tuple[int, int] = (0, 0),
-    exit_u: float = 0.0,
-) -> RayHit:
-    """A pseudo-hit at distance 0 for the space the camera is in, so its own
-    floor and ceiling (if not the defaults) get drawn like any other span.
-    Standing on something, it carries that cell's wall type and position."""
-    ceiling = ceiling_units / WALL_UNITS
-    return RayHit(
-        0.0,
-        cell[0],
-        cell[1],
-        wall_type,
-        Side.X,
-        0.0,
-        floor,
-        floor,
-        exit_distance,
-        ceiling=ceiling,
-        prev_ceiling=ceiling,
-        exit_top=floor if exit_top is None else exit_top,
-        exit_u=exit_u,
-    )
-
-
-def _floor_at_ray(
-    game_map: GameMap, camera: Camera, angle: float, distance: float, cx: int, cy: int
-) -> float:
-    """Floor height of cell (cx, cy) where a ray from the camera leaves it."""
-    x = camera.x + math.cos(angle) * distance
-    y = camera.y + math.sin(angle) * distance
-    eps = 1e-9
-    return game_map.floor_at(
-        min(max(x, cx + eps), cx + 1 - eps), min(max(y, cy + eps), cy + 1 - eps)
-    )
+    wall_type: Int64Array
+    exit_distance: FloatArray
+    exit_u: FloatArray
+    exit_y_side: npt.NDArray[np.bool_]
+    exits_to_floor: npt.NDArray[np.bool_]
+    back_slot: IntArray
 
 
 @functools.cache
