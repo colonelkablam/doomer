@@ -1,7 +1,8 @@
 name: Ground Floor
 # [floor] values on wall cells make low blocks, in eighths of a wall:
 # 2 = desk (0.68 m), 3 = counter (1 m). Wall types: b = executive desk,
-# d = two 1980s steel desks back to back, j = the same with cubicle screens
+# d = two 1980s steel desks back to back, j = the same with cubicle screens,
+# k = lift car walls (steel inside), l = the lift lobby's stone cladding
 # on top. [facing] says which way a desk's
 # front (where you sit) faces; for stairs (h) the way they go up. f = curtain
 # wall, g = entrance doors, i = balcony (railed); [ceiling] g = 16/8, a
@@ -15,15 +16,15 @@ g......h1..............4
 g......................4
 f.......1..............4
 f.......1.jjj...jjj....4
-222222222..............4
-4.......2..............4
-4.......2..............4
+2l.l.l.l2..............4
+4k.k.k.k2..............4
+4kkkkkkk2..............4
 4...b...1111.1111111.111
 4......................4
 4.......277.77.........4
 4.......2....7.66......4
 4.......2....7.66......4
-144444442444444444455541
+144444442444444444444441
 
 [floor]
 000000000000000000000000
@@ -51,7 +52,7 @@ f.......1.jjj...jjj....4
 8ggggggg6888888888888888
 8ggggggg8888888888888888
 8ggggggg8888888888888888
-888888888888888888888888
+886868688888888888888888
 888888888888888888888888
 888888888888888888888888
 888888888888688888888888
@@ -71,7 +72,7 @@ f.......1.jjj...jjj....4
 ..........nnn...nnn.....
 ........................
 ........................
-........................
+.nnnnnnn................
 ....n...................
 ........................
 ........................
@@ -101,6 +102,14 @@ pass_red        4.2   10.3  0
 reception_desk  4.6   4.0   180
 # On the wall behind reception, above the glass doors (the wall's face is x = 8)
 welcome_sign    7.99  4.5   180
+# The lifts, in the lobby's south wall: call one (E) once the power's on, step
+# in; when everyone's aboard the doors close and the floor is done
+door_lift       2.5   7.5   270
+door_lift       4.5   7.5   270
+door_lift       6.5   7.5   270
+ceiling_light   2.5   8.5   0
+ceiling_light   4.5   8.5   0
+ceiling_light   6.5   8.5   0
 mac             4.65  3.6   0
 ficus           1.5   1.5   0
 ficus           5.5   5.5   0
@@ -149,10 +158,10 @@ ficus           14.5  4.5   0
 dm_spawn        21.5  6.5   180
 # Boss office: executive desk
 mac             4.5   10.5  270
-filing_cabinet  1.28  8.16  90
-filing_cabinet  1.62  8.16  90
-filing_cabinet  2.38  8.16  90
-filing_cabinet  2.72  8.16  90
+filing_cabinet  1.28  10.16 90
+filing_cabinet  1.62  10.16 90
+filing_cabinet  2.38  10.16 90
+filing_cabinet  2.72  10.16 90
 ficus           7.5   14.5  0
 dm_spawn        2.5   13.5  270
 # Lower corridor, washroom, lift lobby
@@ -160,7 +169,6 @@ water_cooler    22.5  11.5  180
 ficus           17.5  14.5  0
 dm_spawn        17.5  11.5  180
 dm_spawn        10.5  13.5  0
-exit            20.5  14.5  90
 # Ceiling lights: panels set into the ceiling, roughly every 2 cells
 ceiling_light   2.5   3.5   0
 ceiling_light   5.5   3.5   0 circuit=emergency
@@ -180,7 +188,7 @@ ceiling_light   12.5  11.5  0
 ceiling_light   15.5  11.5  0 circuit=emergency
 ceiling_light   18.5  11.5  0
 ceiling_light   21.5  11.5  0
-ceiling_light   2.5   9.5   0
+ceiling_light   2.5   10.5  0
 ceiling_light   5.5   12.5  0 circuit=emergency
 ceiling_light   10.5  13.5  0 circuit=emergency
 ceiling_light   20.5  13.5  0

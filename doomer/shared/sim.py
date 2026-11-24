@@ -15,13 +15,20 @@ from collections.abc import Mapping
 
 from doomer.shared.collision import ThinWall, move_box
 from doomer.shared.config import MovementConfig
-from doomer.shared.doors import door_walls, try_use, update_doors
-from doomer.shared.events import DoorLocked, DoorToggled, PassPickedUp, SwitchThrown
+from doomer.shared.doors import LIFT, door_walls, try_use, update_doors
+from doomer.shared.events import (
+    DoorLocked,
+    DoorToggled,
+    LevelComplete,
+    LiftNoPower,
+    PassPickedUp,
+    SwitchThrown,
+)
 from doomer.shared.mapfile import RAIL_HEIGHT, RAILING_WALL_TYPE, GameMap
 from doomer.shared.pickups import take_pickups
 from doomer.shared.player import PlayerInput, PlayerState
 from doomer.shared.screens import SCREEN_HALF, screens_at_height
-from doomer.shared.switches import try_switch
+from doomer.shared.switches import POWER, try_switch
 from doomer.shared.world import World
 
 TAU = math.tau
@@ -34,9 +41,20 @@ def step(world: World, inputs: Mapping[int, PlayerInput]) -> None:
     for player_id, player in world.players.items():
         apply_input(world, player, inputs.get(player_id, PlayerInput(angle=player.angle)))
     positions = [(p.x, p.y) for p in world.players.values()]
+    power = POWER in world.flags
+    departing = power and bool(positions) and _all_in_lifts(world, positions)
     update_doors(
-        world.doors, positions, world.config.movement.radius, world.config.dt, world.passes
+        world.doors,
+        positions,
+        world.config.movement.radius,
+        world.config.dt,
+        world.passes,
+        power,
+        departing,
     )
+    if departing and not world.complete and _lifts_shut(world, positions):
+        world.complete = True
+        world.events.append(LevelComplete(world.tick))
     world.tick += 1
 
 
@@ -48,8 +66,11 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
     _update_crouch(world.map, player, player_input.crouch, move)
     if player_input.use and not player.use_held:  # a press, not a hold
         thrown = try_switch(world.switches, player.x, player.y, player.angle)
+        power = POWER in world.flags
         used = (
-            None if thrown else try_use(world.doors, player.x, player.y, player.angle, world.passes)
+            None
+            if thrown
+            else try_use(world.doors, player.x, player.y, player.angle, world.passes, power)
         )
         if thrown is not None:
             world.flags.add(thrown.flag)
@@ -58,8 +79,10 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
             door, allowed = used
             if allowed:
                 world.events.append(DoorToggled(world.tick, door.id, player.id, door.opening))
-            elif door.lock is not None:
+            elif door.lock is not None and door.lock not in world.passes:
                 world.events.append(DoorLocked(world.tick, door.id, player.id, door.lock))
+            elif door.kind == LIFT:
+                world.events.append(LiftNoPower(world.tick, door.id, player.id))
     player.use_held = player_input.use
 
     forward = _clamp(player_input.forward)
@@ -106,6 +129,18 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
         if colour is not None and colour not in world.passes:
             world.passes.add(colour)
             world.events.append(PassPickedUp(world.tick, player.id, colour))
+
+
+def _all_in_lifts(world: World, positions: list[tuple[float, float]]) -> bool:
+    """Is every player standing in a lift car?"""
+    cars = {door.car for door in world.doors if door.kind == LIFT}
+    return bool(cars) and all((math.floor(x), math.floor(y)) in cars for x, y in positions)
+
+
+def _lifts_shut(world: World, positions: list[tuple[float, float]]) -> bool:
+    """Are the doors of every lift with someone in it fully shut?"""
+    occupied = {(math.floor(x), math.floor(y)) for x, y in positions}
+    return all(d.open == 0.0 for d in world.doors if d.kind == LIFT and d.car in occupied)
 
 
 def body_height(player: PlayerState, move: MovementConfig) -> float:

@@ -9,7 +9,14 @@ from collections.abc import Collection, Iterable
 
 import pygame
 
-from doomer.shared.events import DoorLocked, Event, PassPickedUp, SwitchThrown
+from doomer.shared.events import (
+    DoorLocked,
+    Event,
+    LevelComplete,
+    LiftNoPower,
+    PassPickedUp,
+    SwitchThrown,
+)
 
 MESSAGE_SECONDS = 3.0
 PASS_COLOURS_RGB = {"blue": (90, 140, 240), "red": (230, 90, 70), "gold": (240, 210, 90)}
@@ -24,6 +31,8 @@ def message_for(event: Event) -> str | None:
         return f"Locked: you need the {event.lock} pass"
     if isinstance(event, SwitchThrown) and event.flag == "power":
         return "The power is back on"
+    if isinstance(event, LiftNoPower):
+        return "The lift has no power"
     return None
 
 
@@ -32,16 +41,26 @@ class Hud:
         self.font = font
         self._message: str | None = None
         self._until = 0.0
+        self.complete = False  # the floor's done: a banner until you quit
 
     def handle(self, events: Iterable[Event], now: float) -> None:
         """Take this frame's events; the latest message wins."""
         for event in events:
+            if isinstance(event, LevelComplete):
+                self.complete = True
             text = message_for(event)
             if text is not None:
                 self._message, self._until = text, now + MESSAGE_SECONDS
 
     def draw(self, window: pygame.Surface, passes: Collection[str], now: float) -> None:
         width, height = window.get_size()
+        if self.complete:
+            banner = pygame.Rect(0, height // 2 - 50, width, 100)
+            shade = pygame.Surface(banner.size, pygame.SRCALPHA)
+            shade.fill((0, 0, 0, 170))
+            window.blit(shade, banner)
+            self._text(window, "GROUND FLOOR COMPLETE", (width // 2, height // 2 - 14), centre=True)
+            self._text(window, "Esc to quit", (width // 2, height // 2 + 22), centre=True)
         if self._message is not None and now < self._until:
             self._text(window, self._message, (width // 2, height // 6), centre=True)
         # Passes held: a card in each colour, bottom left.

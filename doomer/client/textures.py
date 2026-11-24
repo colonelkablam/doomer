@@ -40,6 +40,7 @@ from doomer.client.palette import (
     ORANGE,
     SAND,
     STEEL,
+    WARM_GREY,
     WOOD,
     U8Array,
 )
@@ -545,6 +546,32 @@ TOP_COLOURS: dict[int, int] = {
     18: indices(BLUE, 6.0).item(),  # balcony: carpeted
 }
 
+
+def lift_car_wall(seed: int = 20) -> U8Array:
+    """Inside a lift car: brushed steel panels, a mirror strip, a handrail."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    brushed = 9.0 + (noise(rng, 32)[:, :1] - 0.5) * 0.8 + ((u * 7) % 5 == 0) * 0.6
+    tex = indices(GREY, np.broadcast_to(brushed, v.shape))
+    tex = np.where((u % 32 == 0) | (u % 32 == 31), indices(GREY, 6.0), tex)  # panel joints
+    mirror_shade = (11.0 - (v - 8) * 0.12).astype(np.float64)
+    tex = np.where((v >= 8) & (v < 26), indices(STEEL, mirror_shade), tex)  # mirror
+    rail = (v >= 40) & (v < 43)
+    tex = np.where(rail, indices(GREY, np.where(v == 40, 14.0, 11.0)), tex)  # handrail
+    return np.where(v >= 60, indices(GREY, 4.0), tex).astype(np.uint8)
+
+
+def stone_cladding(seed: int = 21) -> U8Array:
+    """The lift lobby's polished stone: pale, faintly veined, in big slabs."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    veins = np.abs(noise(rng, 4) - noise(rng, 16) * 0.5 - 0.25) < 0.02
+    tex = indices(WARM_GREY, 12.0 + (noise(rng, 8) - 0.5) * 0.8)
+    tex = np.where(veins, indices(WARM_GREY, 10.5), tex)  # faint: veins, not cracks
+    tex = np.where((v == 31) | (u == 0), indices(WARM_GREY, 8.0), tex)  # slab joints
+    return np.where(v >= 60, indices(WARM_GREY, 5.0), tex).astype(np.uint8)
+
+
 DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {
     1: office_wall,
     2: wood_panelling,
@@ -564,6 +591,13 @@ for _wall_type, _make in DEFAULT_WALL_TEXTURES.items():
 # shaft wall continues up); other types repeat their own texture.
 register_wall_texture(1, office_wall_upper(), sides=(UPPER,))
 register_wall_texture(5, office_wall_upper(), sides=(UPPER,))
+# 'k' (20): lift car walls: steel inside the car; the back face (BACK, with
+# [facing] pointing into the car) is ordinary office wall.
+register_wall_texture(20, lift_car_wall())
+register_wall_texture(20, office_wall(), sides=(BACK,))
+# 'l' (21): the lift lobby's stone cladding round the lift doors.
+register_wall_texture(21, stone_cladding())
+register_wall_texture(21, office_wall_upper(), sides=(UPPER,))
 # 'h' (17): stairs (shape in doomer/shared/mapfile.py). Sides: plain plaster
 # stringer with a skirting line; top: the same blue carpet as raised floors.
 register_wall_texture(17, raised_floor_edge())

@@ -14,6 +14,10 @@ Kinds:
   in the middle, both swinging the same way; narrow jambs. Use, as hinged.
 - Any of them can be locked (`lock=blue` in the map): it opens only for a
   team holding that ID pass (doomer/shared/pickups.py).
+- lift: two brushed steel leaves, parting like sliding doors, in front of a
+  lift car (the cell behind the doorway, against the door's facing). Use
+  calls the lift, only with power; then the doors open for anyone near.
+  When every player is in a lift car, the doors close and the floor is done.
 - sliding: two glass leaves, each half the cell, that part into the walls
   either side. Automatic: they open while any player is near.
 
@@ -30,8 +34,14 @@ from dataclasses import dataclass
 from doomer.shared.collision import ThinWall
 from doomer.shared.mapfile import GameMap
 
-HINGED, DOUBLE, SLIDING = "hinged", "double", "sliding"
-DOOR_THING_KINDS = {"door_hinged": HINGED, "door_double": DOUBLE, "door_sliding": SLIDING}
+HINGED, DOUBLE, SLIDING, LIFT = "hinged", "double", "sliding", "lift"
+DOOR_THING_KINDS = {
+    "door_hinged": HINGED,
+    "door_double": DOUBLE,
+    "door_sliding": SLIDING,
+    "door_lift": LIFT,
+}
+PARTING = (SLIDING, LIFT)  # two leaves that part into the walls
 
 HINGED_LEAF = 0.6  # cells (~1.6 m: the player is 0.5 wide)
 JAMB = (1.0 - HINGED_LEAF) / 2  # fixed panel either side of a hinged leaf
@@ -41,7 +51,7 @@ DOOR_HALF = 0.01  # half-thickness, cells (~5 cm doors)
 DOOR_HEIGHT = 0.75  # walls (~2 m): up to the lintel (a doorway's ceiling is 6/8)
 SWING = math.pi / 2  # a hinged door opens a quarter turn
 
-OPEN_SECONDS = {HINGED: 0.6, DOUBLE: 0.6, SLIDING: 0.5}  # from shut to fully open
+OPEN_SECONDS = {HINGED: 0.6, DOUBLE: 0.6, SLIDING: 0.5, LIFT: 0.8}  # from shut to fully open
 USE_REACH = 1.3  # cells from the door's centre
 USE_CONE = math.cos(math.radians(50))  # must be roughly facing it
 SLIDING_SENSE = 1.6  # cells: sliding doors open for anyone this near
@@ -58,9 +68,18 @@ class Door:
     open: float = 0.0  # 0 shut .. 1 open
     opening: bool = False  # moving towards open (else towards shut)
     lock: str | None = None  # the pass colour that opens it, if locked
+    called: bool = False  # a lift that's been called (it then opens for anyone near)
 
     def unlocked_by(self, passes: Collection[str]) -> bool:
         return self.lock is None or self.lock in passes
+
+    @property
+    def car(self) -> tuple[int, int]:
+        """For a lift door: its car, the cell behind the doorway (against the
+        facing: the facing points out of the lift)."""
+        return math.floor(self.x - math.cos(self.facing)), math.floor(
+            self.y - math.sin(self.facing)
+        )
 
     @property
     def across_x(self) -> bool:
@@ -98,7 +117,7 @@ def door_walls(door: Door) -> list[ThinWall]:
         if door.open < PASSABLE:
             walls.append(wall(lo + jamb, hi - jamb))
         return walls
-    # Sliding: each leaf covers its half, less how far it has slid into the wall.
+    # Sliding and lift doors: each leaf covers its half, less how far it has slid.
     closed = 0.5 * (1.0 - door.open)
     if closed <= 1e-6:
         return []
@@ -111,7 +130,12 @@ def in_doorway(door: Door, x: float, y: float, radius: float) -> bool:
 
 
 def try_use(
-    doors: list[Door], x: float, y: float, angle: float, passes: Collection[str]
+    doors: list[Door],
+    x: float,
+    y: float,
+    angle: float,
+    passes: Collection[str],
+    power: bool = True,
 ) -> tuple[Door, bool] | None:
     """The door a player at (x, y) facing `angle` is using: the nearest within
     reach, roughly in front of them; and whether they could. A hinged or
@@ -122,7 +146,7 @@ def try_use(
     best_d = USE_REACH
     for door in doors:
         if door.kind == SLIDING and door.unlocked_by(passes):
-            continue
+            continue  # opens by itself
         dx, dy = door.x - x, door.y - y
         d = math.hypot(dx, dy)
         if d > best_d or d < 1e-9:
@@ -134,6 +158,11 @@ def try_use(
         return None
     if not best.unlocked_by(passes):
         return best, False
+    if best.kind == LIFT:  # the call button: works only with power
+        if not power:
+            return best, False
+        best.called = best.opening = True
+        return best, True
     best.opening = not best.opening
     return best, True
 
@@ -144,12 +173,22 @@ def update_doors(
     radius: float,
     dt: float,
     passes: Collection[str] = (),
+    power: bool = True,
+    departing: bool = False,
 ) -> None:
     """Advance every door one tick. Sliding doors open for anyone near (if
-    the team can open them); a door that's closing stops (and reopens)
-    rather than shut on someone."""
+    the team can open them); called lifts too, while there's power, until
+    everyone's aboard (`departing`: then they close). A hinged door that's
+    closing stops (and reopens) rather than shut on someone."""
     for door in doors:
-        if door.kind == SLIDING:
+        if door.kind == LIFT:
+            door.opening = (
+                door.called
+                and power
+                and not departing
+                and any(math.hypot(px - door.x, py - door.y) < SLIDING_SENSE for px, py in players)
+            )
+        elif door.kind == SLIDING:
             door.opening = door.unlocked_by(passes) and any(
                 math.hypot(px - door.x, py - door.y) < SLIDING_SENSE for px, py in players
             )

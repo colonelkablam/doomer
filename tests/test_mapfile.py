@@ -105,7 +105,7 @@ def test_mode_readiness() -> None:
     assert supported_modes(m) == ["coop"]
     assert missing_requirements(m, "deathmatch") == ["needs 4 more DM spawns"]
     bare = parse_map("[walls]\n###\n#.#\n###\n[things]\ndm_spawn 1.5 1.5 0\n")
-    assert missing_requirements(bare, "coop") == ["needs a coop_start", "needs an exit"]
+    assert missing_requirements(bare, "coop") == ["needs a coop_start", "needs an exit (or a lift)"]
     assert missing_requirements(bare, "deathmatch") == ["needs 3 more DM spawns"]
 
 

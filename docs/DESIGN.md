@@ -360,6 +360,16 @@ dm_spawn      1.5   3.5   0
   (`resting_height`, used for sprites, box models and pickups). The
   reception desk is the first: a ledge at the front (~1.15 m), a work
   surface behind it (~0.73 m).
+- **Lifts** (`door_lift`, `shared/doors.py`): brushed steel doors parting
+  like the glass ones, in a doorway in front of a lift car (the cell behind
+  the doorway, against the door's facing). Use calls the lift, only with
+  power (else `LiftNoPower`); a called lift's doors open for anyone near.
+  When every player stands in a lift car, the doors close, and once those
+  with people behind them are shut the floor is done (`LevelComplete`,
+  `World.complete`; the HUD shows a banner). Each has a call button beside
+  it (lit amber once called) and a floor indicator over it (lit with
+  power). Co-op needs a lift or an `exit`. Riding to the next floor comes
+  with the tower of floors.
 - **Power** (`shared/switches.py`): level flags in `World.flags`, set by
   switches. The breaker sets `power`; a map with a breaker starts without it
   (a map without one is powered). Use (E) near the breaker, facing it,

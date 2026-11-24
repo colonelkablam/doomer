@@ -41,6 +41,7 @@ class World:
     # Switches and the level flags they set (doomer/shared/switches.py): power.
     switches: list[Switch] = field(default_factory=list)
     flags: set[str] = field(default_factory=set)
+    complete: bool = False  # everyone left by lift (LevelComplete)
 
 
 class ModeNotSupported(ValueError):

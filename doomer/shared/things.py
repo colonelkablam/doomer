@@ -126,6 +126,7 @@ for _name, _description in (
     ("door_hinged", "Hinged office door: press use to open or close"),
     ("door_double", "Double office doors: press use to open or close"),
     ("door_sliding", "Sliding glass doors: open by themselves as you approach"),
+    ("door_lift", "Lift doors: use to call the lift (needs power); a car behind"),
 ):
     register_thing_type(ThingType(_name, _description, properties={"lock": PASS_COLOURS}))
 

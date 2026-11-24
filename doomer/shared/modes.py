@@ -46,8 +46,8 @@ def _coop_requirements(game_map: GameMap) -> list[str]:
     missing = []
     if not game_map.things_of_type(COOP_START.name):
         missing.append("needs a coop_start")
-    if not game_map.things_of_type(EXIT.name):
-        missing.append("needs an exit")
+    if not game_map.things_of_type(EXIT.name) and not game_map.things_of_type("door_lift"):
+        missing.append("needs an exit (or a lift)")
     return missing
 
 

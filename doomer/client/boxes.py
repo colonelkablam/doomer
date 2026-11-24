@@ -50,6 +50,7 @@ from doomer.shared.doors import (
     HINGED,
     HINGED_LEAF,
     JAMB,
+    LIFT,
     SWING,
     Door,
 )
@@ -708,10 +709,13 @@ _JAMB, _GLASS, _GLASS_EDGE = jamb(), glass_leaf(), glass_edge()
 _JAMB_HALF = 0.03  # jambs a little thicker than the leaf: a frame
 
 
-def door_boxes(doors: Iterable[Door], passes: Collection[str] = ()) -> list[PlacedBox]:
-    """Boxes for doors in their current state; and, by each locked door, a
-    card reader on the wall either side, lit green once the team (`passes`)
-    can open it."""
+def door_boxes(
+    doors: Iterable[Door], passes: Collection[str] = (), power: bool = True
+) -> list[PlacedBox]:
+    """Boxes for doors in their current state; by each locked door, a card
+    reader on the wall either side, lit green once the team (`passes`) can
+    open it; and by each lift, its call button and floor indicator (lit when
+    there's `power`)."""
     out = []
     h = (0.0, DOOR_HEIGHT)
     t = (-DOOR_HALF, DOOR_HALF)
@@ -756,10 +760,76 @@ def door_boxes(doors: Iterable[Door], passes: Collection[str] = ()) -> list[Plac
                 out.append(PlacedBox(hx, hy, 0.0, angle, leaf))
         else:
             slide = 0.5 * door.open  # each leaf slides into the wall beside it
-            faces = (_GLASS, _GLASS_EDGE, _GLASS, _GLASS_EDGE, _GLASS_EDGE)
+            if door.kind == LIFT:
+                faces = (_STEEL_LEAF, _STEEL_EDGE, _STEEL_LEAF, _STEEL_EDGE, _STEEL_EDGE)
+                out += _lift_fittings(door, power)
+            else:
+                faces = (_GLASS, _GLASS_EDGE, _GLASS, _GLASS_EDGE, _GLASS_EDGE)
             for y in ((-0.5 - slide, -slide), (slide, 0.5 + slide)):
                 out.append(PlacedBox(door.x, door.y, 0.0, f, Box(t, y, h, faces)))
     return out
+
+
+def steel_leaf() -> int:
+    """A lift door leaf: brushed steel, the brushing vertical."""
+    rng = np.random.default_rng(101)
+    c = Canvas()
+    streaks = (noise(rng, 32)[:1, :] - 0.5) * 1.2  # varies across, constant down
+    c.paint(c.rect(0, 64, 0, 64), GREY, 10.0 + np.broadcast_to(streaks, (64, 64)))
+    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64), GREY, 6.0)  # its edges
+    return _texture(c)
+
+
+def steel_edge() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 7.0)
+    return _texture(c)
+
+
+def call_button(lit: bool) -> int:
+    """A lift call button on a steel plate: lit amber once the lift's coming."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 11.0)
+    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64), GREY, 7.0)
+    button = c.ellipse(32, 32, 14, 14)
+    c.paint(button, OCHRE if lit else GREY, 15.0 if lit else 6.0)
+    c.paint(button & c.rect(26, 30, 28, 36), GREY, 3.0)  # an up arrow
+    c.paint(button & c.rect(30, 40, 31, 33), GREY, 3.0)
+    return _texture(c)
+
+
+def floor_indicator(lit: bool) -> int:
+    """Above a lift: G (ground), in amber segments on black when powered."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 1.0)
+    c.paint(c.rect(0, 2, 0, 64) | c.rect(62, 64, 0, 64), GREY, 9.0)
+    glyph = ("#####", "#....", "#....", "#.###", "#...#", "#...#", "#####")
+    for row, line in enumerate(glyph):
+        for col, bit in enumerate(line):
+            if bit == "#":
+                v0, u0 = 10 + row * 6, 17 + col * 6
+                c.paint(
+                    c.rect(v0, v0 + 5, u0, u0 + 5), OCHRE if lit else GREY, 15.0 if lit else 3.0
+                )
+    return _texture(c)
+
+
+_STEEL_LEAF, _STEEL_EDGE = steel_leaf(), steel_edge()
+_CALL = {lit: call_button(lit) for lit in (False, True)}
+_INDICATOR = {lit: floor_indicator(lit) for lit in (False, True)}
+
+
+def _lift_fittings(door: Door, power: bool) -> list[PlacedBox]:
+    """A lift's call button, on the wall beside the doorway, and its floor
+    indicator over the lintel: both on the lobby side (the facing)."""
+    f = door.facing
+    along = (-math.sin(f), math.cos(f))
+    # The lobby-side wall faces are 0.5 out from the doorway's centre line.
+    bx, by = door.x + along[0] * 0.62, door.y + along[1] * 0.62
+    called = power and door.called
+    button = Box((0.5, 0.515), (-0.04, 0.04), (0.36, 0.44), (_CALL[called],) * 5, glow=called)
+    indicator = Box((0.5, 0.52), (-0.1, 0.1), (0.8, 0.9), (_INDICATOR[power],) * 5, glow=power)
+    return [PlacedBox(bx, by, 0.0, f, button), PlacedBox(door.x, door.y, 0.0, f, indicator)]
 
 
 # --- Reception desk (1980s, two levels) -------------------------------------------

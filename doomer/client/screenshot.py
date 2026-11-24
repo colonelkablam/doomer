@@ -48,7 +48,7 @@ def render_frame(
     switches = switches_from_map(game_map)
     for sw in switches:
         sw.on = powered
-    boxes = door_boxes(shown, passes) + switch_boxes(switches) if things else []
+    boxes = door_boxes(shown, passes, powered) + switch_boxes(switches) if things else []
     Renderer(config, lighting).render(frame, game_map, camera, sprites, boxes, powered)
     return frame
 

@@ -48,6 +48,19 @@ class SwitchThrown(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class LiftNoPower(Event):
+    """A player pressed a lift's call button with the power off."""
+
+    door_id: int
+    player_id: int
+
+
+@dataclass(frozen=True, slots=True)
+class LevelComplete(Event):
+    """Everyone's in a lift and its doors have shut: the floor is done."""
+
+
+@dataclass(frozen=True, slots=True)
 class PlayerSpawned(Event):
     player_id: int
     x: float

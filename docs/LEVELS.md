@@ -67,6 +67,7 @@ units at most). Anything higher with no stairs is unreachable.
 | `welcome_sign` | "Boomer Industries" in lit letters | Stand it just in front of a wall's face (e.g. x = 7.99 for the face at 8), angle out of the wall. About 4 cells wide, 1.09 to 1.46 storeys up: needs a two-storey wall |
 | `reception_desk` | Two-level reception desk | Angle: the way its front (the visitors' side) faces. 1.84 cells long, 0.61 deep (0.31 in front of its position, 0.30 behind). Things placed over it rest on it: the ledge (front 0.17 cells) or the work surface (behind). Leave the receptionist a way round to the back |
 | `pass_blue`, `pass_red`, `pass_gold` | ID passes: staff, facilities, executive | Walk over (or reach) to take; the team shares it. On a counter or desk, put it within 0.5 of the edge you approach from (you're stopped at the edge; reach is 0.75 from your centre) |
+| `door_lift` | Lift doors and the floor's exit | In a doorway cell (ceiling `6`), angle out of the lift; the car is the cell behind (against the angle), walled with `k` ([facing] into the car), with a `ceiling_light` (main circuit: dark until the power's on). Clad the wall round it with `l`. Co-op needs a lift or an `exit` |
 | `door_hinged`, `door_double`, `door_sliding` | Office door / double office doors (use to open) / automatic glass doors | In a doorway cell: open floor between two full walls, the doorway one cell wide. Angle: across the doorway, the way a hinged door swings open. Give the doorway cell a ceiling of `6` (a lintel at ~2 m). `lock=blue` (or red, gold): opens only for a team with that pass; card readers appear beside it. Not in a two-storey cell, and nothing blocking within a cell either side |
 | `breaker` | Main breaker: restores the power | Stand it just in front of a wall's face, angle out of the wall (it blocks 0.16 out from the wall). A map with one starts on emergency lighting: give it some `circuit=emergency` panels, one near the breaker, one in each room on the way there. Put it behind a lock (the plant room), before the lifts |
 | `ceiling_light` | Light panel in the ceiling; lights the room (baked light map). `circuit=emergency`: stays lit without power | Marks the cell; drawn at that cell's ceiling height. Space them 3-6 cells apart for pools of light with darker gaps (every 2 cells saturates a room flat). Light stops at full walls, goes through doorways, and reaches ~6 cells. A room with none sits at ambient (dark): use that on purpose |
@@ -134,7 +135,8 @@ What costs:
    jumping assumed), with headroom >= 6 units all the way. Locked doors
    count as walls until their pass is reachable: every pass must be
    reachable before the door it opens (no pass behind its own door), and the
-   exit after them all.
+   exit after them all. If the map has a `breaker`, it must be reachable
+   (the lifts don't work without power).
 4. **No blocked passages**: no blocking furniture in a 1-cell-wide passage or
    at the ends of stairs.
 5. **Stairs are well formed**: the cell before the low end is at the low

@@ -27,7 +27,7 @@ class LightingConfig:
     ambient: float = 0.3  # light everywhere, with no panel in reach
     # With the power off (a floor whose breaker isn't thrown yet): the ambient,
     # and only `circuit=emergency` panels lit.
-    unpowered_ambient: float = 0.1
+    unpowered_ambient: float = 0.15  # (0.1 was pitch black: unplayable)
     panel_intensity: float = 1.0  # one ceiling panel, at distance 0
     falloff_radius: float = 1.2  # cells: a panel's light halves at this distance
     cutoff: float = 6.0  # cells: panels light nothing further away than this

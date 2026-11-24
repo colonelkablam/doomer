@@ -88,6 +88,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | "Boomer Industries" sign: lit brass letters on a dark panel, high on the lobby wall behind reception above the glass doors | no | [built] |
 | Main breaker: steel switchgear cabinet with louvres, a hazard band, a red-handled lever and a status lamp (red, then green) | yes | [built] |
 | Emergency lighting: until the breaker is thrown, only emergency panels are lit and the lobby sign is dark | no | [built] |
+| Lifts: brushed steel doors, a call button (lit amber when called) and a floor indicator (lit with power); a steel car with a handrail behind | no | [built] |
 | Card readers by locked doors: stripe in the pass colour, red/green lamp | no | [built] |
 | Water cooler (box model: cream cabinet, hot and cold taps, upturned octagonal bottle; faces its map angle) | yes | [built] |
 | Filing cabinet (box model: five steel drawers with pulls and label cards; faces its map angle) | yes | [built] |
@@ -126,6 +127,8 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | g (16) | Main entrance: closed glass double doors, curtain wall above | Lobby entrance |
 | h (17) | Stairs: half a storey per cell ([facing] = up); you walk a smooth slope, drawn as 8 carpeted steps | Lobby stairs |
 | i (18) | Balcony floor: raised floor with a railing along edges that drop away | Lobby balcony |
+| k (20) | Lift car walls: brushed steel panels, mirror strip, handrail (inside the car); office wall on their back face ([facing] points into the car) | Lift cars |
+| l (21) | Lift lobby cladding: pale polished stone slabs | Round lift doors |
 | j (19) | Desk pair with cubicle screens: as `d`, plus fabric screens to seated head height (~1.25 m) down the middle and across each cell edge (box models; they block you on the desk tops) | Open-plan cubicles |
 
 ## Pickups
