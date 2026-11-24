@@ -14,7 +14,7 @@ use_dummy_video()
 import pygame  # noqa: E402
 
 from doomer.client.config import RenderConfig  # noqa: E402
-from doomer.client.render import Camera, Renderer  # noqa: E402
+from doomer.client.render import Camera, Renderer, make_frame_surface  # noqa: E402
 from doomer.shared.mapfile import GameMap, load_map  # noqa: E402
 
 
@@ -22,7 +22,7 @@ def render_frame(
     game_map: GameMap, camera: Camera, config: RenderConfig | None = None
 ) -> pygame.Surface:
     config = config or RenderConfig()
-    frame = pygame.Surface((config.width, config.height))
+    frame = make_frame_surface(config)
     Renderer(config).render(frame, game_map, camera)
     return frame
 

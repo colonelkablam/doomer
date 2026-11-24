@@ -134,6 +134,25 @@ dm_spawn      1.5   3.5   0
 ## Rendering
 
 - Grid raycaster (DDA) at 320x200 internal resolution, scaled up to the window.
+- **Two-phase frame**: the DDA is a Python loop (one ray per column, 320 a
+  frame); everything per-pixel is one vectorised numpy pass over the whole
+  frame. About 2 ms per frame in total.
+- **8-bit indexed colour.** Every pixel is a byte indexing a 256-colour palette
+  (`client/palette.py`), laid out as `index = (ramp << 4) | shade`: 16 hue
+  ramps x 16 brightness steps. Brightness is linear in the low nibble, so
+  darkening never changes hue and can be computed exactly.
+- **Light by lookup table**: `COLORMAP[level, index]` (32 light levels, like
+  Doom's COLORMAP) gives the darkened index. Shading a frame is one numpy
+  fancy-index.
+- **Textures are 64x64**, a power of two (coordinates wrap with `& 63`), stored
+  as palette indices, transposed to `[u][v]` so a wall column is contiguous.
+  64 matches the 320x200 resolution: larger textures would be minified and
+  alias (shimmer) without mipmapping. Currently generated procedurally with
+  numpy (`client/textures.py`), registered per wall type; slot 0 is a magenta
+  checker for missing textures. Imported image files can come later
+  (quantised to the palette).
+- Ceiling and floor darken with distance, with 4x4 ordered (Bayer) dithering to
+  hide banding. Precomputed, so free per frame.
 - The raycaster returns a **list of hits per ray**, not just the first one, so
   floor/ceiling heights (milestone 4) extend it rather than replace it: draw
   front to back with per-column clipping, like Doom's clip arrays.
@@ -162,7 +181,7 @@ keys), later floor/ceiling heights; place things. Shows mode readiness
 |---|---|---|
 | 0 ✅ | Scaffold: layout, requirements, CLAUDE.md, pytest, headless PNG helper | `pytest` passes; a test frame saves as PNG |
 | 1 ✅ | Map loader, fixed-timestep model, movement with wall sliding, flat-colour DDA raycaster at 320x200, mouse look | Walkable test map at 60 fps on Fedora; ray-distance and collision tests pass |
-| 1b | Textured walls by wall type | Wall types visibly differ |
+| 1b ✅ | Textured walls by wall type | Wall types visibly differ |
 | 2 | Billboard sprites, depth-clipped | A static thing renders correctly in front of and behind walls |
 | 3 | Server: handshake, 60 Hz tick, snapshots, interpolation, bot client | Two clients and a bot move together; protocol tests pass |
 | 3b | Hitscan, health, death/respawn, DM scoring | A playable deathmatch |

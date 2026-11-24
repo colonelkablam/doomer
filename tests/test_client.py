@@ -5,7 +5,7 @@ import pytest
 
 from doomer.client.config import ClientConfig, ControlsConfig, RenderConfig
 from doomer.client.input import Action, compose_input, turn
-from doomer.client.palette import WALL_COLOURS
+from doomer.client.palette import BRICK, GREEN, GREY, MAGENTA, PINK
 from doomer.client.render import Camera, Renderer
 from doomer.client.screenshot import render_frame
 from doomer.client.session import LocalSession
@@ -28,30 +28,54 @@ coop_start 1.5 2.5 0
 exit 7.5 2.5 0
 """
 )
-CFG = RenderConfig()
+# Ceiling and floor from ramps the brick texture (wall type 2) never uses, so
+# any pixel in another ramp is wall.
+CFG = RenderConfig(ceiling_colour=(250, 130, 190), floor_colour=(110, 200, 90))
+CEILING_RAMP, FLOOR_RAMP = PINK, GREEN
+
+
+def render(camera: Camera) -> pygame.Surface:
+    return render_frame(ROOM, camera, CFG)
+
+
+def ramp_at(frame: pygame.Surface, x: int, y: int) -> int:
+    return int(frame.get_at_mapped((x, y))) >> 4
 
 
 def column_height(frame: pygame.Surface, col: int) -> int:
-    """Number of wall-coloured pixels in a column (neither ceiling nor floor)."""
-    flat = {CFG.ceiling_colour[:3], CFG.floor_colour[:3]}
-    return sum(1 for y in range(CFG.height) if tuple(frame.get_at((col, y)))[:3] not in flat)
+    """Number of wall pixels in a column (neither ceiling nor floor)."""
+    flat = {CEILING_RAMP, FLOOR_RAMP}
+    return sum(1 for y in range(CFG.height) if ramp_at(frame, col, y) not in flat)
 
 
-def test_wall_ahead_has_its_colour_at_the_horizon() -> None:
-    frame = render_frame(ROOM, Camera(4.5, 2.5, 0.0))
-    centre = tuple(frame.get_at((CFG.width // 2, CFG.height // 2)))[:3]
-    r, g, b = WALL_COLOURS[2]
-    # Shaded, so darker but in proportion: red dominates.
-    assert centre[0] > centre[1] and centre[0] > centre[2]
-    assert centre[0] <= r
-    assert tuple(frame.get_at((0, 0)))[:3] == CFG.ceiling_colour
-    assert tuple(frame.get_at((0, CFG.height - 1)))[:3] == CFG.floor_colour
+def test_frame_is_8_bit_with_wall_texture_at_horizon() -> None:
+    frame = render(Camera(4.5, 2.5, 0.0))
+    assert frame.get_bitsize() == 8
+    assert ramp_at(frame, CFG.width // 2, CFG.height // 2) in {BRICK, GREY}  # brick or mortar
+    assert ramp_at(frame, 0, 0) == CEILING_RAMP
+    assert ramp_at(frame, 0, CFG.height - 1) == FLOOR_RAMP
+
+
+def test_floor_darkens_towards_the_horizon() -> None:
+    frame = render(Camera(4.5, 2.5, math.pi))  # facing the long way down the room
+    near = int(frame.get_at_mapped((0, CFG.height - 1))) & 0x0F
+    far = int(frame.get_at_mapped((0, CFG.height // 2 + 2))) & 0x0F
+    assert near > far
+
+
+def test_unknown_wall_type_uses_missing_texture() -> None:
+    odd = parse_map("[walls]\n#####\n#...#\n#####\n")
+    # Wall type 1 is registered; poke an unregistered type in via the slot table.
+    renderer = Renderer(CFG)
+    renderer.slot_for_type = renderer.slot_for_type[:1]  # only slot 0 known
+    frame = renderer.render_indices(odd, Camera(1.5, 1.5, 0.0))
+    assert (int(frame[CFG.width // 2, CFG.height // 2]) >> 4) == MAGENTA
 
 
 def test_wall_height_is_inversely_proportional_to_distance() -> None:
     # The east wall's face is at x = 8.
-    near = column_height(render_frame(ROOM, Camera(5.5, 2.5, 0.0)), CFG.width // 2)  # 2.5 away
-    far = column_height(render_frame(ROOM, Camera(3.0, 2.5, 0.0)), CFG.width // 2)  # 5.0 away
+    near = column_height(render(Camera(5.5, 2.5, 0.0)), CFG.width // 2)  # 2.5 away
+    far = column_height(render(Camera(3.0, 2.5, 0.0)), CFG.width // 2)  # 5.0 away
     assert near == pytest.approx(2 * far, abs=2)
     assert near == pytest.approx(Renderer(CFG).projection / 2.5, abs=1)
 
@@ -61,7 +85,7 @@ def test_no_fisheye_flat_wall_has_equal_height_across_screen() -> None:
     # column, so every column must be the same height.
     # The room is 3 cells tall, so from 4 cells away the east wall spans only the
     # middle ~half of the screen; outside that, rays hit the side walls.
-    frame = render_frame(ROOM, Camera(4.0, 2.5, 0.0))
+    frame = render(Camera(4.0, 2.5, 0.0))
     heights = {column_height(frame, c) for c in (100, 130, 160, 190, 220)}
     assert max(heights) - min(heights) <= 1
 

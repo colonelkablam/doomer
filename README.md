@@ -4,7 +4,7 @@ A Doom-style LAN shooter in Python: raycast rendering with pygame-ce, an
 authoritative server on a Raspberry Pi, co-op and deathmatch, and a level
 editor. See [docs/DESIGN.md](docs/DESIGN.md) for the design and milestones.
 
-Current state: single-player walking around a map (milestone 1).
+Current state: single-player walking around a textured map (milestone 1b).
 
 ## Play (Linux)
 
