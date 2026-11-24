@@ -5,6 +5,7 @@ defaults), not as magic numbers in the code that uses them.
 """
 
 import dataclasses
+import math
 import tomllib
 import typing
 from pathlib import Path
@@ -15,8 +16,26 @@ T = TypeVar("T")
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class MovementConfig:
+    """Lengths in cells/walls (1 = 2.7 m: a cell is as wide as a storey is tall)."""
+
     walk_speed: float = 3.5  # cells per second
-    radius: float = 0.25  # half-width of the player's square collision box, in cells
+    crouch_speed_factor: float = 0.5
+    radius: float = 0.25  # half-width of the player's square collision box
+    height: float = 0.67  # standing body height (~1.8 m)
+    crouch_height: float = 0.42
+    eye_height: float = 0.6  # standing eye (~1.6 m)
+    crouch_eye_height: float = 0.35
+    # Rises up to this are climbed automatically (stairs: 1/8 wall, ~34 cm).
+    step_height: float = 0.125
+    # ~3.4 g: a snappy jump rather than a floaty one. Apex 0.32 walls (~0.86 m):
+    # clears a desk (0.25) but not a counter (0.375).
+    gravity: float = 9.0  # walls per second squared
+    jump_apex: float = 0.32  # walls
+
+    @property
+    def jump_speed(self) -> float:
+        """Take-off speed for the jump apex: v = sqrt(2 g h)."""
+        return math.sqrt(2.0 * self.gravity * self.jump_apex)
 
 
 @dataclasses.dataclass(frozen=True, slots=True)

@@ -25,6 +25,8 @@ class Action(Enum):
     STRAFE_RIGHT = "strafe_right"
     TURN_LEFT = "turn_left"
     TURN_RIGHT = "turn_right"
+    JUMP = "jump"
+    CROUCH = "crouch"
 
 
 class InputSource(Protocol):
@@ -33,10 +35,17 @@ class InputSource(Protocol):
     def poll(self, real_dt: float) -> PlayerInput: ...
 
 
-def compose_input(actions: Set[Action], angle: float) -> PlayerInput:
+def compose_input(actions: Set[Action], angle: float, pitch: float = 0.0) -> PlayerInput:
     forward = (Action.FORWARD in actions) - (Action.BACK in actions)
     strafe = (Action.STRAFE_RIGHT in actions) - (Action.STRAFE_LEFT in actions)
-    return PlayerInput(forward=float(forward), strafe=float(strafe), angle=angle)
+    return PlayerInput(
+        forward=float(forward),
+        strafe=float(strafe),
+        angle=angle,
+        pitch=pitch,
+        jump=Action.JUMP in actions,
+        crouch=Action.CROUCH in actions,
+    )
 
 
 def turn(
@@ -48,12 +57,20 @@ def turn(
     return angle % math.tau
 
 
+def look(pitch: float, mouse_dy: float, c: ControlsConfig, limit: float) -> float:
+    """New pitch. Pulling the mouse back (positive dy) looks up, unless inverted."""
+    pitch += (mouse_dy if c.invert_mouse_y else -mouse_dy) * c.mouse_sensitivity
+    return max(-limit, min(limit, pitch))
+
+
 class KeyboardMouseInput:
     """Reads pygame keyboard and relative mouse state. Requires pygame.init()."""
 
-    def __init__(self, controls: ControlsConfig, angle: float) -> None:
+    def __init__(self, controls: ControlsConfig, angle: float, pitch_limit: float) -> None:
         self.controls = controls
         self.angle = angle
+        self.pitch = 0.0
+        self.pitch_limit = pitch_limit
         self.captured = False
         # SDL relative mode where available; otherwise grab + hidden cursor +
         # warp back to the window centre each frame (some VMs, remote desktops).
@@ -81,11 +98,12 @@ class KeyboardMouseInput:
     def poll(self, real_dt: float) -> PlayerInput:
         pressed = pygame.key.get_pressed()
         actions = {action for code, action in self._bindings if pressed[code]}
-        mouse_dx = pygame.mouse.get_rel()[0] if self.captured else 0
+        mouse_dx, mouse_dy = pygame.mouse.get_rel() if self.captured else (0, 0)
         if self.captured and self._warp_fallback:
             self._recentre()
         self.angle = turn(self.angle, actions, mouse_dx, real_dt, self.controls)
-        return compose_input(actions, self.angle)
+        self.pitch = look(self.pitch, mouse_dy, self.controls, self.pitch_limit)
+        return compose_input(actions, self.angle, self.pitch)
 
     def _recentre(self) -> None:
         surface = pygame.display.get_surface()

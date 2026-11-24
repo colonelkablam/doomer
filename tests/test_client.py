@@ -4,7 +4,7 @@ import pygame
 import pytest
 
 from doomer.client.config import ClientConfig, ControlsConfig, RenderConfig
-from doomer.client.input import Action, compose_input, turn
+from doomer.client.input import Action, compose_input, look, turn
 from doomer.client.palette import GREEN, MAGENTA, PINK, WOOD
 from doomer.client.render import Camera, Renderer
 from doomer.client.screenshot import render_frame
@@ -121,3 +121,30 @@ def test_client_config_from_toml_dict() -> None:
     assert cfg.render.window_scale == 4
     assert cfg.render.floor_colour == (1, 2, 3)
     assert cfg.controls.forward == ("i",)
+
+
+def test_compose_input_carries_pitch_jump_and_crouch() -> None:
+    inp = compose_input({Action.JUMP, Action.CROUCH}, 0.5, pitch=0.2)
+    assert (inp.angle, inp.pitch, inp.jump, inp.crouch) == (0.5, 0.2, True, True)
+
+
+def test_mouse_look_up_down_inverts_and_clamps() -> None:
+    c = ControlsConfig(mouse_sensitivity=0.01)
+    assert look(0.0, -10, c, 1.0) == pytest.approx(0.1)  # mouse forward (dy < 0): look up
+    inverted = ControlsConfig(mouse_sensitivity=0.01, invert_mouse_y=True)
+    assert look(0.0, -10, inverted, 1.0) == pytest.approx(-0.1)
+    assert look(0.0, -1000, c, 0.4) == pytest.approx(0.4)  # clamped
+
+
+def test_session_camera_follows_feet_and_eases_eye_height() -> None:
+    session = LocalSession(new_world(ROOM, "coop"), "test")
+    move = session.world.config.movement
+    dt = session.world.config.dt
+    assert session.camera(0.0).z == pytest.approx(move.eye_height)
+    session.update(dt, PlayerInput(crouch=True))
+    eased = session.camera(0.0).z
+    assert move.crouch_eye_height < eased < move.eye_height  # on its way down
+    for _ in range(30):
+        session.update(dt, PlayerInput(crouch=True))
+    assert session.camera(0.0, pitch=0.1).z == pytest.approx(move.crouch_eye_height)
+    assert session.camera(0.0, pitch=0.1).pitch == 0.1

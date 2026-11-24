@@ -6,7 +6,6 @@ import pytest
 from doomer.client.app import run
 from doomer.client.config import ClientConfig, ControlsConfig, RenderConfig
 from doomer.client.input import KeyboardMouseInput
-from doomer.client.render import Camera
 from doomer.client.session import LocalSession
 from doomer.shared.events import Event
 from doomer.shared.mapfile import load_map
@@ -26,9 +25,6 @@ class QuitAfter(LocalSession):
             pygame.event.post(pygame.event.Event(pygame.QUIT))
         return super().update(real_dt, player_input)
 
-    def camera(self, view_angle: float) -> Camera:
-        return super().camera(view_angle)
-
 
 def test_game_loop_runs_and_quits() -> None:
     session = QuitAfter(5, new_world(load_map(MAPS / "test.map"), "coop"), "smoke")
@@ -46,7 +42,7 @@ def test_mouse_capture_falls_back_when_relative_mode_unavailable(
     pygame.init()
     try:
         pygame.display.set_mode((64, 40))
-        controls = KeyboardMouseInput(ControlsConfig(), 0.0)
+        controls = KeyboardMouseInput(ControlsConfig(), 0.0, 0.4)
         controls.set_captured(True)
         assert controls.captured
         assert pygame.event.get_grab()

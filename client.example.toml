@@ -13,6 +13,7 @@ show_fps = true
 
 [controls]
 mouse_sensitivity = 0.0025   # radians per pixel
+invert_mouse_y = false
 turn_speed = 2.6             # radians per second, keyboard turning
 forward = ["w", "up"]
 back = ["s", "down"]
@@ -20,3 +21,5 @@ strafe_left = ["a"]
 strafe_right = ["d"]
 turn_left = ["left"]
 turn_right = ["right"]
+jump = ["space"]
+crouch = ["left ctrl", "c"]

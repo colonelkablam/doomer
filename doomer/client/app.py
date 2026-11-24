@@ -6,7 +6,7 @@ import pygame
 
 from doomer.client.config import ClientConfig
 from doomer.client.input import KeyboardMouseInput
-from doomer.client.render import Renderer, make_frame_surface
+from doomer.client.render import MAX_PITCH, Renderer, make_frame_surface
 from doomer.client.session import GameSession
 
 log = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
         frame = make_frame_surface(rc)
         font = pygame.font.Font(None, 22)
         renderer = Renderer(rc)
-        controls = KeyboardMouseInput(config.controls, start_angle)
+        controls = KeyboardMouseInput(config.controls, start_angle, MAX_PITCH)
         controls.set_captured(True)
         clock = pygame.time.Clock()
         log.info("running %r; Esc releases the mouse, Esc again quits", session.game_map.name)
@@ -45,7 +45,7 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
             player_input = controls.poll(real_dt)
             session.update(real_dt, player_input)  # events unused until sound/HUD exist
 
-            camera = session.camera(controls.angle)
+            camera = session.camera(controls.angle, controls.pitch)
             renderer.render(frame, session.game_map, camera, session.sprites())
             # 8-bit frame -> window format, then nearest-neighbour scale into the window.
             pygame.transform.scale(frame.convert(window), window.get_size(), window)

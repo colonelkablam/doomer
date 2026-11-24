@@ -11,9 +11,11 @@ from doomer.client.render import Camera, SpriteInstance, sprites_from_things
 from doomer.shared.events import Event
 from doomer.shared.mapfile import GameMap
 from doomer.shared.player import PlayerInput
-from doomer.shared.sim import step
+from doomer.shared.sim import eye_height, step
 from doomer.shared.timestep import FixedTimestep
 from doomer.shared.world import World, drain_events, spawn_player
+
+EYE_EASE_SPEED = 2.5  # walls per second: standing <-> crouching in ~0.1 s
 
 
 class GameSession(Protocol):
@@ -24,8 +26,8 @@ class GameSession(Protocol):
         """Advance by real elapsed time; return events for sound/HUD."""
         ...
 
-    def camera(self, view_angle: float) -> Camera:
-        """Where to draw from this frame. The client owns its view angle."""
+    def camera(self, view_angle: float, pitch: float = 0.0) -> Camera:
+        """Where to draw from this frame. The client owns its view direction."""
         ...
 
     def sprites(self) -> list[SpriteInstance]:
@@ -38,7 +40,10 @@ class LocalSession:
         self.world = world
         self.player = spawn_player(world, player_id, player_name)
         self.timestep = FixedTimestep(world.config.dt)
-        self._prev = (self.player.x, self.player.y)
+        self._prev = (self.player.x, self.player.y, self.player.z)
+        # Eye height eases towards standing/crouching height rather than
+        # snapping, so crouching dips the view over ~0.1 s.
+        self._eye = eye_height(self.player, world.config.movement)
         # Map things never move; later, enemies and pickups come from the world.
         self._static_sprites = sprites_from_things(world.map)
 
@@ -48,18 +53,22 @@ class LocalSession:
 
     def update(self, real_dt: float, player_input: PlayerInput) -> list[Event]:
         for _ in range(self.timestep.advance(real_dt)):
-            self._prev = (self.player.x, self.player.y)
+            self._prev = (self.player.x, self.player.y, self.player.z)
             step(self.world, {self.player.id: player_input})
+        target = eye_height(self.player, self.world.config.movement)
+        change = EYE_EASE_SPEED * real_dt
+        self._eye += max(-change, min(change, target - self._eye))
         return drain_events(self.world)
 
-    def camera(self, view_angle: float) -> Camera:
+    def camera(self, view_angle: float, pitch: float = 0.0) -> Camera:
         # Interpolate between the last two simulation states: rendering at 144 fps
         # with a 60 Hz simulation would otherwise judder.
         a = self.timestep.alpha
-        px, py = self._prev
+        px, py, pz = self._prev
         x = px + (self.player.x - px) * a
         y = py + (self.player.y - py) * a
-        return Camera(x, y, view_angle)
+        z = pz + (self.player.z - pz) * a
+        return Camera(x, y, view_angle, z=z + self._eye, pitch=pitch)
 
     def sprites(self) -> list[SpriteInstance]:
         return self._static_sprites

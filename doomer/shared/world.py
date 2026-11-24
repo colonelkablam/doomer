@@ -1,5 +1,6 @@
 """The World: everything that changes during play, plus the static map."""
 
+import math
 import random
 from dataclasses import dataclass, field
 
@@ -50,7 +51,8 @@ def spawn_player(world: World, player_id: int, name: str) -> PlayerState:
     spawns = world.map.things_of_type(GAME_MODES[world.mode].spawn_thing)
     # TODO(milestone 3b): deathmatch should pick the spawn farthest from other players.
     spot = spawns[0] if world.mode == "coop" else world.rng.choice(spawns)
-    player = PlayerState(player_id, name, spot.x, spot.y, spot.angle)
+    floor = world.map.floor_height(math.floor(spot.x), math.floor(spot.y))
+    player = PlayerState(player_id, name, spot.x, spot.y, spot.angle, z=floor)
     world.players[player_id] = player
     world.events.append(PlayerSpawned(world.tick, player_id, spot.x, spot.y))
     return player

@@ -21,6 +21,7 @@ class RenderConfig:
 @dataclass(frozen=True, slots=True)
 class ControlsConfig:
     mouse_sensitivity: float = 0.0025  # radians per pixel of mouse movement
+    invert_mouse_y: bool = False  # True: push the mouse forward to look down
     turn_speed: float = 2.6  # radians per second for keyboard turning
     # Key names as understood by pygame.key.key_code().
     forward: tuple[str, ...] = ("w", "up")
@@ -29,6 +30,8 @@ class ControlsConfig:
     strafe_right: tuple[str, ...] = ("d",)
     turn_left: tuple[str, ...] = ("left",)
     turn_right: tuple[str, ...] = ("right",)
+    jump: tuple[str, ...] = ("space",)
+    crouch: tuple[str, ...] = ("left ctrl", "c")
 
 
 @dataclass(frozen=True, slots=True)
