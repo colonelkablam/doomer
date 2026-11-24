@@ -74,7 +74,10 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 
 | Thing | Blocks | Status |
 |---|---|---|
-| Desk with beige PC and CRT | yes | [built] |
+| Desk pod (2x2 low block, partition front, laminate top) | yes | [built] |
+| Reception counter (low block, wood, 1 m) | yes | [built] |
+| Beige PC terminal (stands on a desk pod or counter) | no | [built] |
+| Desk with beige PC (single desk, sprite) | yes | [built] |
 | Water cooler | yes | [built] |
 | Filing cabinet | yes | [built] |
 | Potted ficus | yes | [built] |

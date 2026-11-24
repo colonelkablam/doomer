@@ -71,3 +71,38 @@ def test_u_increases_towards_viewers_right(angle: float) -> None:
     (right,) = cast_ray(ROOM, 3.5, 2.5, angle + 0.1)
     assert (left.cell_x, left.cell_y) == (right.cell_x, right.cell_y)
     assert 0.0 <= left.u < 0.5 < right.u <= 1.0
+
+
+DESKS = parse_map(
+    """\
+[walls]
+##########
+#........#
+#..22.3..#
+#........#
+##########
+
+[floor]
+0000000000
+0000000000
+0002305000
+0000000000
+"""
+)
+
+
+def test_ray_continues_through_low_blocks_to_the_wall() -> None:
+    hits = cast_ray(DESKS, 1.5, 2.5, 0.0)
+    assert [(h.cell_x, h.top) for h in hits] == [(3, 0.25), (4, 0.375), (6, 0.625), (9, 1.0)]
+    first, second, third, wall = hits
+    assert (first.distance, first.exit_distance) == pytest.approx((1.5, 2.5))
+    assert (second.distance, second.exit_distance) == pytest.approx((2.5, 3.5))
+    assert first.base == 0.0  # came from open floor
+    assert second.base == 0.25  # came straight off the first desk
+    assert third.base == 0.0  # open floor in between
+    assert wall.distance == pytest.approx(7.5)
+
+
+def test_low_blocks_within_max_distance_are_still_reported() -> None:
+    hits = cast_ray(DESKS, 1.5, 2.5, 0.0, max_distance=3.0)
+    assert [h.cell_x for h in hits] == [3, 4]

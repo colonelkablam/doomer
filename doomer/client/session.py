@@ -7,7 +7,7 @@ interpolates snapshots, so the game loop doesn't change.
 
 from typing import Protocol
 
-from doomer.client.render import Camera, SpriteInstance
+from doomer.client.render import Camera, SpriteInstance, sprites_from_things
 from doomer.shared.events import Event
 from doomer.shared.mapfile import GameMap
 from doomer.shared.player import PlayerInput
@@ -40,7 +40,7 @@ class LocalSession:
         self.timestep = FixedTimestep(world.config.dt)
         self._prev = (self.player.x, self.player.y)
         # Map things never move; later, enemies and pickups come from the world.
-        self._static_sprites = [SpriteInstance(t.type, t.x, t.y) for t in world.map.things]
+        self._static_sprites = sprites_from_things(world.map)
 
     @property
     def game_map(self) -> GameMap:

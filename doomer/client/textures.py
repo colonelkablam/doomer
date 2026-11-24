@@ -211,6 +211,14 @@ def mainframe(seed: int = 9) -> U8Array:
     return tex.astype(np.uint8)
 
 
+# Colour of a low block's top surface, by wall type: a partition-fronted desk
+# pod has a beige laminate top, a panelled counter a wooden one. Types not
+# listed fall back to the commonest colour in the top of their texture.
+TOP_COLOURS: dict[int, int] = {
+    2: indices(WOOD, 9.0).item(),
+    3: indices(SAND, 12.0).item(),
+}
+
 DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {
     1: office_wall,
     2: wood_panelling,

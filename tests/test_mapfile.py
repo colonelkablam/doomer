@@ -7,6 +7,7 @@ import pytest
 from doomer.shared.mapfile import (
     DEFAULT_CEILING,
     DEFAULT_FLOOR,
+    WALL_UNITS,
     MapError,
     format_map,
     load_map,
@@ -108,3 +109,39 @@ def test_mode_readiness() -> None:
 def test_shipped_maps_load_and_support_both_modes() -> None:
     for path in MAPS.glob("*.map"):
         assert set(supported_modes(load_map(path))) == {"coop", "deathmatch"}, path.name
+
+
+BLOCKS = """\
+[walls]
+######
+#.22.#
+#.3..#
+######
+
+[floor]
+000000
+002300
+000800
+
+[things]
+coop_start 1.5 1.5 0
+exit 4.5 2.5 0
+ficus 2.5 1.5 0
+"""
+
+
+def test_low_blocks_from_floor_values_on_wall_cells() -> None:
+    m = parse_map(BLOCKS)
+    assert m.top_height(2, 1) == 2 / WALL_UNITS
+    assert m.top_height(3, 1) == 3 / WALL_UNITS
+    assert m.top_height(2, 2) == 1.0  # floor value 8 = full height
+    assert m.top_height(0, 0) == 1.0  # ordinary wall
+    assert m.top_height(1, 1) == 0.0  # empty floor
+    assert m.is_low_block(2, 1) and not m.is_low_block(2, 2)
+    assert m.is_solid(2, 1)  # can't walk onto a desk
+
+
+def test_things_may_stand_on_low_blocks_but_not_in_full_walls() -> None:
+    assert parse_map(BLOCKS).things[2].type == "ficus"
+    with pytest.raises(MapError, match="inside a wall"):
+        parse_map(BLOCKS.replace("ficus 2.5 1.5 0", "ficus 2.5 2.5 0"))

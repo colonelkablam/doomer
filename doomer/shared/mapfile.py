@@ -14,8 +14,10 @@ from doomer.shared.things import THING_TYPES
 
 EMPTY = 0
 DEFAULT_WALL = 1
+# Heights are in eighths of a wall (~34 cm with a 2.7 m office ceiling).
+WALL_UNITS = 8
 DEFAULT_FLOOR = 0
-DEFAULT_CEILING = 4
+DEFAULT_CEILING = WALL_UNITS
 
 _SECTION = re.compile(r"^\[(\w+)\]\s*$")
 _GRID_SECTIONS = ("walls", "floor", "ceiling")
@@ -57,7 +59,24 @@ class GameMap:
         return self.walls[y][x]
 
     def is_solid(self, x: int, y: int) -> bool:
+        """Blocks movement: full walls and low blocks alike (no climbing yet)."""
         return self.wall_at(x, y) != EMPTY
+
+    def top_height(self, x: int, y: int) -> float:
+        """Height of a cell's top, as a fraction of a wall.
+
+        Empty cells: 0. Full walls: 1. A wall cell whose [floor] value is between
+        1 and WALL_UNITS - 1 is a low block (a desk, a counter) of that height.
+        """
+        if not self.in_bounds(x, y):
+            return 1.0
+        if self.walls[y][x] == EMPTY:
+            return 0.0
+        units = self.floor[y][x]
+        return units / WALL_UNITS if 0 < units < WALL_UNITS else 1.0
+
+    def is_low_block(self, x: int, y: int) -> bool:
+        return 0.0 < self.top_height(x, y) < 1.0
 
     def things_of_type(self, type_name: str) -> list[Thing]:
         return [t for t in self.things if t.type == type_name]
@@ -215,6 +234,6 @@ def _parse_thing(lineno: int, line: str, game_map: GameMap) -> Thing:
     cx, cy = math.floor(x), math.floor(y)
     if not game_map.in_bounds(cx, cy):
         raise MapError(f"line {lineno}: {type_name} at ({x:g}, {y:g}) is outside the map")
-    if game_map.is_solid(cx, cy):
+    if game_map.is_solid(cx, cy) and not game_map.is_low_block(cx, cy):
         raise MapError(f"line {lineno}: {type_name} at ({x:g}, {y:g}) is inside a wall")
     return Thing(type_name, x, y, math.radians(angle_deg))

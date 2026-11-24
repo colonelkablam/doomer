@@ -9,7 +9,8 @@ editor.
 - Setting, characters, enemies, furniture: [docs/GAME.md](docs/GAME.md)
 - Engine, code design and milestones: [docs/DESIGN.md](docs/DESIGN.md)
 
-Current state: single-player walking around the ground floor (milestone 2).
+Current state: single-player walking around the ground floor, with solid desk
+pods and counters (milestone 2b).
 
 ## Play (Linux)
 

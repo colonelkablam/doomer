@@ -12,10 +12,10 @@ cell the ray doesn't actually pass through.
 """
 
 import math
-from dataclasses import dataclass
 from enum import Enum
+from typing import NamedTuple
 
-from doomer.shared.mapfile import GameMap
+from doomer.shared.mapfile import DEFAULT_WALL, GameMap
 
 
 class Side(Enum):
@@ -23,8 +23,9 @@ class Side(Enum):
     Y = "y"  # hit a north or south face
 
 
-@dataclass(frozen=True, slots=True)
-class RayHit:
+class RayHit(NamedTuple):
+    # A NamedTuple rather than a frozen dataclass: the renderer creates ~1,000 of
+    # these per frame, and tuple construction is several times cheaper.
     distance: float  # Euclidean, along the ray. Renderers correct for fisheye themselves.
     cell_x: int
     cell_y: int
@@ -33,6 +34,13 @@ class RayHit:
     # Where along the wall face the ray hit, 0..1, for texture lookup. Oriented so
     # textures read left-to-right when you face the wall.
     u: float
+    # Heights as fractions of a wall. A full wall has top 1. A low block (desk)
+    # has its own top, and `base` is the top of the cell the ray came from, so
+    # the visible front face spans base..top (nothing if base >= top).
+    top: float = 1.0
+    base: float = 0.0
+    # Where the ray leaves the cell: the far edge of a low block's top surface.
+    exit_distance: float = math.inf
 
 
 def cast_ray(
@@ -40,10 +48,9 @@ def cast_ray(
 ) -> list[RayHit]:
     """Cast a ray and return the hits along it, nearest first.
 
-    Currently every wall is opaque and full-height, so the list ends at the first
-    wall (or is empty if nothing is hit within max_distance). With floor and
-    ceiling heights (milestone 4), the ray will continue past steps and ledges and
-    report each one.
+    Low blocks don't stop the ray: each one is reported and the ray carries on,
+    so the renderer can draw the desk and the wall behind it. The list ends at
+    the first full-height wall, or at max_distance.
     """
     dx, dy = math.cos(angle), math.sin(angle)
     cell_x, cell_y = math.floor(x), math.floor(y)
@@ -61,6 +68,11 @@ def cast_ray(
     else:
         step_y, next_y = 1, (cell_y + 1 - y) * delta_y if dy != 0.0 else math.inf
 
+    # Hot loop (320+ rays a frame): local variables and an inlined grid lookup
+    # instead of method calls.
+    walls, width, height = game_map.walls, game_map.width, game_map.height
+    hits: list[RayHit] = []
+    current_top = 0.0  # top of the cell the ray is in (0 = open floor)
     while True:
         if next_x < next_y:
             distance, side = next_x, Side.X
@@ -71,12 +83,24 @@ def cast_ray(
             next_y += delta_y
             cell_y += step_y
         if distance > max_distance:
-            return []
-        wall = game_map.wall_at(cell_x, cell_y)
-        if wall:
-            return [
-                RayHit(distance, cell_x, cell_y, wall, side, _wall_u(x, y, dx, dy, distance, side))
-            ]
+            return hits
+        if 0 <= cell_x < width and 0 <= cell_y < height:
+            wall = walls[cell_y][cell_x]
+        else:
+            wall = DEFAULT_WALL  # outside the map is solid
+        if not wall:
+            current_top = 0.0
+            continue
+        top = game_map.top_height(cell_x, cell_y)
+        u = _wall_u(x, y, dx, dy, distance, side)
+        # The ray leaves this cell at the next grid line it crosses.
+        exit_distance = next_x if next_x < next_y else next_y
+        hits.append(
+            RayHit(distance, cell_x, cell_y, wall, side, u, top, current_top, exit_distance)
+        )
+        if top >= 1.0:
+            return hits
+        current_top = top
 
 
 def _wall_u(x: float, y: float, dx: float, dy: float, distance: float, side: Side) -> float:

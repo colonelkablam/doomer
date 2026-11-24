@@ -32,11 +32,15 @@ class Sprite:
     index: U8Array  # [u][v] palette indices
     opaque: BoolArray  # [u][v] True where the sprite is drawn
     fullbright: bool = False  # emits light: not darkened by distance
+    on_ceiling: bool = False  # hangs from the ceiling, so ignores desks below it
 
 
-def _finish(canvas: Canvas, fullbright: bool = False) -> Sprite:
+def _finish(canvas: Canvas, fullbright: bool = False, on_ceiling: bool = False) -> Sprite:
     return Sprite(
-        np.ascontiguousarray(canvas.index.T), np.ascontiguousarray(canvas.opaque.T), fullbright
+        np.ascontiguousarray(canvas.index.T),
+        np.ascontiguousarray(canvas.opaque.T),
+        fullbright,
+        on_ceiling,
     )
 
 
@@ -65,6 +69,19 @@ def desk() -> Sprite:
     for row, length in ((32, 9), (34, 12), (36, 6)):
         c.paint(c.rect(row, row + 1, 25, 25 + length), GREEN, 13.0)  # green text
     c.paint(c.rect(44, 45, 22, 40), WARM_GREY, 11.0)  # keyboard
+    return _finish(c)
+
+
+def terminal() -> Sprite:
+    """Just the beige PC, for standing on a desk-pod cell (drawn from its base up)."""
+    c = Canvas()
+    c.paint(c.rect(59, 64, 19, 45), SAND, 10.0)  # system unit
+    c.paint(c.rect(60, 61, 36, 42), GREY, 3.0)  # floppy slot
+    c.paint(c.rect(47, 59, 22, 42), SAND, 11.0)  # monitor case
+    c.paint(c.rect(47, 59, 40, 42), SAND, 8.0)  # side shading
+    c.paint(c.rect(49, 57, 24, 38), GREEN, 1.0)  # screen
+    for row, length in ((50, 9), (52, 12), (54, 6)):
+        c.paint(c.rect(row, row + 1, 25, 25 + length), GREEN, 13.0)  # green text
     return _finish(c)
 
 
@@ -113,7 +130,7 @@ def ceiling_light() -> Sprite:
     c = Canvas()
     c.paint(c.rect(0, 4, 6, 58), GREY, 8.0)  # housing
     c.paint(c.rect(1, 3, 8, 56), CREAM, 15.0)  # diffuser
-    return _finish(c, fullbright=True)
+    return _finish(c, fullbright=True, on_ceiling=True)
 
 
 def exit_sign() -> Sprite:
@@ -122,11 +139,12 @@ def exit_sign() -> Sprite:
     c.paint(c.rect(8, 24, 13, 51), GREEN, 9.0)  # sign
     c.paint(c.rect(8, 9, 13, 51) | c.rect(23, 24, 13, 51), GREEN, 6.0)  # edges
     c.text("EXIT", 11, 17, CREAM, 15.0, scale=2)
-    return _finish(c, fullbright=True)
+    return _finish(c, fullbright=True, on_ceiling=True)
 
 
 SPRITES: dict[str, Sprite] = {
     "desk": desk(),
+    "terminal": terminal(),
     "water_cooler": water_cooler(),
     "filing_cabinet": filing_cabinet(),
     "ficus": ficus(),

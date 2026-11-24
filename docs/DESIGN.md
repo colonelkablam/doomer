@@ -126,8 +126,16 @@ dm_spawn      1.5   3.5   0
   `1`. Rows may be ragged; missing cells are walls. The map edge is treated as
   solid.
 - `[floor]` / `[ceiling]` (optional): one digit `0`-`9` per cell, defaults
-  0 and 4; same dimensions as `[walls]`. Height units TBD when
-  milestone 4 starts.
+  0 and 8; same dimensions as `[walls]`. Heights are in **eighths of a wall**
+  (~34 cm with a 2.7 m office ceiling).
+- **Low blocks (raised floors)**: a wall cell (digit in `[walls]`) whose
+  `[floor]` value is 1-7 is a block of that height instead of a full wall:
+  2 = desk (0.68 m), 3 = counter (1 m). Its sides use the wall type's texture;
+  its top colour comes from `TOP_COLOURS` in `client/textures.py`. `0` (or 8+)
+  keeps the full-height wall, so maps without `[floor]` are unchanged. Blocks
+  are solid (no climbing yet). Things may stand on a low block and are drawn
+  on its top. `[floor]` values on empty cells (walkable raised floors) and
+  `[ceiling]` are parsed but not yet used.
 - `[things]`: one per line. Positions are floats in cell units (`1.5` = centre
   of cell 1). Unknown types are an error at load time.
 - Supported modes are derived, not declared: **co-op** if there is a
@@ -138,8 +146,22 @@ dm_spawn      1.5   3.5   0
 
 - Grid raycaster (DDA) at 320x200 internal resolution, scaled up to the window.
 - **Two-phase frame**: the DDA is a Python loop (one ray per column, 320 a
-  frame); everything per-pixel is one vectorised numpy pass over the whole
-  frame. About 2 ms per frame in total.
+  frame); everything per-pixel is vectorised numpy over the whole frame.
+  About 3 ms per frame for the office without blocks in view, ~6 ms with desk
+  pods filling the view.
+- **Per-pixel z-buffer** (w x h perpendicular distances). Walls write it;
+  low blocks and sprites draw only where nearer, so a desk hides the bottom
+  of the wall and of any sprite behind it regardless of draw order. (Doom used
+  per-column clip ranges instead; a z-buffer was unaffordable in 1993, but is
+  a handful of numpy comparisons now.)
+- **Low blocks**: the ray continues through them (`RayHit` carries `top`,
+  `base` and `exit_distance`) and stops at the first full wall. Each block is
+  drawn as a front face (base..top at the entry distance, texture anchored to
+  the floor) plus a top surface if below eye level. A row y on a horizontal
+  surface at height h is at perpendicular distance
+  `(eye - h) * projection / (y - horizon)`, the same similar-triangles rule as
+  the floor. Blocks are drawn in layers (each column's k-th block), each layer
+  cropped to the band of rows it can occupy.
 - **8-bit indexed colour.** Every pixel is a byte indexing a 256-colour palette
   (`client/palette.py`), laid out as `index = (ramp << 4) | shade`: 16 hue
   ramps x 16 brightness steps. Brightness is linear in the low nibble, so
@@ -156,16 +178,13 @@ dm_spawn      1.5   3.5   0
   (quantised to the palette).
 - Ceiling and floor darken with distance, with 4x4 ordered (Bayer) dithering to
   hide banding. Precomputed, so free per frame.
-- The raycaster returns a **list of hits per ray**, not just the first one, so
-  floor/ceiling heights (milestone 4) extend it rather than replace it: draw
-  front to back with per-column clipping, like Doom's clip arrays.
 - Look up/down by y-shearing (moving the horizon), limited to about +/-30 deg.
 - **Sprites** (`client/sprites.py`): 64x64 palette art with an opacity mask,
   spanning one cell wide by one wall tall and standing on the floor, so texel
   size matches the walls; ceiling-hung things are drawn at the top of the
-  image. Keyed by thing type name; things without art (spawns) are invisible.
-  Drawn far-to-near (painter's algorithm), each column only where the sprite
-  is nearer than the wall (the per-column wall depth is a 1D depth buffer).
+  image (`on_ceiling`, so they ignore desks below). Keyed by thing type name;
+  things without art (spawns) are invisible. A sprite in a low-block cell
+  stands on the block's top (`SpriteInstance.z`). Z-tested per pixel.
   `fullbright` sprites (lights, signs) skip distance shading.
 - **Blocking things** (`ThingType.blocking`, `radius`) are square footprints
   that the shared collision code treats like walls.
@@ -197,10 +216,12 @@ keys), later floor/ceiling heights; place things. Shows mode readiness
 | 3b | Character classes, weapons (hitscan first), health, death/respawn, DM scoring | A playable deathmatch with the three characters |
 | 4 | Enemies: entities, behaviours, sight, flow-field pathing, projectiles (see GAME.md "NPC design") | Co-op floor with staplers, chairs and a photocopier |
 | 5 | Level editor | Round-trips a map; shows mode readiness |
-| 6 | Multi-hit rendering, per-cell heights, step-up/gravity, y-shearing | Stairs and ledges render and are walkable |
+| 2b ✅ | Raised floors: low blocks (desk pods, counters) rendered with faces and tops, per-pixel z-buffer, things on blocks | Desks hide what's behind them; terminals sit on desks |
+| 6 | Walkable raised floors, ceiling heights, step-up/gravity, y-shearing | Stairs and ledges render and are walkable |
 
-Heights moved last: office floors are flat, and stairs between floors are
-level transitions, so they matter far less than enemies for this game.
+Most of the heights work was pulled forward as 2b (desks). What's left in 6
+matters less for an office game: floors are flat, and stairs between floors
+are level transitions.
 
 ## Setup
 
