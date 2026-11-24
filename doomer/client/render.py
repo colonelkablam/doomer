@@ -67,7 +67,7 @@ from doomer.client.textures import (
     build_atlas,
     build_opacity,
 )
-from doomer.shared.mapfile import WALL_UNITS, GameMap
+from doomer.shared.mapfile import STAIRS_WALL_TYPE, WALL_UNITS, GameMap
 from doomer.shared.raycast import RayHit, Side, cast_ray, cell_exit_distance, start_heights
 
 MIN_SHADE = 0.25
@@ -81,6 +81,7 @@ BAYER_4X4 = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 
 BULKHEAD_TYPE = 1  # wall type whose upper texture faces a dropped ceiling
 NEAR_PLANE = 0.05  # sprites closer than this (in cells) aren't drawn
 UNDER_DESK_SHADOW = 12  # colormap levels darker (of 32) for the floor under a desk
+STAIR_NOSING_DARKEN = 10  # colormap levels darker for the edge line of each step
 # Ceiling light panels: half-size in cells, and colours (diffuser is full-bright).
 LIGHT_HALF = (0.22, 0.11)
 LIGHT_DIFFUSER = (CREAM << 4) | 15
@@ -120,7 +121,7 @@ def sprites_from_things(game_map: GameMap) -> list[SpriteInstance]:
         if art is not None and art.on_ceiling:
             z = game_map.ceiling_height(cx, cy) - 1.0  # the image's top at the ceiling
         else:
-            z = game_map.top_height(cx, cy)
+            z = game_map.floor_at(t.x, t.y) if game_map.is_low_block(cx, cy) else 0.0
         out.append(SpriteInstance(t.type, t.x, t.y, z))
     return out
 
@@ -244,8 +245,8 @@ class Renderer:
         # desk, under the atrium's high ceiling), its own floor and ceiling are
         # drawn too, as a span that starts at distance 0.
         cx, cy = math.floor(camera.x), math.floor(camera.y)
-        floor0, ceiling0 = start_heights(game_map, cx, cy)
-        own_space = (floor0, ceiling0) != (0, WALL_UNITS)
+        floor0, ceiling0 = start_heights(game_map, camera.x, camera.y)
+        own_space = (floor0, ceiling0) != (0.0, WALL_UNITS)
         on_block = game_map.is_low_block(cx, cy)
 
         # 1. One ray per column (Python loop). The last hit is the full wall;
@@ -281,12 +282,26 @@ class Renderer:
                 own: list[RayHit] = []
                 if ceiling0 != WALL_UNITS:
                     open_change = next((h.distance for h in hits if h.wall_type == 0), dist[col])
-                    own.append(_own_space(0, ceiling0, open_change))
+                    own.append(_own_space(0.0, ceiling0, open_change))
                 if on_block:
                     ray_angle = camera.angle + self._offsets[col]
                     edge = cell_exit_distance(camera.x, camera.y, ray_angle)
                     first = hits[0].distance if hits else dist[col]
-                    own.append(_own_space(floor0, WALL_UNITS, min(first, edge)))
+                    end = min(first, edge)
+                    # The surface you're standing on: your cell's wall type (a
+                    # desk top's colour, not the carpet's) and, on stairs, its
+                    # height where this column's ray leaves the cell.
+                    leave = _floor_at_ray(game_map, camera, ray_angle, end, cx, cy)
+                    own.append(
+                        _own_space(
+                            floor0,
+                            WALL_UNITS,
+                            end,
+                            exit_top=leave,
+                            wall_type=game_map.wall_at(cx, cy),
+                            cell=(cx, cy),
+                        )
+                    )
                 hits[0:0] = own
             for k, span in enumerate(hits):
                 if k == len(layers):
@@ -463,7 +478,9 @@ class Renderer:
             # give a zero-length span), never infinite (open-ended stretches).
             finite_far=np.maximum(np.where(np.isfinite(far), far, 1e9), near),
             top=np.array([h.top for h in hits]),
+            exit_top=np.array([h.exit_top for h in hits]),
             base=np.array([h.base for h in hits]),
+            stairs=np.array([h.wall_type == STAIRS_WALL_TYPE for h in hits]),
             ceiling=np.array([h.ceiling for h in hits]),
             prev_ceiling=np.array([h.prev_ceiling for h in hits]),
             block=np.array([h.wall_type != 0 for h in hits]),
@@ -475,7 +492,7 @@ class Renderer:
                 * np.where(np.array([h.side is Side.Y for h in hits]), Y_SIDE_SHADE, 1.0)
             ),
         )
-        if span.block.any() or (span.top > 0).any():
+        if span.block.any() or (span.top > 0).any() or (span.exit_top > 0).any():
             self._draw_lower(frame, zbuffer, span, entries, horizon, eye)
         if (span.ceiling != 1.0).any() or (span.prev_ceiling > span.ceiling).any():
             self._draw_upper(frame, zbuffer, span, horizon, eye)
@@ -500,7 +517,8 @@ class Renderer:
         hits = [e.hit for e in entries]
         y_top = self._rows(s.top, s.near, horizon, eye)  # riser top / floor near edge
         y_base = self._rows(s.base, s.near, horizon, eye)  # riser bottom
-        y_far = self._rows(s.top, s.finite_far, horizon, eye)  # floor surface far edge
+        exit_top = np.where(np.isfinite(s.exit_top), s.exit_top, s.top)
+        y_far = self._rows(exit_top, s.finite_far, horizon, eye)  # floor surface far edge
         y_far_floor = self._rows(np.zeros_like(s.top), s.finite_far, horizon, eye)
         r0, r1 = self._crop([y_top, y_far], [y_base, y_far_floor, y_top])
         if r0 >= r1:
@@ -560,14 +578,27 @@ class Renderer:
                 )
                 sub_frame = np.where(under, COLORMAP[UNDER_DESK_SHADOW, sub_frame], sub_frame)
 
-            # Floor surface at this span's height (a desk top, a raised floor),
-            # if it isn't the default floor and is below eye level.
-            raised = (s.top > 0.0) & (s.top < eye)
+            # Floor surface of this span (a desk top, a raised floor, stairs), if
+            # it isn't the default floor. Along a ray its height goes linearly
+            # from `top` at `near` to `exit_top` at `far` (equal unless it's a
+            # sloping stair), slope m per unit of perpendicular distance. The
+            # pixel at row y sees height eye - (y - horizon) d / projection at
+            # distance d; setting that equal to top + m (d - near) gives
+            #   d = (eye - top + m near) / ((y - horizon) / projection + m),
+            # which for a flat surface (m = 0) is the usual floor formula.
+            raised = (s.top > 0.0) | (exit_top > 0.0)
             if raised.any():
-                row_depth = (eye - s.top)[:, None] * self.projection / (py - horizon)
+                span_len = np.maximum(s.finite_far - near, 1e-9)
+                m = np.where(np.isfinite(s.far), (exit_top - s.top) / span_len, 0.0)
+                denom = (py - horizon) / self.projection + m[:, None]
+                row_depth = (eye - s.top + m * near)[:, None] / denom
+                # No "below the horizon" test here: a stair rising ahead of you
+                # climbs above eye level, so its far part is above the horizon.
+                # A flat surface above eye level gives a negative distance and
+                # is excluded by the range test anyway.
                 on_floor = (
                     raised[:, None]
-                    & below
+                    & (denom > 0)
                     & (row_depth >= near[:, None])
                     & (row_depth <= far[:, None])
                     & (row_depth < sub_z)
@@ -575,6 +606,11 @@ class Renderer:
                 if on_floor.any():
                     colour = np.where(s.block, self.top_colour[s.slot], self.floor_colour)
                     lit = self._dithered(colour, row_depth, cols, r0, r1)
+                    if s.stairs.any():
+                        # Tread nosings every 1/16 of a storey (~17 cm, one step).
+                        height = s.top[:, None] + m[:, None] * (row_depth - near[:, None])
+                        nosing = s.stairs[:, None] & (np.mod(height * 16, 1.0) < 0.2)
+                        lit = np.where(nosing, COLORMAP[STAIR_NOSING_DARKEN, lit], lit)
                     sub_frame = np.where(on_floor, lit, sub_frame)
                     sub_z = np.where(on_floor, row_depth, sub_z)
 
@@ -778,7 +814,9 @@ class _Span:
     far: FloatArray
     finite_far: FloatArray
     top: FloatArray
+    exit_top: FloatArray
     base: FloatArray
+    stairs: npt.NDArray[np.bool_]
     ceiling: FloatArray
     prev_ceiling: FloatArray
     block: npt.NDArray[np.bool_]
@@ -788,16 +826,23 @@ class _Span:
     level_near: IntArray
 
 
-def _own_space(floor_units: int, ceiling_units: int, exit_distance: float) -> RayHit:
+def _own_space(
+    floor: float,
+    ceiling_units: int,
+    exit_distance: float,
+    exit_top: float | None = None,
+    wall_type: int = 0,
+    cell: tuple[int, int] = (0, 0),
+) -> RayHit:
     """A pseudo-hit at distance 0 for the space the camera is in, so its own
-    floor and ceiling (if not the defaults) get drawn like any other span."""
-    floor = floor_units / WALL_UNITS
+    floor and ceiling (if not the defaults) get drawn like any other span.
+    Standing on something, it carries that cell's wall type and position."""
     ceiling = ceiling_units / WALL_UNITS
     return RayHit(
         0.0,
-        0,
-        0,
-        0,
+        cell[0],
+        cell[1],
+        wall_type,
         Side.X,
         0.0,
         floor,
@@ -805,6 +850,19 @@ def _own_space(floor_units: int, ceiling_units: int, exit_distance: float) -> Ra
         exit_distance,
         ceiling=ceiling,
         prev_ceiling=ceiling,
+        exit_top=floor if exit_top is None else exit_top,
+    )
+
+
+def _floor_at_ray(
+    game_map: GameMap, camera: Camera, angle: float, distance: float, cx: int, cy: int
+) -> float:
+    """Floor height of cell (cx, cy) where a ray from the camera leaves it."""
+    x = camera.x + math.cos(angle) * distance
+    y = camera.y + math.sin(angle) * distance
+    eps = 1e-9
+    return game_map.floor_at(
+        min(max(x, cx + eps), cx + 1 - eps), min(max(y, cy + eps), cy + 1 - eps)
     )
 
 

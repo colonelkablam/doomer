@@ -172,3 +172,62 @@ def test_vertical_movement_is_deterministic() -> None:
             step(world, {1: PlayerInput(forward=1.0, angle=math.sin(i / 30), jump=i % 37 == 0)})
         results.append((p.x, p.y, p.z, p.z_velocity))
     assert results[0] == results[1]
+
+
+# Two stair cells (h) facing north: 0 -> 4/8 at y = 3, 4/8 -> 8/8 at y = 2, then
+# a full-storey landing (e, 8/8) at y = 1, under a double-height ceiling.
+FLIGHT = """\
+[walls]
+#####
+#.e.#
+#.h.#
+#.h.#
+#...#
+#####
+
+[floor]
+00000
+00800
+00800
+00400
+00000
+
+[ceiling]
+ggggg
+ggggg
+ggggg
+ggggg
+ggggg
+
+[facing]
+.....
+.....
+..n..
+..n..
+
+[things]
+coop_start 2.5 4.5 0
+exit 3.5 4.5 0
+"""
+
+
+def test_walk_up_a_flight_of_stairs_to_the_landing_and_back_down() -> None:
+    world, p = world_for(FLIGHT)
+    north = -math.pi / 2
+    for _ in range(150):
+        step(world, {1: PlayerInput(forward=1.0, angle=north)})
+        assert p.on_ground  # follows the slope; never airborne
+    assert p.y < 2.0
+    assert p.z == pytest.approx(1.0)  # a full storey up
+    for _ in range(150):
+        step(world, {1: PlayerInput(forward=-1.0, angle=north)})
+        assert p.on_ground  # walks down rather than falling and bouncing
+    assert p.z == pytest.approx(0.0)
+
+
+def test_cant_climb_onto_stairs_from_the_side_halfway_up() -> None:
+    world, p = world_for(FLIGHT)
+    p.x, p.y = 1.5, 2.5  # beside the upper stair cell (0.5..1.0 high there)
+    for _ in range(30):
+        step(world, {1: PlayerInput(forward=1.0, angle=0.0)})
+    assert p.x == pytest.approx(2 - MOVE.radius)

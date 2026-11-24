@@ -19,6 +19,13 @@ NORTH, EAST, SOUTH, WEST = range(4)
 DEFAULT_FACING = SOUTH
 _FACING_CHARS = "nesw"
 
+# Wall types with built-in shape (the rest are just textures, chosen by the
+# client): a stair cell's floor slopes up across the cell, towards the way
+# its [facing] points, by STAIR_RISE units; its [floor] value is the height at
+# the top edge. Two stair cells climb a full storey.
+STAIRS_WALL_TYPE = 17  # 'h'
+STAIR_RISE = 4
+
 # Heights are in eighths of a wall (~34 cm with a 2.7 m office ceiling).
 WALL_UNITS = 8
 DEFAULT_FLOOR = 0
@@ -83,6 +90,21 @@ class GameMap:
         if self.walls[y][x] == EMPTY:
             return units / WALL_UNITS
         return units / WALL_UNITS if 0 < units < self.ceiling[y][x] else math.inf
+
+    def is_stairs(self, x: int, y: int) -> bool:
+        return self.is_low_block(x, y) and self.walls[y][x] == STAIRS_WALL_TYPE
+
+    def floor_at(self, x: float, y: float) -> float:
+        """Floor height at a point, in walls: the same as floor_height for its
+        cell, except on stairs, where it slopes across the cell."""
+        cx, cy = math.floor(x), math.floor(y)
+        if not self.is_stairs(cx, cy):
+            return self.floor_height(cx, cy)
+        fx, fy = x - cx, y - cy
+        progress = (1.0 - fy, fx, fy, 1.0 - fx)[self.facing_at(cx, cy)]  # 0 low .. 1 high
+        top = self.floor[cy][cx]
+        low = max(0, top - STAIR_RISE)
+        return (low + (top - low) * progress) / WALL_UNITS
 
     def ceiling_height(self, x: int, y: int) -> float:
         """Height of a cell's ceiling, in walls. Default 1 (one storey)."""

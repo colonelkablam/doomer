@@ -29,7 +29,16 @@ import math
 from enum import Enum
 from typing import NamedTuple
 
-from doomer.shared.mapfile import EAST, EMPTY, NORTH, SOUTH, WALL_UNITS, WEST, GameMap
+from doomer.shared.mapfile import (
+    EAST,
+    EMPTY,
+    NORTH,
+    SOUTH,
+    STAIRS_WALL_TYPE,
+    WALL_UNITS,
+    WEST,
+    GameMap,
+)
 
 
 class Side(Enum):
@@ -67,6 +76,10 @@ class RayHit(NamedTuple):
     exit_face: int = 0
     ceiling: float = 1.0  # ceiling of the entered space
     prev_ceiling: float = 1.0  # ceiling of the space the ray came from
+    # Floor height where the ray leaves the cell. Equal to `top` except on
+    # stairs, whose floor slopes: along a ray its height changes linearly
+    # from `top` at `distance` to `exit_top` at `exit_distance`.
+    exit_top: float = math.inf
 
     @property
     def full(self) -> bool:
@@ -98,8 +111,8 @@ def cast_ray(
         step_y, next_y = 1, (cell_y + 1 - y) * delta_y if dy != 0.0 else math.inf
 
     # Hot loop (320+ rays a frame): local variables and inlined grid lookups
-    # instead of method calls. Heights stay in integer units (eighths) until a
-    # hit is made, so comparisons are exact.
+    # instead of method calls. Ceilings stay in integer units (eighths) so
+    # comparisons are exact; floors are in walls, as stairs make them fractional.
     walls, floors, ceilings = game_map.walls, game_map.floor, game_map.ceiling
     width, height = game_map.width, game_map.height
     hits: list[RayHit] = []
@@ -107,7 +120,7 @@ def cast_ray(
     # The space the ray starts in (the camera may be standing on a desk), and
     # the ceiling of the last open (non-block) space it was in: stepping off a
     # desk back onto the same floor isn't a change worth reporting.
-    floor_now, ceiling_now = start_heights(game_map, cell_x, cell_y)
+    floor_now, ceiling_now = start_heights(game_map, x, y)
     open_ceiling = ceiling_now
     open_hit = -1  # index of the open-space hit whose exit distance is still open
     facing = game_map.facing
@@ -131,11 +144,11 @@ def cast_ray(
             wall, floor_units, ceiling_units = 1, 0, WALL_UNITS  # outside the map is solid
         full = wall != EMPTY and not 0 < floor_units < ceiling_units
         low_block = wall != EMPTY and not full
-        new_floor = 0 if wall == EMPTY else floor_units
+        stairs = low_block and wall == STAIRS_WALL_TYPE
 
         if not (full or low_block):
             if ceiling_units == open_ceiling:
-                floor_now, ceiling_now = new_floor, ceiling_units
+                floor_now, ceiling_now = 0.0, ceiling_units
                 continue  # same kind of open space as before: nothing to report
             open_ceiling = ceiling_units
 
@@ -152,23 +165,37 @@ def cast_ray(
         exit_u = _wall_u(x, y, dx, dy, exit_distance, exit_side)
         exit_face = (_entry_face(exit_side, dx, dy) + 2) % 4  # leave by the opposite kind
 
+        # Floor height where the ray enters and leaves this cell.
+        if full:
+            top = exit_top = math.inf
+        elif stairs:
+            top = _floor_in_cell(game_map, x + dx * distance, y + dy * distance, cell_x, cell_y)
+            exit_top = _floor_in_cell(
+                game_map, x + dx * exit_distance, y + dy * exit_distance, cell_x, cell_y
+            )
+        else:
+            top = exit_top = (floor_units if low_block else 0) / WALL_UNITS
+
         if low_block and hits:
             last = hits[-1]
             if (
                 last.wall_type == wall
                 and last.exit_distance == distance
-                and floor_units == floor_now
+                and floors[last.cell_y][last.cell_x] == floor_units
                 and ceiling_units == ceiling_now
                 and facing[last.cell_y][last.cell_x] == facing[cell_y][cell_x]
+                and last.exit_top == top
             ):
-                # A run of identical blocks (a desk pod, a mezzanine): the faces
-                # between them have zero height, so extend one hit instead.
+                # A run of identical blocks (a desk pod, a mezzanine, a wide
+                # flight of stairs): no faces between them, so extend one hit.
                 hits[-1] = last._replace(
                     exit_distance=exit_distance,
                     exit_side=exit_side,
                     exit_u=exit_u,
                     exit_face=exit_face,
+                    exit_top=exit_top,
                 )
+                floor_now = exit_top
                 continue
 
         u = _wall_u(x, y, dx, dy, distance, side)
@@ -182,8 +209,8 @@ def cast_ray(
                 wall,
                 side,
                 u,
-                math.inf if full else new_floor / WALL_UNITS,
-                floor_now / WALL_UNITS,
+                top,
+                floor_now,
                 exit_distance if low_block else math.inf,
                 exit_side,
                 exit_u,
@@ -191,6 +218,7 @@ def cast_ray(
                 exit_face,
                 ceiling_units / WALL_UNITS,
                 ceiling_now / WALL_UNITS,
+                exit_top,
             )
         )
         if full:
@@ -198,16 +226,27 @@ def cast_ray(
         if not low_block:
             open_hit = len(hits) - 1  # its exit is where this stretch of space ends
         # (A low block's own exit_distance is its cell's far edge, set above.)
-        floor_now, ceiling_now = new_floor, ceiling_units
+        floor_now, ceiling_now = exit_top, ceiling_units
 
 
-def start_heights(game_map: GameMap, x: int, y: int) -> tuple[int, int]:
-    """(floor, ceiling) in units of the space in cell (x, y): where a ray (or a
-    camera) starts. A low block's floor is its top: you're standing on it."""
-    if not game_map.in_bounds(x, y):
-        return 0, WALL_UNITS
-    floor = game_map.floor[y][x] if game_map.is_low_block(x, y) else 0
-    return floor, game_map.ceiling[y][x]
+def start_heights(game_map: GameMap, x: float, y: float) -> tuple[float, int]:
+    """(floor in walls, ceiling in units) of the space at point (x, y): where a
+    ray (or a camera) starts. On a low block the floor is its top (on stairs,
+    the slope's height at that point): you're standing on it."""
+    cx, cy = math.floor(x), math.floor(y)
+    if not game_map.in_bounds(cx, cy):
+        return 0.0, WALL_UNITS
+    floor = game_map.floor_at(x, y) if game_map.is_low_block(cx, cy) else 0.0
+    return floor, game_map.ceiling[cy][cx]
+
+
+def _floor_in_cell(game_map: GameMap, x: float, y: float, cx: int, cy: int) -> float:
+    """Floor at a point on the boundary of cell (cx, cy), nudged inside it (a
+    boundary point would otherwise belong to the neighbouring cell)."""
+    eps = 1e-9
+    return game_map.floor_at(
+        min(max(x, cx + eps), cx + 1 - eps), min(max(y, cy + eps), cy + 1 - eps)
+    )
 
 
 def _entry_face(side: Side, dx: float, dy: float) -> int:

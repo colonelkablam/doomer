@@ -59,7 +59,9 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
             vy * distance,
             move.radius,
             world.obstacles,
-            lambda cx, cy: cell_blocks(world.map, cx, cy, player.z, body, move.step_height),
+            lambda cx, cy: cell_blocks(
+                world.map, cx, cy, player.z, body, move.step_height, player.x, player.y
+            ),
         )
 
     if player_input.jump and player.on_ground:
@@ -77,18 +79,45 @@ def eye_height(player: PlayerState, move: MovementConfig) -> float:
     return move.crouch_eye_height if player.crouching else move.eye_height
 
 
-def cell_blocks(game_map: GameMap, cx: int, cy: int, feet: float, body: float, step: float) -> bool:
+def cell_blocks(
+    game_map: GameMap,
+    cx: int,
+    cy: int,
+    feet: float,
+    body: float,
+    step: float,
+    x: float | None = None,
+    y: float | None = None,
+) -> bool:
     """Can't move into a cell whose floor is too high to step up onto, or whose
-    ceiling is too low for your body once you're on its floor."""
-    floor = game_map.floor_height(cx, cy)  # inf for full walls
+    ceiling is too low for your body once you're on its floor. The floor is
+    measured at the point of the cell nearest (x, y), which matters on stairs:
+    you step onto the low end, and can't climb on from the side halfway up."""
+    if x is None or y is None:
+        floor = game_map.floor_height(cx, cy)  # inf for full walls
+    else:
+        floor = game_map.floor_at(_clamp_to(x, cx), _clamp_to(y, cy))
     if floor > feet + step + _EPS:
         return True
     return game_map.ceiling_height(cx, cy) - max(floor, feet) < body - _EPS
 
 
 def support_height(game_map: GameMap, x: float, y: float, radius: float) -> float:
-    """The highest floor under a collision box: what you're standing on."""
-    return max(game_map.floor_height(cx, cy) for cx, cy in _cells_under(x, y, radius))
+    """The highest floor under a collision box: what you're standing on. Sampled
+    at the box's corners and centre (clamped into each cell under it), so a
+    stair's slope is followed smoothly."""
+    best = -math.inf
+    points = [(x + sx * radius, y + sy * radius) for sx in (-1, 1) for sy in (-1, 1)]
+    points.append((x, y))
+    for cx, cy in _cells_under(x, y, radius):
+        for px, py in points:
+            best = max(best, game_map.floor_at(_clamp_to(px, cx), _clamp_to(py, cy)))
+    return best
+
+
+def _clamp_to(v: float, cell: int) -> float:
+    """Clamp a coordinate into a cell (just inside its edges)."""
+    return min(max(v, cell + _EPS), cell + 1 - _EPS)
 
 
 def headroom(game_map: GameMap, x: float, y: float, radius: float) -> float:
@@ -115,8 +144,13 @@ def _update_crouch(
 
 def _apply_gravity(game_map: GameMap, player: PlayerState, move: MovementConfig, dt: float) -> None:
     support = support_height(game_map, player.x, player.y, move.radius)
-    if player.on_ground and player.z < support + _EPS:
-        # Climbing a step (or still standing): snap to the floor.
+    if (
+        player.on_ground
+        and player.z_velocity <= 0.0
+        and abs(player.z - support) <= move.step_height + _EPS
+    ):
+        # Standing, climbing a step, or walking down stairs (a small drop is
+        # followed rather than fallen, as in Doom): stay on the floor.
         player.z = support
         player.z_velocity = 0.0
         return

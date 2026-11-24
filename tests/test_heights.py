@@ -188,3 +188,28 @@ def test_low_ceiling_stops_at_the_boundary_even_when_a_step_is_there() -> None:
             assert math.isclose(z, low, rel_tol=1e-6), y  # our own low ceiling
         elif low > 2.5 + 0.05:
             assert not math.isclose(z, low, rel_tol=1e-6), y  # not a phantom low ceiling
+
+
+STAIRS = parse_map(
+    "[walls]\n11111111\n1eeeeee1\n1..hh..1\n1..hh..1\n1......1\n1......1\n11111111\n\n"
+    "[floor]\n00000000\n08888880\n00088000\n00044000\n00000000\n00000000\n00000000\n\n"
+    "[ceiling]\ngggggggg\ngggggggg\ngggggggg\ngggggggg\ngggggggg\ngggggggg\ngggggggg\n\n"
+    "[facing]\n........\n........\n...nn...\n...nn...\n"
+)
+
+
+def test_stair_surface_follows_its_slope_even_above_eye_level() -> None:
+    # Facing north up the flight from 1.6 before it: the slope rises from 0 at
+    # 1.6 away to 1.0 at 3.6 away, crossing eye level on the way.
+    camera = Camera(4.0, 5.6, -math.pi / 2, pitch=math.radians(10))
+    R.render_indices(STAIRS, camera)
+    horizon = R.horizon
+    checked = 0
+    for y in range(int(horizon) - 20, CFG.height, 4):
+        # Solve eye - (y - horizon) d / proj = slope height at d (0.5 per cell).
+        denom = (y + 0.5 - horizon) / R.projection + 0.5
+        d = (EYE_HEIGHT - 0.0 + 0.5 * 1.6) / denom
+        if 1.6 < d < 3.6:
+            assert math.isclose(R.zbuffer[COL, y], d, rel_tol=1e-6), y
+            checked += 1
+    assert checked > 5

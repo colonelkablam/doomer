@@ -521,6 +521,7 @@ TOP_COLOURS: dict[int, int] = {
     12: indices(WOOD, 6.0).item(),  # 1980s steel desk: dark mahogany laminate
     13: indices(WOOD, 6.0).item(),  # pair of steel desks back to back
     14: indices(BLUE, 6.0).item(),  # raised floor: 1980s corporate blue carpet
+    17: indices(BLUE, 6.0).item(),  # stairs: carpeted
 }
 
 DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {
@@ -542,6 +543,10 @@ for _wall_type, _make in DEFAULT_WALL_TEXTURES.items():
 # shaft wall continues up); other types repeat their own texture.
 register_wall_texture(1, office_wall_upper(), sides=(UPPER,))
 register_wall_texture(5, office_wall_upper(), sides=(UPPER,))
+# 'h' (17): stairs (shape in doomer/shared/mapfile.py). Sides: plain plaster
+# stringer with a skirting line; top: the same blue carpet as raised floors.
+register_wall_texture(17, raised_floor_edge())
+register_wall_texture(17, office_wall_upper(), sides=(UPPER,))
 # 'f' (15): glazed curtain wall, 'g' (16): main entrance doors; both carry on
 # as the curtain wall's upper storey above one storey.
 register_wall_texture(15, curtain_wall_lower())
