@@ -259,6 +259,7 @@ class Renderer:
         wall_base = [0.0] * w
         wall_top = [1.0] * w
         layers: list[list[SpanHit | None]] = []
+        ceiling_changes = False  # any open stretch with a non-default ceiling?
         bulkhead = int(self.slot_table[BULKHEAD_TYPE, UPPER])
         for col in range(w):
             hits = cast_ray(game_map, camera.x, camera.y, camera.angle + self._offsets[col])
@@ -291,6 +292,8 @@ class Renderer:
                 if k == len(layers):
                     layers.append([None] * w)
                 block = span.wall_type != 0
+                if not block and span.ceiling != 1.0:
+                    ceiling_changes = True
                 after = hits[k + 1].distance if k + 1 < len(hits) else dist[col]
                 layers[k][col] = SpanHit(
                     span,
@@ -313,6 +316,16 @@ class Renderer:
             horizon,
             eye,
         )
+
+        # The default ceiling is a background with no geometry of its own; give
+        # its pixels their real depth where it really is the ceiling, so a low
+        # ceiling hides a higher one beyond it (looking from a normal room into
+        # the atrium). Inside a stretch with a different ceiling it doesn't
+        # exist, so those pixels stay infinitely far and the real ceiling wins.
+        if ceiling_changes:
+            self._ceiling_depths(zbuffer, layers, horizon, eye)
+        else:
+            self._default_ceiling_depths(zbuffer, horizon, eye)
 
         # 3. Changes of space, one layer at a time, z-tested.
         for layer in layers:
@@ -359,6 +372,37 @@ class Renderer:
         vi = ((1.0 - np.mod(height, 1.0)) * TEX_SIZE).astype(np.intp) & TEX_MASK
         which = np.where(height >= 1.0, upper[:, None], slot[:, None])
         return which, vi
+
+    def _ceiling_depths(
+        self, zbuffer: FloatArray, layers: list[list[SpanHit | None]], horizon: float, eye: float
+    ) -> None:
+        rows = min(self.config.height, math.floor(horizon))
+        if rows <= 0 or eye >= 1.0:
+            return  # no default ceiling above the eye on screen
+        w = self.config.width
+        # Per column, the [near, far] perpendicular intervals where the ceiling
+        # isn't the default (open stretches; the camera's own space).
+        lo = np.full((len(layers), w), np.nan)
+        hi = np.full((len(layers), w), np.nan)
+        for k, layer in enumerate(layers):
+            for col, entry in enumerate(layer):
+                if entry is not None and entry.hit.wall_type == 0 and entry.hit.ceiling != 1.0:
+                    lo[k, col] = entry.hit.distance * self._cos[col]
+                    hi[k, col] = entry.hit.exit_distance * self._cos[col]
+        depth = (1.0 - eye) * self.projection / (horizon - self._pixel_y[:rows])  # (rows,)
+        inside = (lo[:, :, None] <= depth[None, None, :]) & (depth[None, None, :] <= hi[:, :, None])
+        real = ~inside.any(axis=0)  # (w, rows)
+        region = zbuffer[:, :rows]
+        zbuffer[:, :rows] = np.where(np.isinf(region) & real, depth[None, :], region)
+
+    def _default_ceiling_depths(self, zbuffer: FloatArray, horizon: float, eye: float) -> None:
+        """No ceiling changes in view: the default ceiling is real everywhere."""
+        rows = min(self.config.height, math.floor(horizon))
+        if rows <= 0 or eye >= 1.0:
+            return
+        depth = (1.0 - eye) * self.projection / (horizon - self._pixel_y[:rows])
+        region = zbuffer[:, :rows]
+        zbuffer[:, :rows] = np.where(np.isinf(region), depth[None, :], region)
 
     def _draw_walls(
         self,

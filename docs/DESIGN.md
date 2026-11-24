@@ -240,6 +240,12 @@ dm_spawn      1.5   3.5   0
   split into its ceiling (to the next ceiling change) and the floor it
   stands on (to its cell's edge). ~4 ms in corridors, ~10 ms among desk pods
   or in the double-height lobby.
+- **Default ceiling depth**: background ceiling pixels get their real depth in
+  the z-buffer wherever the default ceiling really is the ceiling, so a low
+  ceiling hides a higher one beyond it (looking from a normal room into the
+  atrium). Inside stretches with a different ceiling it doesn't exist, so
+  those pixels stay infinitely far. The default floor stays infinitely far
+  (open floor is never raised).
 - **Ceiling lights** are panels set into the ceiling, not sprites: ceiling
   casting. Each `ceiling_light` thing marks a cell; the panel's corners are
   projected to a screen bounding box, and for those pixels the world point on

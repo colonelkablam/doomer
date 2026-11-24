@@ -40,7 +40,8 @@ def test_wall_in_a_tall_space_reaches_its_ceiling() -> None:
     # In a normal-height corridor the same pixel is ceiling (infinitely far).
     plain = parse_map("[walls]\n############\n#..........#\n############\n")
     R.render_indices(plain, Camera(1.5, 1.5, 0.0))
-    assert math.isinf(R.zbuffer[COL, y])
+    ceiling_depth = (1.0 - EYE_HEIGHT) * R.projection / (CFG.height / 2 - (y + 0.5))
+    assert math.isclose(R.zbuffer[COL, y], ceiling_depth, rel_tol=1e-6)
 
 
 def test_bulkhead_where_the_ceiling_comes_down() -> None:
@@ -154,3 +155,17 @@ def test_ceiling_light_panel_is_drawn_into_the_ceiling() -> None:
     # A room without the light thing has no panel.
     plain = parse_map("[walls]\n#######\n#.....#\n#######\n")
     assert diffuser not in R.render_indices(plain, camera)[COL].tolist()
+
+
+def test_low_ceiling_hides_the_high_one_beyond_it() -> None:
+    # Camera in the normal-height corridor at x = 1.5, looking east into the
+    # tall stretch that starts at x = 4. Rows whose default-ceiling point is
+    # nearer than x = 4 must show that low ceiling, not the high one beyond.
+    R.render_indices(ATRIUM, Camera(1.5, 1.5, 0.0))
+    checked = 0
+    for y in range(0, CFG.height // 2 - 1):
+        low = (1.0 - EYE_HEIGHT) * R.projection / (CFG.height / 2 - (y + 0.5))
+        if low < 2.5 - 0.05:  # the boundary is 2.5 away
+            assert math.isclose(R.zbuffer[COL, y], low, rel_tol=1e-6), y
+            checked += 1
+    assert checked > 5
