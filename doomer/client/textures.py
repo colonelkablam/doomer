@@ -526,7 +526,7 @@ def steel_desk_pair_end() -> tuple[U8Array, BoolArray]:
 
 # Low blocks whose top shows a seam across its middle, perpendicular to the
 # cell's facing: two desks pushed together back to back ('d').
-TOP_SEAM_WALL_TYPES: frozenset[int] = frozenset({13})
+TOP_SEAM_WALL_TYPES: frozenset[int] = frozenset({13, 19})
 
 
 # Colour of a low block's top surface, by wall type: a partition-fronted desk
@@ -539,6 +539,7 @@ TOP_COLOURS: dict[int, int] = {
     11: indices(WOOD, 10.0).item(),  # executive desk
     12: indices(WOOD, 6.0).item(),  # 1980s steel desk: dark mahogany laminate
     13: indices(WOOD, 6.0).item(),  # pair of steel desks back to back
+    19: indices(WOOD, 6.0).item(),  # ... with cubicle screens
     14: indices(BLUE, 6.0).item(),  # raised floor: 1980s corporate blue carpet
     17: indices(BLUE, 6.0).item(),  # stairs: carpeted
     18: indices(BLUE, 6.0).item(),  # balcony: carpeted
@@ -583,7 +584,8 @@ register_wall_texture(14, office_wall_upper(), sides=(UPPER,))
 
 # Desks, per side (from the desk's own point of view; its front is where you
 # sit). Map characters: 'a' (10) office desk, 'b' (11) executive desk,
-# 'c' (12) 1980s steel desk, 'd' (13) two steel desks back to back.
+# 'c' (12) 1980s steel desk, 'd' (13) two steel desks back to back, 'j' (19)
+# the same with cubicle screens on top (the screens are box models, boxes.py).
 DESK_TEXTURES: dict[int, dict[int, Callable[[], tuple[U8Array, BoolArray]]]] = {
     10: {FRONT: office_desk, RIGHT: office_desk, BACK: office_desk, LEFT: office_desk},
     11: {
@@ -605,6 +607,7 @@ DESK_TEXTURES: dict[int, dict[int, Callable[[], tuple[U8Array, BoolArray]]]] = {
         LEFT: steel_desk_pair_end,
     },
 }
+DESK_TEXTURES[19] = DESK_TEXTURES[13]
 for _wall_type, _by_side in DESK_TEXTURES.items():
     for _side, _make_side in _by_side.items():
         register_wall_texture(_wall_type, *_make_side(), sides=(_side,))

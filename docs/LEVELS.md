@@ -83,7 +83,10 @@ and an `exit`; **deathmatch** needs at least 4 `dm_spawn`s.
 - **Desk pods**: rows of `d` cells (two desks back to back), `[facing]` `n`
   (sitters north and south) or `e`. Leave an aisle along both long sides for
   the sitters. A row of identical cells is drawn as one (cheaper; see
-  Performance).
+  Performance). `j` is the same with cubicle screens (a booth per sitter):
+  give neighbouring cells in a row the same facing so their shared edge has
+  one screen. Screens don't block movement, so a player on the desk tops
+  walks through them; don't make desk-top routes through `j` pods.
 - **Single desks** `c` face where you sit; **executive desks** `b` likewise.
 - **Counters**: wall type `2`, height 3: too high to jump onto (cover).
 - **Tall spaces**: `[ceiling]` `g` (16) for two storeys. Walls get their

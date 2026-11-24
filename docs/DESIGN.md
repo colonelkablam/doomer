@@ -317,6 +317,11 @@ dm_spawn      1.5   3.5   0
   sprites can't do; the cost is per box per column, so keep models to a few
   boxes, only within 16 cells. The Mac SE/30 (`mac`, with keyboard and
   mouse) is the first. Big furniture stays as map cells.
+- **Cubicle screens** (`boxes.desk_screens`): on `j` desk pairs, thin
+  world-aligned boxes (5 cm thick, to ~1.25 m) down the middle of each pair
+  and across every cell edge (a shared edge once). Built once per map with
+  the stairs. Visual only: collision is still per cell and square
+  obstacles, which can't express a thin wall on top of a desk.
 - **Stairs as steps** (`boxes.stair_boxes`): each stair cell is drawn as 8
   step boxes (1/16-storey risers, 1/8-cell treads), built once per map and
   never distance-culled. Each step's top is level with the slope at its back

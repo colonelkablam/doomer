@@ -33,6 +33,7 @@ from doomer.client.palette import (
     ORANGE,
     PURPLE,
     SAND,
+    STEEL,
     WARM_GREY,
     WOOD,
     U8Array,
@@ -292,6 +293,79 @@ def stair_boxes(game_map: GameMap) -> list[PlacedBox]:
                     riser=(top - low) / steps,
                 )
                 out.append(PlacedBox(cx + 0.5, cy + 0.5, 0.0, angle, box))
+    return out
+
+
+# --- Cubicle screens on desk pairs ('j') ---------------------------------------
+# A fabric screen down the middle of each pair (between the two sitters) and
+# one across the pair at each cell edge, so every sitter has a three-sided
+# booth. Tops at ~1.25 m, a seated person's head height: privacy sitting down,
+# a view over the top standing up. Drawn only: they don't block movement (you
+# can walk through them on a desk top).
+
+SCREENED_DESK_PAIR = 19  # 'j'
+SCREEN_HEIGHT = 0.21  # walls above the desk top (~57 cm; desk 0.25 + 0.21 = 1.24 m)
+SCREEN_HALF = 0.01  # half-thickness, cells (~5 cm thick)
+
+
+def screen_fabric() -> int:
+    """Grey-blue woven fabric with an aluminium cap; stretched over a whole
+    cell's length and the screen's height, so texels are ~4 x 1 cm."""
+    rng = np.random.default_rng(41)
+    c = Canvas()
+    weave = ((c.v // 2) % 2) * 0.4
+    c.paint(c.rect(0, 64, 0, 64), STEEL, 7.0 + weave + (noise(rng, 32) - 0.5) * 1.2)
+    c.paint(c.rect(0, 7, 0, 64), GREY, 11.0)  # cap
+    c.paint(c.rect(0, 2, 0, 64), GREY, 13.0)
+    c.paint(c.rect(60, 64, 0, 64), GREY, 6.0)  # foot, in shadow
+    return _texture(c)
+
+
+def screen_trim() -> int:
+    """The aluminium edge (screen ends and the top of the cap)."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 11.0)
+    return _texture(c)
+
+
+_FABRIC, _TRIM = screen_fabric(), screen_trim()
+# Screens are world-aligned (angle 0): thin across x (big faces east/west) or
+# thin across y (big faces north/south).
+_THIN_X = (_FABRIC, _TRIM, _FABRIC, _TRIM, _TRIM)
+_THIN_Y = (_TRIM, _FABRIC, _TRIM, _FABRIC, _TRIM)
+
+
+def desk_screens(game_map: GameMap) -> list[PlacedBox]:
+    """Screens on every screened desk pair: one down the middle, one at each
+    cell edge across the pair (shared edges once, row ends too)."""
+    out = []
+    h = (0.0, SCREEN_HEIGHT)
+    t = (-SCREEN_HALF, SCREEN_HALF)
+
+    def pair(x: int, y: int, facing: int) -> bool:
+        return (
+            game_map.wall_at(x, y) == SCREENED_DESK_PAIR
+            and game_map.is_low_block(x, y)
+            and game_map.facing_at(x, y) % 2 == facing % 2
+        )
+
+    for cy, row in enumerate(game_map.walls):
+        for cx, wall in enumerate(row):
+            if wall != SCREENED_DESK_PAIR or not game_map.is_low_block(cx, cy):
+                continue
+            top = game_map.floor_height(cx, cy)
+            facing = game_map.facing_at(cx, cy)
+            mx, my = cx + 0.5, cy + 0.5
+            if facing % 2 == 0:  # north/south: the pair meets along y = middle, row runs along x
+                out.append(PlacedBox(mx, my, top, 0.0, Box((-0.5, 0.5), t, h, _THIN_Y)))
+                out.append(PlacedBox(cx, my, top, 0.0, Box(t, (-0.5, 0.5), h, _THIN_X)))
+                if not pair(cx + 1, cy, facing):
+                    out.append(PlacedBox(cx + 1, my, top, 0.0, Box(t, (-0.5, 0.5), h, _THIN_X)))
+            else:  # east/west: meets along x = middle, row runs along y
+                out.append(PlacedBox(mx, my, top, 0.0, Box(t, (-0.5, 0.5), h, _THIN_X)))
+                out.append(PlacedBox(mx, cy, top, 0.0, Box((-0.5, 0.5), t, h, _THIN_Y)))
+                if not pair(cx, cy + 1, facing):
+                    out.append(PlacedBox(mx, cy + 1, top, 0.0, Box((-0.5, 0.5), t, h, _THIN_Y)))
     return out
 
 

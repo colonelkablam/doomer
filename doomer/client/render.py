@@ -48,7 +48,14 @@ import numpy as np
 import numpy.typing as npt
 import pygame
 
-from doomer.client.boxes import BOX_MODELS, BOX_TEXTURES, TOP, PlacedBox, stair_boxes
+from doomer.client.boxes import (
+    BOX_MODELS,
+    BOX_TEXTURES,
+    TOP,
+    PlacedBox,
+    desk_screens,
+    stair_boxes,
+)
 from doomer.client.config import RenderConfig
 from doomer.client.palette import (
     COLORMAP,
@@ -191,10 +198,10 @@ class Renderer:
         # could otherwise be served an old map's table.
         self._lights_map: GameMap | None = None
         self._slots_map: GameMap | None = None
-        self._stairs_map: GameMap | None = None
+        self._map_boxes_map: GameMap | None = None
         self._seam_map: GameMap | None = None
         self._seam_grid: IntArray = np.zeros((0, 0), dtype=np.intp)
-        self._stairs: list[PlacedBox] = []
+        self._map_boxes: list[PlacedBox] = []
         self._cell_slots: list[list[list[int]]] = []
         self._light_list: list[tuple[float, float, float]] = []
         # Last frame's per-pixel perpendicular distances, and its horizon row.
@@ -387,7 +394,7 @@ class Renderer:
 
         self._draw_ceiling_lights(frame, zbuffer, game_map, camera, horizon, eye)
         sprites = list(sprites)
-        boxes = self._stair_boxes_for(game_map) + [
+        boxes = self._map_boxes_for(game_map) + [
             PlacedBox(s.x, s.y, s.z, s.angle, box)
             for s in sprites
             for box in BOX_MODELS.get(s.name, ())
@@ -1011,12 +1018,13 @@ class Renderer:
         region[panel] = frame_colour[panel]
         region[diffuser] = LIGHT_DIFFUSER
 
-    def _stair_boxes_for(self, game_map: GameMap) -> list[PlacedBox]:
-        """The map's stairs as step boxes, built once per map."""
-        if self._stairs_map is not game_map:
-            self._stairs = stair_boxes(game_map)
-            self._stairs_map = game_map
-        return self._stairs
+    def _map_boxes_for(self, game_map: GameMap) -> list[PlacedBox]:
+        """Boxes that are part of the map (stairs' steps, desk screens), built
+        once per map."""
+        if self._map_boxes_map is not game_map:
+            self._map_boxes = stair_boxes(game_map) + desk_screens(game_map)
+            self._map_boxes_map = game_map
+        return self._map_boxes
 
     def _draw_boxes(
         self,

@@ -1,7 +1,8 @@
 name: Ground Floor
 # [floor] values on wall cells make low blocks, in eighths of a wall:
 # 2 = desk (0.68 m), 3 = counter (1 m). Wall types: b = executive desk,
-# d = two 1980s steel desks back to back. [facing] says which way a desk's
+# d = two 1980s steel desks back to back, j = the same with cubicle screens
+# on top. [facing] says which way a desk's
 # front (where you sit) faces; for stairs (h) the way they go up. f = curtain
 # wall, g = entrance doors, i = balcony (railed); [ceiling] g = 16/8, a
 # double-height space. See docs/GAME.md.
@@ -9,11 +10,11 @@ name: Ground Floor
 [walls]
 1fffffff1444444444444441
 fiiiiiii1..............4
-f......h1.ddd...ddd....4
+f......h1.jjj...jjj....4
 g...2..h1..............4
 g...2..................4
 f.......1..............4
-f.......1.ddd...ddd....4
+f.......1.jjj...jjj....4
 222222222..............4
 4.......2..............4
 4.......2..............4
