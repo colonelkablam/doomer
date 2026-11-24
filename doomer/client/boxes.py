@@ -56,6 +56,7 @@ from doomer.shared.doors import (
 from doomer.shared.mapfile import STAIR_RISE, STAIRS_WALL_TYPE, WALL_UNITS, GameMap
 from doomer.shared.screens import SCREEN_HALF, SCREEN_HEIGHT
 from doomer.shared.screens import desk_screens as shared_desk_screens
+from doomer.shared.switches import Switch
 
 FRONT, RIGHT, BACK, LEFT, TOP = range(5)  # face order in Box.faces
 
@@ -80,6 +81,10 @@ class Box:
     # Lights itself (a lit sign): drawn at full brightness, ignoring the light
     # map and the distance fade, as the ceiling panels and exit signs are.
     glow: bool = False
+    # Glows only while the floor has power (a lit sign; the breaker's own lamp
+    # runs off a battery, so it doesn't need this). Without power it's lit
+    # like anything else.
+    mains: bool = False
 
 
 class PlacedBox(NamedTuple):
@@ -977,6 +982,7 @@ def _letters(
                 (base, base + height),
                 (tex, clear, tex, clear, clear),
                 glow=glow,
+                mains=glow,
             )
         )
     return out
@@ -993,6 +999,89 @@ def _welcome_sign() -> tuple[Box, ...]:
     half = (17 * 0.19 + 16 * 0.045) / 2 + 0.12
     backing = Box((0.0, 0.012), (-half, half), (1.085, 1.455), (panel, dark, dark, dark, dark))
     return (backing, *letters)
+
+
+# --- The plant room's breaker (doomer/shared/switches.py has its state) ---------
+# A steel switchgear cabinet against the wall: louvres, a hazard band, a big
+# lever (down: off; thrown up: on) and a status lamp (red, then green, lit).
+# Drawn from the switch's state each frame, like doors. Model x points out of
+# the wall; the thing stands at the wall's face.
+
+BREAKER_DEPTH, BREAKER_HALF_WIDTH, BREAKER_TOP = 0.12, 0.3, 0.62
+_PIVOT, _LEVER = 0.36, 0.11  # walls: the lever's pivot height and length
+
+
+def switchgear_front() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 8.0)
+    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64), GREY, 5.0)
+    for v0 in range(6, 22, 3):  # louvres
+        c.paint(c.rect(v0, v0 + 1, 8, 40), GREY, 3.0)
+    stripes = c.rect(54, 60, 2, 62)
+    c.paint(stripes, OCHRE, 12.0)  # hazard band
+    c.paint(stripes & ((c.u + c.v) % 8 < 4), GREY, 1.0)
+    c.paint(c.rect(28, 40, 10, 22), OCHRE, 12.0)  # a warning label
+    c.paint(c.rect(30, 38, 15, 17), GREY, 1.0)
+    return _texture(c)
+
+
+def switchgear_side() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 6.5)
+    return _texture(c)
+
+
+def lever_arm() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 11.0)
+    return _texture(c)
+
+
+def lever_handle() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), BRICK, 11.0)
+    c.paint(c.rect(0, 20, 0, 64), BRICK, 13.0)
+    return _texture(c)
+
+
+def lamp(ramp: int) -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), ramp, 15.0)
+    return _texture(c)
+
+
+_GEAR_FRONT, _GEAR_SIDE = switchgear_front(), switchgear_side()
+_ARM, _HANDLE = lever_arm(), lever_handle()
+_LAMP_OFF, _LAMP_ON = lamp(BRICK), lamp(GREEN)
+
+
+def switch_boxes(switches: Iterable[Switch]) -> list[PlacedBox]:
+    """Boxes for switches (the breaker) in their current state."""
+    out = []
+    for sw in switches:
+        cabinet = Box(
+            (0.0, BREAKER_DEPTH),
+            (-BREAKER_HALF_WIDTH, BREAKER_HALF_WIDTH),
+            (0.02, BREAKER_TOP),
+            (_GEAR_FRONT, _GEAR_SIDE, _GEAR_SIDE, _GEAR_SIDE, _GEAR_SIDE),
+        )
+        # The lever on the right of the front: hangs down when off, up when on.
+        z = (_PIVOT, _PIVOT + _LEVER) if sw.on else (_PIVOT - _LEVER, _PIVOT)
+        knob = (z[1] - 0.03, z[1]) if sw.on else (z[0], z[0] + 0.03)
+        lever_x = (BREAKER_DEPTH, BREAKER_DEPTH + 0.03)
+        arm = Box(lever_x, (0.17, 0.2), z, (_ARM,) * 5)
+        handle = Box((BREAKER_DEPTH, BREAKER_DEPTH + 0.05), (0.15, 0.22), knob, (_HANDLE,) * 5)
+        lit = _LAMP_ON if sw.on else _LAMP_OFF
+        light = Box(
+            (BREAKER_DEPTH, BREAKER_DEPTH + 0.008),
+            (-0.2, -0.14),
+            (0.5, 0.54),
+            (lit,) * 5,
+            glow=True,
+        )
+        for box in (cabinet, arm, handle, light):
+            out.append(PlacedBox(sw.x, sw.y, 0.0, sw.facing, box))
+    return out
 
 
 # Keyed by thing type name, like SPRITES.

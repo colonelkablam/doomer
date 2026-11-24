@@ -39,6 +39,15 @@ class PassPickedUp(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class SwitchThrown(Event):
+    """A player threw a switch, setting a level flag (the breaker: power)."""
+
+    switch_id: int
+    player_id: int
+    flag: str
+
+
+@dataclass(frozen=True, slots=True)
 class PlayerSpawned(Event):
     player_id: int
     x: float

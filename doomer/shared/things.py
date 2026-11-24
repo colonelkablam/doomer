@@ -65,8 +65,6 @@ for _name, _description, _blocking, _radius in (
     ("water_cooler", "Water cooler", True, 0.12),
     ("filing_cabinet", "Filing cabinet", True, 0.16),
     ("ficus", "Potted ficus", True, 0.16),
-    # Drawn as a panel set into its cell's ceiling (not a sprite).
-    ("ceiling_light", "Fluorescent ceiling light panel", False, 0.0),
     # Sits on a desk-pod cell (a low block), so it needs no footprint of its own.
     ("terminal", "Beige PC and CRT, for standing on a desk pod", False, 0.0),
     # Drawn as solid boxes (client/boxes.py); faces its map angle, like terminal.
@@ -88,6 +86,31 @@ RECEPTION_DESK = register_thing_type(
             Footprint((0.14, 0.31), (-0.92, 0.92), 0.425),  # the ledge
             Footprint((-0.30, 0.14), (-0.92, 0.92), 0.27),  # the work surface
         ),
+    )
+)
+
+# A fluorescent light panel set into its cell's ceiling (drawn as a panel,
+# not a sprite). `circuit=emergency`: stays lit when the power's off
+# (doomer/shared/switches.py); main-circuit panels go dark.
+CEILING_LIGHT = register_thing_type(
+    ThingType(
+        "ceiling_light",
+        "Fluorescent ceiling light panel",
+        properties={"circuit": ("main", "emergency")},
+    )
+)
+
+# The plant room's breaker: use it to restore power (doomer/shared/switches.py).
+# Stand it just in front of a wall's face, angle out of the wall.
+# Blocks like furniture: a switchgear cabinet 0.12 deep, 0.6 wide (it's drawn
+# by doomer/client/boxes.py, whose sizes match).
+BREAKER = register_thing_type(
+    ThingType(
+        "breaker",
+        "Main breaker: restores the power",
+        blocking=True,
+        radius=0.3,
+        footprints=(Footprint((0.0, 0.16), (-0.3, 0.3), 0.62),),
     )
 )
 

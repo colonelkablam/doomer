@@ -14,6 +14,7 @@ from doomer.shared.modes import GAME_MODES, missing_requirements
 from doomer.shared.pickups import Pickup, pickups_from_map
 from doomer.shared.player import PlayerState
 from doomer.shared.screens import Screen, desk_screens
+from doomer.shared.switches import Switch, initial_flags, switches_from_map
 from doomer.shared.things import PASS_COLOURS, THING_TYPES
 
 
@@ -37,6 +38,9 @@ class World:
     # Pickups (ID passes) and the passes the team holds (doomer/shared/pickups.py).
     pickups: list[Pickup] = field(default_factory=list)
     passes: set[str] = field(default_factory=set)
+    # Switches and the level flags they set (doomer/shared/switches.py): power.
+    switches: list[Switch] = field(default_factory=list)
+    flags: set[str] = field(default_factory=set)
 
 
 class ModeNotSupported(ValueError):
@@ -68,6 +72,8 @@ def new_world(
         screens=tuple(desk_screens(game_map)),
         doors=doors_from_map(game_map),
         pickups=pickups_from_map(game_map),
+        switches=switches_from_map(game_map),
+        flags=initial_flags(game_map),
         passes=set(PASS_COLOURS) if GAME_MODES[mode].all_passes else set(),
     )
 

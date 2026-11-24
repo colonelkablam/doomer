@@ -121,6 +121,7 @@ STEP_HEIGHT = 0.125  # a rise up to this is a step, not a drop that needs a rail
 # Ceiling light panels: half-size in cells, and colours (diffuser is full-bright).
 LIGHT_HALF = (0.22, 0.11)
 LIGHT_DIFFUSER = (CREAM << 4) | 15
+DEAD_DIFFUSER = (GREY << 4) | 8  # a panel with no power
 LIGHT_FRAME = (GREY << 4) | 9
 _BACKGROUND_CACHE_SIZE = 64
 
@@ -189,6 +190,7 @@ class Renderer:
         self._light_map_map: GameMap | None = None
         self._light_map: LightMap | None = None
         self._light: LightMap | None = None  # this frame's
+        self._power = True  # this frame's
         self._frame_background: U8Array = np.zeros((0, 0), dtype=np.uint8)
         w, h = config.width, config.height
         tan_half_fov = math.tan(math.radians(config.fov_degrees) / 2)
@@ -219,7 +221,7 @@ class Renderer:
         self._seam_grid: IntArray = np.zeros((0, 0), dtype=np.intp)
         self._map_boxes: list[PlacedBox] = []
         self._cell_slots: list[list[list[int]]] = []
-        self._light_list: list[tuple[float, float, float]] = []
+        self._light_list: list[tuple[float, float, float, bool]] = []
         # Last frame's per-pixel perpendicular distances, and its horizon row.
         self.zbuffer: FloatArray = np.full((w, h), np.inf)
         self.horizon: float = h / 2
@@ -294,7 +296,10 @@ class Renderer:
         x = camera.x + self._ray_dx[cs, None] * along
         y = camera.y + self._ray_dy[cs, None] * along
         coarse = np.minimum(light.at(x, y), 1.0)
-        coarse = np.where(below[None, rs], coarse, np.sqrt(coarse))
+        # Ceilings: the square root (light bounced off a lit floor), but with
+        # the power off there's little to bounce: the plain light.
+        ceiling = np.sqrt(coarse) if self._power else coarse
+        coarse = np.where(below[None, rs], coarse, ceiling)
         lit = np.repeat(np.repeat(coarse, 2, axis=0), 2, axis=1)[:w, :h]
         base = np.where(below, self.floor_colour, self.ceiling_colour)  # (h,)
         exact = ((base & 0x0F) + 1)[None, :] * self._brightness(shade_depth)[None, :] * lit - 1
@@ -340,7 +345,8 @@ class Renderer:
         light = np.minimum(self._light.at(x, y), 1.0)
         low = (height < 1.0)[:, None]
         shade = self.lighting.soffit_shade if self.lighting else 1.0
-        result: FloatArray = np.where(low, light * shade, np.sqrt(light))
+        bounce = np.sqrt(light) if self._power else light  # (as the background's ceiling)
+        result: FloatArray = np.where(low, light * shade, bounce)
         return result
 
     def _light_map_for(self, game_map: GameMap) -> LightMap | None:
@@ -382,9 +388,11 @@ class Renderer:
         camera: Camera,
         sprites: Iterable[SpriteInstance] = (),
         boxes: Iterable[PlacedBox] = (),
+        power: bool = True,
     ) -> None:
         """Draw into an 8-bit surface from make_frame_surface()."""
-        pygame.surfarray.blit_array(target, self.render_indices(game_map, camera, sprites, boxes))
+        frame = self.render_indices(game_map, camera, sprites, boxes, power)
+        pygame.surfarray.blit_array(target, frame)
 
     def render_indices(
         self,
@@ -392,9 +400,13 @@ class Renderer:
         camera: Camera,
         sprites: Iterable[SpriteInstance] = (),
         boxes: Iterable[PlacedBox] = (),
+        power: bool = True,
     ) -> U8Array:
         """The frame as a (width, height) array of palette indices. `boxes`:
-        moving geometry this frame (doors), drawn like box models."""
+        moving geometry this frame (doors), drawn like box models. `power`:
+        False lights the floor by its emergency panels only (and draws the
+        rest dark)."""
+        self._power = power
         w = self.config.width
         pitch = max(-MAX_PITCH, min(MAX_PITCH, camera.pitch))
         horizon = self.config.height / 2 + math.tan(pitch) * self.projection
@@ -405,6 +417,8 @@ class Renderer:
         ray = camera.angle + np.array(self._offsets)
         self._ray_dx, self._ray_dy = np.cos(ray), np.sin(ray)
         self._light = self._light_map_for(game_map)
+        if self._light is not None and not power:
+            self._light = self._light.without_power()
         self._frame_background = (
             self.background(horizon, eye)
             if self._light is None
@@ -1085,15 +1099,17 @@ class Renderer:
         frame[cols, r0:r1] = sub_frame
         zbuffer[cols, r0:r1] = sub_z
 
-    def _lights_in(self, game_map: GameMap) -> list[tuple[float, float, float]]:
-        """(x, y, ceiling height) of each light panel: one per `ceiling_light`
-        thing, centred in its cell."""
+    def _lights_in(self, game_map: GameMap) -> list[tuple[float, float, float, bool]]:
+        """(x, y, ceiling height, on the emergency circuit) of each light
+        panel: one per `ceiling_light` thing, centred in its cell."""
         if self._lights_map is not game_map:
             self._light_list = []
             for t in game_map.things:
                 if t.type == "ceiling_light":
                     cx, cy = math.floor(t.x), math.floor(t.y)
-                    self._light_list.append((cx + 0.5, cy + 0.5, game_map.ceiling_height(cx, cy)))
+                    emergency = t.prop("circuit") == "emergency"
+                    centre = (cx + 0.5, cy + 0.5, game_map.ceiling_height(cx, cy), emergency)
+                    self._light_list.append(centre)
             self._lights_map = game_map
         return self._light_list
 
@@ -1118,7 +1134,7 @@ class Renderer:
         w, h = self.config.width, self.config.height
         cos_a, sin_a = math.cos(camera.angle), math.sin(camera.angle)
         half_x, half_y = LIGHT_HALF
-        for lx, ly, ceiling in self._lights_in(game_map):
+        for lx, ly, ceiling, emergency in self._lights_in(game_map):
             if ceiling <= eye:
                 continue
             corners = [(lx + sx * half_x, ly + sy * half_y) for sx in (-1, 1) for sy in (-1, 1)]
@@ -1136,8 +1152,9 @@ class Renderer:
                 r0, r1 = max(0, math.floor(min(rows))), min(h, math.ceil(max(rows)) + 1)
                 r1 = min(r1, math.floor(horizon))
                 if c0 < c1 and r0 < r1:
+                    lit = self._power or emergency
                     self._draw_light_panel(
-                        frame, zbuffer, camera, lx, ly, ceiling, c0, c1, r0, r1, horizon, eye
+                        frame, zbuffer, camera, lx, ly, ceiling, c0, c1, r0, r1, horizon, eye, lit
                     )
 
     def _draw_light_panel(
@@ -1154,6 +1171,7 @@ class Renderer:
         r1: int,
         horizon: float,
         eye: float,
+        lit: bool = True,
     ) -> None:
         cols = np.arange(c0, c1)
         up = horizon - self._pixel_y[None, r0:r1]  # > 0 above the horizon
@@ -1179,7 +1197,13 @@ class Renderer:
         ]
         region = frame[c0:c1, r0:r1]
         region[panel] = frame_colour[panel]
-        region[diffuser] = LIGHT_DIFFUSER
+        if lit:
+            region[diffuser] = LIGHT_DIFFUSER
+        else:  # no power: a dead tube behind grey plastic, shaded like the frame
+            dead = COLORMAP[
+                light_level(self._brightness(np.broadcast_to(depth, panel.shape))), DEAD_DIFFUSER
+            ]
+            region[diffuser] = dead[diffuser]
 
     def _map_boxes_for(self, game_map: GameMap) -> list[PlacedBox]:
         """Boxes that are part of the map (stairs' steps, desk screens), built
@@ -1287,7 +1311,7 @@ class Renderer:
         depths: list[FloatArray] = []
         texels: list[npt.NDArray[np.uint8]] = []
         solid: list[npt.NDArray[np.bool_]] = []  # False: see-through (leaves)
-        glow_b = np.array([p.box.glow for p in boxes])
+        glow_b = np.array([p.box.glow and (self._power or not p.box.mains) for p in boxes])
         glows: list[npt.NDArray[np.bool_]] = []  # lit signs: full brightness
         lights: list[FloatArray] = []
 

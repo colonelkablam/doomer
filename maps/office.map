@@ -80,6 +80,8 @@ f.......1.jjj...jjj....4
 ........................
 
 [things]
+# The floor starts on emergency lighting (circuit=emergency panels) until the
+# plant room's breaker is thrown.
 # type          x     y     angle
 # Entrance lobby: two storeys, glazed, entrance doors on the west, the
 # reception desk facing them, stairs up to a railed balcony along the north
@@ -92,6 +94,8 @@ door_double     12.5  10.5  270
 # The plant room (for now, the small room south of the corridor): facilities
 # pass (red), which is on the boss's desk
 door_hinged     11.5  12.5  90    lock=red
+# The plant room's main breaker, against its south wall: restores the power
+breaker         10.5  14.99 270
 pass_blue       4.37  4.4   0
 pass_red        4.2   10.3  0
 reception_desk  4.6   4.0   180
@@ -159,7 +163,7 @@ dm_spawn        10.5  13.5  0
 exit            20.5  14.5  90
 # Ceiling lights: panels set into the ceiling, roughly every 2 cells
 ceiling_light   2.5   3.5   0
-ceiling_light   5.5   3.5   0
+ceiling_light   5.5   3.5   0 circuit=emergency
 ceiling_light   2.5   5.5   0
 ceiling_light   5.5   5.5   0
 # Open plan: a panel over each pod, and four over the aisles between
@@ -167,16 +171,16 @@ ceiling_light   11.5  2.5   0
 ceiling_light   17.5  2.5   0
 ceiling_light   11.5  6.5   0
 ceiling_light   17.5  6.5   0
-ceiling_light   14.5  4.5   0
+ceiling_light   14.5  4.5   0 circuit=emergency
 ceiling_light   20.5  4.5   0
 ceiling_light   14.5  8.5   0
 ceiling_light   20.5  8.5   0
 ceiling_light   9.5   11.5  0
 ceiling_light   12.5  11.5  0
-ceiling_light   15.5  11.5  0
+ceiling_light   15.5  11.5  0 circuit=emergency
 ceiling_light   18.5  11.5  0
 ceiling_light   21.5  11.5  0
 ceiling_light   2.5   9.5   0
-ceiling_light   5.5   12.5  0
-ceiling_light   10.5  13.5  0
+ceiling_light   5.5   12.5  0 circuit=emergency
+ceiling_light   10.5  13.5  0 circuit=emergency
 ceiling_light   20.5  13.5  0

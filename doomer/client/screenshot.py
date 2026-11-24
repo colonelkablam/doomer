@@ -13,7 +13,7 @@ use_dummy_video()
 
 import pygame  # noqa: E402
 
-from doomer.client.boxes import door_boxes  # noqa: E402
+from doomer.client.boxes import door_boxes, switch_boxes  # noqa: E402
 from doomer.client.config import LightingConfig, RenderConfig  # noqa: E402
 from doomer.client.render import (  # noqa: E402
     Camera,
@@ -23,6 +23,7 @@ from doomer.client.render import (  # noqa: E402
 )
 from doomer.shared.doors import Door, doors_from_map  # noqa: E402
 from doomer.shared.mapfile import GameMap, load_map  # noqa: E402
+from doomer.shared.switches import POWER, initial_flags, switches_from_map  # noqa: E402
 
 
 def render_frame(
@@ -33,6 +34,7 @@ def render_frame(
     lighting: LightingConfig | None = None,
     doors: list[Door] | None = None,
     passes: frozenset[str] = frozenset(),
+    power: bool | None = None,
 ) -> pygame.Surface:
     """Render one frame; `things=False` draws walls, floor and ceiling only;
     `lighting` lights it from the map's ceiling panels; `doors` in a given
@@ -41,8 +43,13 @@ def render_frame(
     frame = make_frame_surface(config)
     sprites = sprites_from_things(game_map) if things else []
     shown = doors if doors is not None else doors_from_map(game_map)
-    boxes = door_boxes(shown, passes) if things else []
-    Renderer(config, lighting).render(frame, game_map, camera, sprites, boxes)
+    # The power as the map starts (off if it has a breaker), unless told.
+    powered = POWER in initial_flags(game_map) if power is None else power
+    switches = switches_from_map(game_map)
+    for sw in switches:
+        sw.on = powered
+    boxes = door_boxes(shown, passes) + switch_boxes(switches) if things else []
+    Renderer(config, lighting).render(frame, game_map, camera, sprites, boxes, powered)
     return frame
 
 

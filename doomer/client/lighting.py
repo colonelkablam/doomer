@@ -45,6 +45,7 @@ class Panel:
     x: float
     y: float
     height: float  # walls
+    emergency: bool = False  # on the emergency circuit: lit without power
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +65,15 @@ class LightMap:
     ambient: float
     values: FloatArray  # [row][col]: ambient plus every patch
     patches: tuple[LightPatch, ...]
+    # The same with the power off: a lower ambient, emergency panels only.
+    unpowered: FloatArray | None = None
+
+    def without_power(self) -> "LightMap":
+        """This map as it is with the power off (itself, if it has no
+        unpowered version)."""
+        if self.unpowered is None:
+            return self
+        return LightMap(self.samples_per_cell, self.ambient, self.unpowered, self.patches)
 
     def at(self, x: FloatArray, y: FloatArray) -> FloatArray:
         """Light at points (cells), interpolated bilinearly between samples;
@@ -88,7 +98,8 @@ def panels_in(game_map: GameMap) -> list[Panel]:
     for t in game_map.things:
         if t.type == "ceiling_light":
             cx, cy = math.floor(t.x), math.floor(t.y)
-            out.append(Panel(cx + 0.5, cy + 0.5, game_map.ceiling_height(cx, cy)))
+            emergency = t.prop("circuit") == "emergency"
+            out.append(Panel(cx + 0.5, cy + 0.5, game_map.ceiling_height(cx, cy), emergency))
     return out
 
 
@@ -102,6 +113,7 @@ def bake_light_map(game_map: GameMap, config: LightingConfig | None = None) -> L
         [[0.0 if walls[y, x] else game_map.floor_height(x, y) for x in xs] for y in ys]
     )
     values = np.full((rows, cols), config.ambient)
+    unpowered = np.full((rows, cols), config.unpowered_ambient)
     patches = []
     for panel in panels_in(game_map):
         patch = _patch(panel, config, walls, floors, rows, cols)
@@ -109,8 +121,10 @@ def bake_light_map(game_map: GameMap, config: LightingConfig | None = None) -> L
             r, c = patch.row0, patch.col0
             h, w = patch.values.shape
             values[r : r + h, c : c + w] += patch.values
+            if panel.emergency:
+                unpowered[r : r + h, c : c + w] += patch.values
             patches.append(patch)
-    return LightMap(s, config.ambient, values, tuple(patches))
+    return LightMap(s, config.ambient, values, tuple(patches), unpowered)
 
 
 def _patch(

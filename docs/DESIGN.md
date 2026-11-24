@@ -360,6 +360,16 @@ dm_spawn      1.5   3.5   0
   (`resting_height`, used for sprites, box models and pickups). The
   reception desk is the first: a ledge at the front (~1.15 m), a work
   surface behind it (~0.73 m).
+- **Power** (`shared/switches.py`): level flags in `World.flags`, set by
+  switches. The breaker sets `power`; a map with a breaker starts without it
+  (a map without one is powered). Use (E) near the breaker, facing it,
+  throws it (`SwitchThrown`); it's one-way. The client draws the breaker from
+  its state (lever down/up, lamp red/green). Without power, the light map
+  is recomposed from the panels' patches: a lower ambient
+  (`unpowered_ambient`) plus only `circuit=emergency` panels; main panels
+  draw dark; ceilings take the plain light instead of its square root (with
+  little light there's little to bounce); and glowing boxes marked `mains`
+  (the lobby sign) are lit like anything else until the power's back.
 - **ID passes and locks** (`shared/pickups.py`, `door lock=`): passes are
   pickups (walk within 0.75 cells, about an arm's reach beyond your box, at
   most 0.5 storeys above or below your feet); the team shares them
@@ -472,8 +482,8 @@ surface is still a single lookup.
    open plan's 35 panels became 8 (one over each pod, four over the aisles)
    so it has pools. Cost on the cloud VM: +1.5-3 ms per frame (lobby ~17 ->
    ~20 ms). `LightingConfig.enabled = false` switches it off.
-4. Dynamic: flicker, muzzle flash, power events (after networking, since
-   power events cross the wire).
+4. Dynamic: power events ✅ (emergency lighting until the breaker is
+   thrown: see Power); flicker and muzzle flashes later.
 
 ## Gameplay defaults
 

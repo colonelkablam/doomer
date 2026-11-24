@@ -16,11 +16,12 @@ from collections.abc import Mapping
 from doomer.shared.collision import ThinWall, move_box
 from doomer.shared.config import MovementConfig
 from doomer.shared.doors import door_walls, try_use, update_doors
-from doomer.shared.events import DoorLocked, DoorToggled, PassPickedUp
+from doomer.shared.events import DoorLocked, DoorToggled, PassPickedUp, SwitchThrown
 from doomer.shared.mapfile import RAIL_HEIGHT, RAILING_WALL_TYPE, GameMap
 from doomer.shared.pickups import take_pickups
 from doomer.shared.player import PlayerInput, PlayerState
 from doomer.shared.screens import SCREEN_HALF, screens_at_height
+from doomer.shared.switches import try_switch
 from doomer.shared.world import World
 
 TAU = math.tau
@@ -46,7 +47,13 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
     player.pitch = player_input.pitch
     _update_crouch(world.map, player, player_input.crouch, move)
     if player_input.use and not player.use_held:  # a press, not a hold
-        used = try_use(world.doors, player.x, player.y, player.angle, world.passes)
+        thrown = try_switch(world.switches, player.x, player.y, player.angle)
+        used = (
+            None if thrown else try_use(world.doors, player.x, player.y, player.angle, world.passes)
+        )
+        if thrown is not None:
+            world.flags.add(thrown.flag)
+            world.events.append(SwitchThrown(world.tick, thrown.id, player.id, thrown.flag))
         if used is not None:
             door, allowed = used
             if allowed:

@@ -86,6 +86,8 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Sliding glass doors: aluminium frame, frosted band, push bar; open by themselves | yes, until open | [built] (prototype) |
 | Reception desk (box model): a cream laminate transaction ledge with a chrome edge over a slatted wood front with "WELCOME" in brass letters, on a recessed plinth; behind, a grey work surface at desk height over a drawer pedestal, the switchboard phone; returns at both ends; the visitors' book on the ledge | yes | [built] |
 | "Boomer Industries" sign: lit brass letters on a dark panel, high on the lobby wall behind reception above the glass doors | no | [built] |
+| Main breaker: steel switchgear cabinet with louvres, a hazard band, a red-handled lever and a status lamp (red, then green) | yes | [built] |
+| Emergency lighting: until the breaker is thrown, only emergency panels are lit and the lobby sign is dark | no | [built] |
 | Card readers by locked doors: stripe in the pass colour, red/green lamp | no | [built] |
 | Water cooler (box model: cream cabinet, hot and cold taps, upturned octagonal bottle; faces its map angle) | yes | [built] |
 | Filing cabinet (box model: five steel drawers with pulls and label cards; faces its map angle) | yes | [built] |

@@ -49,7 +49,9 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
             hud.handle(session.update(real_dt, player_input), now)
 
             camera = session.camera(controls.angle, controls.pitch)
-            renderer.render(frame, session.game_map, camera, session.sprites(), session.boxes())
+            renderer.render(
+                frame, session.game_map, camera, session.sprites(), session.boxes(), session.power()
+            )
             # 8-bit frame -> window format, then nearest-neighbour scale into the window.
             pygame.transform.scale(frame.convert(window), window.get_size(), window)
             hud.draw(window, session.passes(), now)

@@ -9,7 +9,7 @@ from collections.abc import Collection, Iterable
 
 import pygame
 
-from doomer.shared.events import DoorLocked, Event, PassPickedUp
+from doomer.shared.events import DoorLocked, Event, PassPickedUp, SwitchThrown
 
 MESSAGE_SECONDS = 3.0
 PASS_COLOURS_RGB = {"blue": (90, 140, 240), "red": (230, 90, 70), "gold": (240, 210, 90)}
@@ -22,6 +22,8 @@ def message_for(event: Event) -> str | None:
         return f"Picked up the {event.colour} pass"
     if isinstance(event, DoorLocked):
         return f"Locked: you need the {event.lock} pass"
+    if isinstance(event, SwitchThrown) and event.flag == "power":
+        return "The power is back on"
     return None
 
 

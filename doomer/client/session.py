@@ -7,12 +7,13 @@ interpolates snapshots, so the game loop doesn't change.
 
 from typing import Protocol
 
-from doomer.client.boxes import PlacedBox, door_boxes
+from doomer.client.boxes import PlacedBox, door_boxes, switch_boxes
 from doomer.client.render import Camera, SpriteInstance, sprites_from_things
 from doomer.shared.events import Event
 from doomer.shared.mapfile import GameMap
 from doomer.shared.player import PlayerInput
 from doomer.shared.sim import eye_height, step
+from doomer.shared.switches import POWER
 from doomer.shared.timestep import FixedTimestep
 from doomer.shared.world import World, drain_events, spawn_player
 
@@ -41,6 +42,10 @@ class GameSession(Protocol):
 
     def passes(self) -> frozenset[str]:
         """The ID passes the team holds, for the HUD."""
+        ...
+
+    def power(self) -> bool:
+        """Is the floor's power on (lights, lifts)?"""
         ...
 
 
@@ -87,7 +92,10 @@ class LocalSession:
         return self._static_sprites + lying
 
     def boxes(self) -> list[PlacedBox]:
-        return door_boxes(self.world.doors, self.world.passes)
+        return door_boxes(self.world.doors, self.world.passes) + switch_boxes(self.world.switches)
 
     def passes(self) -> frozenset[str]:
         return frozenset(self.world.passes)
+
+    def power(self) -> bool:
+        return POWER in self.world.flags
