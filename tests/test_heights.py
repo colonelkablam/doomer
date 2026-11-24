@@ -260,3 +260,14 @@ def test_balusters_drawn_on_the_edge_of_the_balcony_cell_you_stand_in() -> None:
     # Handrail and bottom rail alone give every column about the same count;
     # balusters make some columns solid from top to bottom.
     assert drawn.size and drawn.max() > 2 * drawn.min()
+
+
+def test_bulkhead_is_drawn_below_eye_level_seen_from_a_balcony() -> None:
+    # In the double-height part of the corridor (x 4..7) with the eye a storey
+    # up (on a balcony), looking east: the ceiling drops to one storey at
+    # x = 8, so a bulkhead fills heights 1..2 there, partly below eye level.
+    camera = Camera(5.0, 1.5, 0.0, z=1.0 + EYE_HEIGHT)
+    R.render_indices(ATRIUM, camera)
+    for height in (1.1, 1.3, 1.5, 1.8):  # below and above the eye (1.6)
+        row = int(R.horizon + (camera.z - height) * R.projection / 3.0)
+        assert math.isclose(R.zbuffer[COL, row], 3.0, rel_tol=1e-6), height

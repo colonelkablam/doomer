@@ -883,8 +883,12 @@ class Renderer:
         y_ceiling = self._rows(s.ceiling, s.near, horizon, eye)  # bulkhead bottom
         y_prev_ceiling = self._rows(s.prev_ceiling, s.near, horizon, eye)  # bulkhead top
         y_ceiling_far = self._rows(s.ceiling, s.finite_far, horizon, eye)
-        r0, r1 = self._crop([y_prev_ceiling, y_ceiling], [y_ceiling, y_ceiling_far])
-        r1 = min(r1, math.ceil(horizon))  # ceilings and bulkheads are above eye level
+        # Ceiling surfaces are above eye level (you only see a ceiling from
+        # below), but a bulkhead is a wall face: from a balcony, with your eye
+        # above its bottom edge, it reaches below the horizon.
+        _, ceilings_end = self._crop([y_ceiling], [y_ceiling_far])
+        r0, bulkheads_end = self._crop([y_prev_ceiling, y_ceiling], [y_ceiling])
+        r1 = max(min(ceilings_end, math.ceil(horizon)), bulkheads_end)
         if r0 >= r1:
             return
         cols = s.cols
