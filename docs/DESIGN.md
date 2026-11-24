@@ -3,7 +3,8 @@
 A Doom-style shooter in Python for home LAN play (Fedora and Windows clients,
 Raspberry Pi 5 server), with co-op, deathmatch and a level editor. Set in a
 1980s office block. This file is the engine and code design; the setting,
-characters, enemies and furniture are in [GAME.md](GAME.md). The Python
+characters, enemies and furniture are in [GAME.md](GAME.md); level design
+rules and limits in [LEVELS.md](LEVELS.md). The Python
 package keeps the short name `doomer`.
 
 ## Architecture

@@ -2,6 +2,7 @@
 
 OK Doomer: Doom-style LAN shooter in Python, set in a 1980s office. Engine design and
 milestones: `docs/DESIGN.md`. Game content (characters, enemies, furniture): `docs/GAME.md`.
+Level design rules and engine limits (for maps and the future generator): `docs/LEVELS.md`.
 Read both before starting work, and update them when a decision changes (including
 the [built]/[planned] markers in GAME.md).
 
