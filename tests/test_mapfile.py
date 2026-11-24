@@ -7,7 +7,10 @@ import pytest
 from doomer.shared.mapfile import (
     DEFAULT_CEILING,
     DEFAULT_FLOOR,
+    NORTH,
+    SOUTH,
     WALL_UNITS,
+    WEST,
     MapError,
     format_map,
     load_map,
@@ -154,3 +157,13 @@ def test_letter_wall_types_and_round_trip() -> None:
     assert parse_map(format_map(m)) == m
     with pytest.raises(MapError, match="bad character 'A'"):
         parse_map("[walls]\n#A#\n")  # upper case is not a wall type
+
+
+def test_facing_grid_parses_defaults_and_round_trips() -> None:
+    m = parse_map("[walls]\n#####\n#.cc#\n#####\n\n[facing]\n.....\n..nw.\n")
+    assert (m.facing_at(2, 1), m.facing_at(3, 1)) == (NORTH, WEST)
+    assert m.facing_at(1, 1) == SOUTH == m.facing_at(0, 2)  # '.' and missing rows: default
+    assert parse_map(format_map(m)) == m
+    assert "[facing]" not in format_map(parse_map("[walls]\n###\n"))
+    with pytest.raises(MapError, match="bad character 'x'"):
+        parse_map("[walls]\n###\n[facing]\n.x.\n")

@@ -28,11 +28,12 @@ def test_textures_are_64x64_uint8_deterministic_and_varied(wall_type: int) -> No
 
 
 def test_atlas_is_transposed_and_slot_zero_is_missing_texture() -> None:
-    atlas, slot_for_type = build_atlas()
+    atlas, slot_table = build_atlas()
     assert atlas.shape[1:] == (TEX_SIZE, TEX_SIZE)
     tex = DEFAULT_WALL_TEXTURES[2]()
     # atlas is [slot, u, v]; generators draw [v, u].
-    assert np.array_equal(atlas[slot_for_type[2]], tex.T)
+    assert np.array_equal(atlas[slot_table[2, 0]], tex.T)
+    assert (slot_table[2] == slot_table[2, 0]).all()  # one texture on every side
     assert np.all((atlas[0] >> 4) == MAGENTA)
 
 

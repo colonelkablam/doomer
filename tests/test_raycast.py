@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from doomer.shared.mapfile import parse_map
+from doomer.shared.mapfile import EAST, NORTH, SOUTH, WEST, parse_map
 from doomer.shared.raycast import Side, cast_ray
 
 # 7x5 room; interior x in [1, 6), y in [1, 4). Wall type 2 on the east side.
@@ -106,3 +106,24 @@ def test_ray_continues_through_low_blocks_to_the_wall() -> None:
 def test_low_blocks_within_max_distance_are_still_reported() -> None:
     hits = cast_ray(DESKS, 1.5, 2.5, 0.0, max_distance=3.0)
     assert [h.cell_x for h in hits] == [3, 4]
+
+
+@pytest.mark.parametrize(
+    ("angle", "face", "exit_face"),
+    [
+        (0.0, WEST, EAST),
+        (math.pi, EAST, WEST),
+        (math.pi / 2, NORTH, SOUTH),
+        (-math.pi / 2, SOUTH, NORTH),
+    ],
+)
+def test_entry_and_exit_faces(angle: float, face: int, exit_face: int) -> None:
+    block = parse_map(
+        "[walls]\n#####\n#...#\n#.2.#\n#...#\n#####\n\n[floor]\n00000\n00000\n00200\n"
+    )
+    # Start beside the block on the side opposite the direction of travel.
+    starts = {WEST: (1.5, 2.5), EAST: (3.5, 2.5), NORTH: (2.5, 1.5), SOUTH: (2.5, 3.5)}
+    x, y = starts[face]
+    hit = cast_ray(block, x, y, angle)[0]
+    assert (hit.cell_x, hit.cell_y) == (2, 2)
+    assert (hit.face, hit.exit_face) == (face, exit_face)

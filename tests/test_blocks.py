@@ -8,7 +8,7 @@ import numpy as np
 from doomer.client.config import RenderConfig
 from doomer.client.palette import GREY, SAND, STEEL
 from doomer.client.render import EYE_HEIGHT, Camera, Renderer, SpriteInstance, sprites_from_things
-from doomer.shared.mapfile import parse_map
+from doomer.shared.mapfile import GameMap, parse_map
 
 # A desk pod (wall type 3: partition-fronted, laminate top) two cells deep, at
 # height 2/8 = 0.25, in front of a beige wall.
@@ -160,3 +160,50 @@ def test_open_desk_front_and_back_legs() -> None:
     row = int((row_for(12 / 64, 2.5) + row_for(0.0, 3.5)) / 2)
     assert frame[back, row] >> 4 == GREY
     assert math.isclose(R.zbuffer[back, row], 3.5, rel_tol=1e-3)
+
+
+# --- per-side textures (desk facing) ----------------------------------------------
+
+
+def steel_desk_room(facing: str) -> GameMap:
+    return parse_map(
+        "[walls]\n#########\n#.......#\n#...c...#\n#.......#\n#########\n\n"
+        "[floor]\n000000000\n000000000\n000020000\n\n"
+        f"[facing]\n.........\n.........\n....{facing}....\n"
+    )
+
+
+def under_desk_is_open(game_map: GameMap, camera: Camera, depth: float) -> bool:
+    """Is the middle of the face straight ahead see-through below the rail?"""
+    R.render_indices(game_map, camera)
+    row = int(CFG.height // 2 + (EYE_HEIGHT - 0.06) * R.projection / depth)
+    return bool(R.zbuffer[CFG.width // 2, row] > depth + 0.5)
+
+
+def test_steel_desk_sides_follow_its_facing() -> None:
+    # Facing south, its pedestal end is its own left: the east side. Camera 2.5
+    # from the face in each case.
+    south = steel_desk_room("s")
+    from_east = Camera(7.5, 2.5, math.pi)  # looking west at the east face
+    from_west = Camera(1.5, 2.5, 0.0)  # looking east at the west face
+    assert not under_desk_is_open(south, from_east, 2.5)  # solid pedestal side
+    assert under_desk_is_open(south, from_west, 2.5)  # open end: just legs
+    # Turn the desk to face north and the two ends swap.
+    north = steel_desk_room("n")
+    assert under_desk_is_open(north, from_east, 2.5)
+    assert not under_desk_is_open(north, from_west, 2.5)
+
+
+def test_executive_desk_is_solid_except_the_kneehole_at_the_front() -> None:
+    room = parse_map(
+        "[walls]\n#########\n#.......#\n#.......#\n#.......#\n#...b...#\n"
+        "#.......#\n#.......#\n#.......#\n#########\n\n"
+        "[floor]\n000000000\n000000000\n000000000\n000000000\n000020000\n\n"
+        "[facing]\n.........\n.........\n.........\n.........\n....n....\n"
+    )
+    # Desk at cell (4, 4) facing north: kneehole on the north face, solid
+    # modesty panel at the back (south) and solid sides. Cameras 2.5 away.
+    assert under_desk_is_open(room, Camera(4.5, 1.5, math.pi / 2), 2.5)  # front
+    assert not under_desk_is_open(room, Camera(4.5, 7.5, -math.pi / 2), 2.5)  # back
+    assert not under_desk_is_open(room, Camera(7.5, 4.5, math.pi), 2.5)  # side
+    assert not under_desk_is_open(room, Camera(1.5, 4.5, 0.0), 2.5)  # side

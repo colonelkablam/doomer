@@ -17,6 +17,7 @@ behind it to show.
 """
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 import numpy as np
 import numpy.typing as npt
@@ -43,45 +44,63 @@ TEX_MASK = ART_MASK  # u & TEX_MASK == u % 64
 
 BoolArray = npt.NDArray[np.bool_]
 
-_WALL_TEXTURES: dict[int, U8Array] = {}
-_WALL_OPACITY: dict[int, BoolArray] = {}
+# Which side of a wall cell a texture is for, from the cell's own point of view
+# (its front faces the way its [facing] says). A face's role is
+# (compass face hit - cell facing) mod 4, with compass faces numbered clockwise
+# from north; see doomer/shared/mapfile.py.
+FRONT, RIGHT, BACK, LEFT = range(4)
+ALL_SIDES = (FRONT, RIGHT, BACK, LEFT)
+
+
+@dataclass(frozen=True, slots=True)
+class _Registration:
+    wall_type: int
+    sides: tuple[int, ...]
+    texture: U8Array
+    opaque: BoolArray | None
+
+
+_REGISTRATIONS: list[_Registration] = []
 
 
 def register_wall_texture(
-    wall_type: int, texture: U8Array, opaque: BoolArray | None = None
+    wall_type: int,
+    texture: U8Array,
+    opaque: BoolArray | None = None,
+    sides: tuple[int, ...] = ALL_SIDES,
 ) -> None:
-    """Register a (v, u) texture for a wall type, optionally with an opacity mask."""
+    """Register a (v, u) texture for some or all sides of a wall type,
+    optionally with an opacity mask. Later registrations override earlier
+    ones for the sides they name."""
     if texture.shape != (TEX_SIZE, TEX_SIZE) or texture.dtype != np.uint8:
         raise ValueError(f"texture must be ({TEX_SIZE}, {TEX_SIZE}) uint8")
     if opaque is not None and opaque.shape != texture.shape:
         raise ValueError("opacity mask must match the texture's shape")
-    _WALL_TEXTURES[wall_type] = texture
-    if opaque is None:
-        _WALL_OPACITY.pop(wall_type, None)
-    else:
-        _WALL_OPACITY[wall_type] = opaque.astype(np.bool_)
+    mask = None if opaque is None else opaque.astype(np.bool_)
+    _REGISTRATIONS.append(_Registration(wall_type, tuple(sides), texture, mask))
 
 
 def build_atlas() -> tuple[U8Array, npt.NDArray[np.intp]]:
     """Stack all textures for the renderer.
 
-    Returns (atlas, slot_for_type): atlas[slot, u, v] is a palette index, and
-    slot_for_type[wall_type] picks the slot (0 = the missing-texture checker).
+    Returns (atlas, slot_table): atlas[slot, u, v] is a palette index, and
+    slot_table[wall_type, side] picks the slot (0 = the missing-texture checker).
     """
-    max_type = max(_WALL_TEXTURES, default=0)
+    max_type = max((r.wall_type for r in _REGISTRATIONS), default=0)
     slots = [missing_texture()]
-    slot_for_type = np.zeros(max_type + 1, dtype=np.intp)
-    for wall_type in sorted(_WALL_TEXTURES):
-        slot_for_type[wall_type] = len(slots)
-        slots.append(_WALL_TEXTURES[wall_type])
+    slot_table = np.zeros((max_type + 1, 4), dtype=np.intp)
+    for reg in _REGISTRATIONS:
+        for side in reg.sides:
+            slot_table[reg.wall_type, side] = len(slots)
+        slots.append(reg.texture)
     atlas = np.stack([s.T for s in slots])  # (n, u, v)
-    return np.ascontiguousarray(atlas), slot_for_type
+    return np.ascontiguousarray(atlas), slot_table
 
 
 def build_opacity() -> BoolArray:
     """(n, u, v) opacity per atlas slot, in the same slot order as build_atlas()."""
     full = np.ones((TEX_SIZE, TEX_SIZE), dtype=np.bool_)
-    masks = [full] + [_WALL_OPACITY.get(t, full) for t in sorted(_WALL_TEXTURES)]
+    masks = [full] + [full if r.opaque is None else r.opaque for r in _REGISTRATIONS]
     return np.ascontiguousarray(np.stack([m.T for m in masks]))
 
 
@@ -276,6 +295,99 @@ def executive_desk(seed: int = 12) -> tuple[U8Array, BoolArray]:
     return tex.astype(np.uint8), opaque
 
 
+def executive_panel(seed: int = 13) -> tuple[U8Array, BoolArray]:
+    """Solid wood: the executive desk's modesty panel (back) and pedestal sides."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    grain = 7 + np.sin(u * 0.7 + noise(rng, 8) * 6) * 0.8
+    tex = indices(WOOD, grain)
+    slab = (v >= DESK_SLAB[0]) & (v < DESK_SLAB[1])
+    tex = np.where(slab, indices(WOOD, np.where(v == 48, 11.0, 9.5)), tex)
+    inset = (v >= 54) & (v < 62) & (u >= 4) & (u < 60)
+    frame_line = inset & ((v == 54) | (u == 4))
+    tex = np.where(frame_line, indices(WOOD, 4.5), tex)  # recessed panel's shadow edge
+    tex = np.where(inset & ((v == 61) | (u == 59)), indices(WOOD, 9.5), tex)  # lit edge
+    return tex.astype(np.uint8), np.ones_like(v, dtype=np.bool_)
+
+
+# --- 1980s steel desk (wall type 'c'), after a photo of the real thing --------------
+# Dark mahogany laminate top on a grey steel frame: an apron rail under the top,
+# square steel legs, and one pedestal of drawers at the desk's left end (its own
+# left: the right-hand end as you face the drawers). Open underneath otherwise.
+
+STEEL_APRON = (51, 54)  # texel rows of the steel rail under the top
+_STEEL_LEG_A = (1, 4)  # u ranges of the two square legs on a face
+_STEEL_LEG_B = (60, 63)
+
+
+def _steel_desk_base() -> tuple[U8Array, BoolArray, npt.NDArray[np.int64], npt.NDArray[np.int64]]:
+    """Top, apron and both legs; returns (texture, opaque, v, u) to add to."""
+    v, u = grid()
+    tex = indices(WOOD, np.where(v == 48, 7.0, 5.0))  # mahogany laminate edge
+    apron = (v >= STEEL_APRON[0]) & (v < STEEL_APRON[1])
+    apron_shade = np.where(v == STEEL_APRON[0], 11.0, np.where(v == STEEL_APRON[1] - 1, 6.0, 9.0))
+    tex = np.where(apron, indices(GREY, apron_shade), tex)
+    tex, opaque = _steel_legs(tex, v, u)
+    return tex, opaque | (v < STEEL_APRON[1]), v, u
+
+
+def _steel_legs(
+    tex: U8Array, v: npt.NDArray[np.int64], u: npt.NDArray[np.int64]
+) -> tuple[U8Array, BoolArray]:
+    legs = np.zeros_like(v, dtype=np.bool_)
+    for lo, hi in (_STEEL_LEG_A, _STEEL_LEG_B):
+        leg = (u >= lo) & (u < hi) & (v >= STEEL_APRON[1])
+        shade = np.where(u == lo, 11.0, np.where(u == hi - 1, 6.0, 9.0))
+        tex = np.where(leg, indices(GREY, np.where(v == 63, 4.0, shade)), tex)
+        legs |= leg
+    return tex.astype(np.uint8), legs
+
+
+def _steel_panel(tex: U8Array, where: BoolArray, shade: float = 9.0) -> U8Array:
+    return np.where(where, indices(GREY, shade), tex).astype(np.uint8)
+
+
+def steel_desk_front() -> tuple[U8Array, BoolArray]:
+    """Facing the drawers: pencil drawer in the rail, pedestal on the right."""
+    tex, opaque, v, u = _steel_desk_base()
+    under = v >= STEEL_APRON[1]
+    pedestal = under & (u >= 38) & (u < 63)
+    tex = _steel_panel(tex, pedestal)
+    tex = _steel_panel(tex, pedestal & (u == 38), 6.0)  # pedestal edge in shadow
+    for line in (57, 60):  # gaps between the three drawers
+        tex = _steel_panel(tex, pedestal & (v == line), 5.0)
+    for row in (55, 58, 61):  # drawer pulls
+        tex = _steel_panel(tex, pedestal & (v == row) & (u >= 48) & (u < 53), 13.0)
+    rail = (v >= STEEL_APRON[0]) & (v < STEEL_APRON[1])
+    tex = _steel_panel(tex, rail & ((u == 14) | (u == 34)), 5.0)  # pencil drawer outline
+    tex = _steel_panel(tex, (v == 52) & (u >= 22) & (u < 27), 13.0)  # its pull
+    return tex, opaque | pedestal
+
+
+def steel_desk_back() -> tuple[U8Array, BoolArray]:
+    """From behind: the pedestal's plain back panel, now on the left."""
+    tex, opaque, v, u = _steel_desk_base()
+    pedestal = (v >= STEEL_APRON[1]) & (u >= 1) & (u < 26)
+    tex = _steel_panel(tex, pedestal, 8.0)
+    tex = _steel_panel(tex, pedestal & (u == 25), 5.0)
+    return tex, opaque | pedestal
+
+
+def steel_desk_pedestal_side() -> tuple[U8Array, BoolArray]:
+    """The pedestal end: a solid steel side panel between the legs."""
+    tex, opaque, v, u = _steel_desk_base()
+    panel = (v >= STEEL_APRON[1]) & (u >= 4) & (u < 60)
+    tex = _steel_panel(tex, panel, 8.0)
+    tex = _steel_panel(tex, panel & (u == 31), 6.0)  # seam
+    return tex, opaque | panel
+
+
+def steel_desk_open_side() -> tuple[U8Array, BoolArray]:
+    """The other end: just the rail and two legs."""
+    tex, opaque, _, _ = _steel_desk_base()
+    return tex, opaque
+
+
 # Colour of a low block's top surface, by wall type: a partition-fronted desk
 # pod has a beige laminate top, a panelled counter a wooden one. Types not
 # listed fall back to the commonest colour in the top of their texture.
@@ -284,6 +396,7 @@ TOP_COLOURS: dict[int, int] = {
     3: indices(SAND, 12.0).item(),
     10: indices(SAND, 12.0).item(),  # office desk: beige laminate
     11: indices(WOOD, 10.0).item(),  # executive desk
+    12: indices(WOOD, 6.0).item(),  # 1980s steel desk: dark mahogany laminate
 }
 
 DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {
@@ -301,10 +414,24 @@ DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {
 for _wall_type, _make in DEFAULT_WALL_TEXTURES.items():
     register_wall_texture(_wall_type, _make())
 
-# Masked desk textures: map characters 'a' (10) and 'b' (11).
-MASKED_WALL_TEXTURES: dict[int, Callable[[], tuple[U8Array, BoolArray]]] = {
-    10: office_desk,
-    11: executive_desk,
+# Desks, per side (from the desk's own point of view; its front is where you
+# sit). Map characters: 'a' (10) office desk, 'b' (11) executive desk,
+# 'c' (12) 1980s steel desk.
+DESK_TEXTURES: dict[int, dict[int, Callable[[], tuple[U8Array, BoolArray]]]] = {
+    10: {FRONT: office_desk, RIGHT: office_desk, BACK: office_desk, LEFT: office_desk},
+    11: {
+        FRONT: executive_desk,
+        RIGHT: executive_panel,
+        BACK: executive_panel,
+        LEFT: executive_panel,
+    },
+    12: {
+        FRONT: steel_desk_front,
+        RIGHT: steel_desk_open_side,
+        BACK: steel_desk_back,
+        LEFT: steel_desk_pedestal_side,
+    },
 }
-for _wall_type, _make_masked in MASKED_WALL_TEXTURES.items():
-    register_wall_texture(_wall_type, *_make_masked())
+for _wall_type, _by_side in DESK_TEXTURES.items():
+    for _side, _make_side in _by_side.items():
+        register_wall_texture(_wall_type, *_make_side(), sides=(_side,))

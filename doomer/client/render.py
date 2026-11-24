@@ -32,6 +32,7 @@ in C. A per-pixel Python loop would be ~100x too slow.
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
+from typing import NamedTuple
 
 import numpy as np
 import numpy.typing as npt
@@ -87,6 +88,15 @@ def sprites_from_things(game_map: GameMap) -> list[SpriteInstance]:
     return out
 
 
+class BlockHit(NamedTuple):
+    """A low block on one column's ray, with what the renderer needs to draw it."""
+
+    hit: RayHit
+    exits_to_floor: bool  # leaves into open floor, so its back face may show
+    slot: int  # atlas slot of the face the ray enters by
+    back_slot: int  # ... and of the face it leaves by
+
+
 def make_frame_surface(config: RenderConfig) -> pygame.Surface:
     """An 8-bit surface carrying the game palette, for Renderer.render to fill."""
     surface = pygame.Surface((config.width, config.height), depth=8)
@@ -105,10 +115,11 @@ class Renderer:
         self._offsets = [math.atan((2 * (c + 0.5) / w - 1) * tan_half_fov) for c in range(w)]
         self._cos = np.cos(np.array(self._offsets))
         self._pixel_y = np.arange(h, dtype=np.float64) + 0.5  # pixel centres
-        self.atlas, self.slot_for_type = build_atlas()
+        # slot_table[wall_type, side] -> atlas slot; side = FRONT/RIGHT/BACK/LEFT
+        self.atlas, self.slot_table = build_atlas()
         self.opacity = build_opacity()  # (slot, u, v): False = see-through (open desks)
         self.background = self._build_background()
-        self.top_colour = _top_colours(self.atlas, self.slot_for_type)
+        self.top_colour = _top_colours(self.atlas, self.slot_table)
         # Per-pixel perpendicular distance of whatever was drawn last frame.
         self.zbuffer: FloatArray = np.full((w, h), np.inf)
 
@@ -162,12 +173,13 @@ class Renderer:
         # wall; any before it are low blocks, sorted into layers: layer k holds
         # each column's k-th block, plus whether the ray leaves it into open
         # floor (then its back face can be seen through an open desk; between
-        # cells of a desk pod it can't).
+        # cells of a desk pod it can't), and the atlas slots of the faces the
+        # ray enters and leaves by (a desk has different sides).
         dist = [math.inf] * w
-        wall = [0] * w
+        wall_slot = [0] * w
         tex_u = [0.0] * w
         y_side = [False] * w
-        layers: list[list[tuple[RayHit, bool] | None]] = []
+        layers: list[list[BlockHit | None]] = []
         for col in range(w):
             hits = cast_ray(game_map, camera.x, camera.y, camera.angle + self._offsets[col])
             exits_to_floor = [
@@ -177,17 +189,22 @@ class Renderer:
             if hits and hits[-1].top >= 1.0:
                 hit = hits.pop()
                 dist[col] = hit.distance
-                wall[col] = hit.wall_type
+                wall_slot[col] = self._slot(game_map, hit, hit.face)
                 tex_u[col] = hit.u
                 y_side[col] = hit.side is Side.Y
             for k, block in enumerate(hits):
                 if k == len(layers):
                     layers.append([None] * w)
-                layers[k][col] = (block, exits_to_floor[k])
+                layers[k][col] = BlockHit(
+                    block,
+                    exits_to_floor[k],
+                    self._slot(game_map, block, block.face),
+                    self._slot(game_map, block, block.exit_face),
+                )
 
         # 2. Full-height walls for every pixel at once (numpy).
         perp = np.array(dist) * self._cos
-        frame, zbuffer = self._draw_walls(perp, wall, tex_u, y_side)
+        frame, zbuffer = self._draw_walls(perp, wall_slot, tex_u, y_side)
 
         # 3. Low blocks, one layer at a time, z-tested.
         for layer in layers:
@@ -197,19 +214,20 @@ class Renderer:
         self.zbuffer = zbuffer
         return frame
 
-    def _wall_texels(self, types: IntArray, tex_u: FloatArray) -> tuple[IntArray, IntArray]:
-        """Atlas slot and texture column for each wall type / hit position."""
-        types = types.copy()
-        types[types >= len(self.slot_for_type)] = 0  # unknown type -> missing texture
-        slot = self.slot_for_type[types]
-        u = (tex_u * TEX_SIZE).astype(np.intp) & TEX_MASK
-        return slot, u
+    def _slot(self, game_map: GameMap, hit: RayHit, face: int) -> int:
+        """Atlas slot for one face of a wall cell: which side of the cell that
+        face is (from the cell's own point of view) picks the texture."""
+        if hit.wall_type >= len(self.slot_table):
+            return 0  # unknown wall type -> missing texture
+        side = (face - game_map.facing_at(hit.cell_x, hit.cell_y)) % 4
+        return int(self.slot_table[hit.wall_type, side])
 
     def _draw_walls(
-        self, perp: FloatArray, wall: list[int], tex_u: list[float], y_side: list[bool]
+        self, perp: FloatArray, wall_slot: list[int], tex_u: list[float], y_side: list[bool]
     ) -> tuple[U8Array, FloatArray]:
         has_wall = np.isfinite(perp)
-        slot, u = self._wall_texels(np.array(wall, dtype=np.intp), np.array(tex_u))
+        slot = np.array(wall_slot, dtype=np.intp)
+        u = _texel_u(np.array(tex_u))
         brightness = self._brightness(perp) * np.where(np.array(y_side), Y_SIDE_SHADE, 1.0)
         level = light_level(brightness)
         line = np.where(has_wall, self.projection / np.where(has_wall, perp, 1.0), 0.0)
@@ -228,20 +246,21 @@ class Renderer:
         return frame, zbuffer
 
     def _draw_block_layer(
-        self, frame: U8Array, zbuffer: FloatArray, layer: list[tuple[RayHit, bool] | None]
+        self, frame: U8Array, zbuffer: FloatArray, layer: list[BlockHit | None]
     ) -> None:
         cols = np.array([c for c, entry in enumerate(layer) if entry is not None], dtype=np.intp)
-        hits = [entry[0] for entry in layer if entry is not None]
-        exits_to_floor = np.array([entry[1] for entry in layer if entry is not None])
+        entries = [entry for entry in layer if entry is not None]
+        hits = [e.hit for e in entries]
+        exits_to_floor = np.array([e.exits_to_floor for e in entries])
+        slot = np.array([e.slot for e in entries], dtype=np.intp)
+        back_slot = np.array([e.back_slot for e in entries], dtype=np.intp)
+        u = _texel_u(np.array([h.u for h in hits]))
         cos = self._cos[cols]
         near = np.array([h.distance for h in hits]) * cos  # perpendicular distances
         far = np.array([h.exit_distance for h in hits]) * cos
         top = np.array([h.top for h in hits])
         base = np.array([h.base for h in hits])
         y_side = np.array([h.side is Side.Y for h in hits])
-        slot, u = self._wall_texels(
-            np.array([h.wall_type for h in hits], dtype=np.intp), np.array([h.u for h in hits])
-        )
         # Screen rows of the front face (base..top at the entry distance) and of
         # the top surface (top height, from the exit distance to the entry).
         y_top = self.horizon + (EYE_HEIGHT - top) * self.projection / near
@@ -276,7 +295,9 @@ class Renderer:
         see_through = ~self.opacity[slot].all(axis=(1, 2))
         back_cols = see_through & exits_to_floor
         if back_cols.any():
-            back_u = (np.array([h.exit_u for h in hits]) * TEX_SIZE).astype(np.intp) & TEX_MASK
+            # The ray sees the back face from inside the cell, so mirror u to
+            # match how that face looks from outside (a pedestal stays at its end).
+            back_u = _texel_u(1.0 - np.array([h.exit_u for h in hits]))
             back_y_side = np.array([h.exit_side is Side.Y for h in hits])
             back = (
                 back_cols[:, None]
@@ -286,8 +307,8 @@ class Renderer:
             )
             height_far = EYE_HEIGHT - (py - self.horizon) * far[:, None] / self.projection
             vi_far = ((1.0 - height_far) * TEX_SIZE).astype(np.intp) & TEX_MASK
-            back &= self.opacity[slot[:, None], back_u[:, None], vi_far]
-            texel_far = self.atlas[slot[:, None], back_u[:, None], vi_far]
+            back &= self.opacity[back_slot[:, None], back_u[:, None], vi_far]
+            texel_far = self.atlas[back_slot[:, None], back_u[:, None], vi_far]
             shade = self._brightness(far) * np.where(back_y_side, Y_SIDE_SHADE, 1.0)
             level_far = light_level(shade)
             sub_frame = np.where(back, COLORMAP[level_far[:, None], texel_far], sub_frame)
@@ -352,17 +373,23 @@ class Renderer:
             region_z[draw] = depth
 
 
-def _top_colours(atlas: U8Array, slot_for_type: IntArray) -> U8Array:
+def _texel_u(u: FloatArray) -> IntArray:
+    """Texture column (0-63) for positions 0..1 along a face."""
+    result: IntArray = (u * TEX_SIZE).astype(np.intp) & TEX_MASK
+    return result
+
+
+def _top_colours(atlas: U8Array, slot_table: IntArray) -> U8Array:
     """Palette index for the top surface of a low block, per atlas slot.
 
-    From TOP_COLOURS where given, otherwise the commonest colour in the top
-    quarter of the block's texture.
+    From TOP_COLOURS where given (for every side's slot of that wall type),
+    otherwise the commonest colour in the top quarter of the slot's texture.
     """
     colours = np.zeros(len(atlas), dtype=np.uint8)
     for slot in range(len(atlas)):
         values, counts = np.unique(atlas[slot][:, :16], return_counts=True)
         colours[slot] = values[np.argmax(counts)]
     for wall_type, colour in TOP_COLOURS.items():
-        if wall_type < len(slot_for_type):
-            colours[slot_for_type[wall_type]] = colour
+        if wall_type < len(slot_table):
+            colours[slot_table[wall_type]] = colour
     return colours

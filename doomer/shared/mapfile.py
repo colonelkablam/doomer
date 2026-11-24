@@ -14,13 +14,18 @@ from doomer.shared.things import THING_TYPES
 
 EMPTY = 0
 DEFAULT_WALL = 1
+# Compass directions, clockwise, as used by [facing] and by ray hits' faces.
+NORTH, EAST, SOUTH, WEST = range(4)
+DEFAULT_FACING = SOUTH
+_FACING_CHARS = "nesw"
+
 # Heights are in eighths of a wall (~34 cm with a 2.7 m office ceiling).
 WALL_UNITS = 8
 DEFAULT_FLOOR = 0
 DEFAULT_CEILING = WALL_UNITS
 
 _SECTION = re.compile(r"^\[(\w+)\]\s*$")
-_GRID_SECTIONS = ("walls", "floor", "ceiling")
+_GRID_SECTIONS = ("walls", "floor", "ceiling", "facing")
 _KNOWN_SECTIONS = (*_GRID_SECTIONS, "things")
 _KNOWN_HEADERS = ("name",)
 
@@ -44,10 +49,12 @@ class GameMap:
     name: str
     width: int
     height: int
-    walls: Grid  # walls[y][x]: 0 = empty, 1-9 = wall type
+    walls: Grid  # walls[y][x]: 0 = empty, 1-35 = wall type
     floor: Grid
     ceiling: Grid
     things: tuple[Thing, ...]
+    # Which way each cell's front faces (desks): NORTH/EAST/SOUTH/WEST = 0-3.
+    facing: Grid = ()
 
     def in_bounds(self, x: int, y: int) -> bool:
         return 0 <= x < self.width and 0 <= y < self.height
@@ -74,6 +81,12 @@ class GameMap:
             return 0.0
         units = self.floor[y][x]
         return units / WALL_UNITS if 0 < units < WALL_UNITS else 1.0
+
+    def facing_at(self, x: int, y: int) -> int:
+        """Which way a cell's front faces (NORTH/EAST/SOUTH/WEST)."""
+        if not self.facing or not self.in_bounds(x, y):
+            return DEFAULT_FACING
+        return self.facing[y][x]
 
     def is_low_block(self, x: int, y: int) -> bool:
         return 0.0 < self.top_height(x, y) < 1.0
@@ -129,6 +142,14 @@ def parse_map(text: str) -> GameMap:
     walls = _parse_grid(wall_rows, width, height, _wall_cell, DEFAULT_WALL, "walls")
     floor = _optional_grid(sections, "floor", width, height, DEFAULT_FLOOR)
     ceiling = _optional_grid(sections, "ceiling", width, height, DEFAULT_CEILING)
+    facing = _parse_grid(
+        _trim_blank(sections.get("facing", [])),
+        width,
+        height,
+        _facing_cell,
+        DEFAULT_FACING,
+        "facing",
+    )
 
     game_map = GameMap(
         name=headers.get("name", "Untitled"),
@@ -138,6 +159,7 @@ def parse_map(text: str) -> GameMap:
         floor=floor,
         ceiling=ceiling,
         things=(),
+        facing=facing,
     )
     things = tuple(_parse_thing(n, line, game_map) for n, line in sections.get("things", []))
     return replace(game_map, things=things)
@@ -154,6 +176,9 @@ def format_map(game_map: GameMap) -> str:
         if any(c != default for row in grid for c in row):
             out += ["", f"[{section}]"]
             out += ["".join(str(c) for c in row) for row in grid]
+    if any(c != DEFAULT_FACING for row in game_map.facing for c in row):
+        out += ["", "[facing]"]
+        out += ["".join(_FACING_CHARS[c] for c in row) for row in game_map.facing]
     if game_map.things:
         out += ["", "[things]", "# type x y angle"]
         for t in game_map.things:
@@ -196,6 +221,12 @@ def _wall_cell(ch: str) -> int | None:
     if ch in _LETTERS:
         return 10 + _LETTERS.index(ch)
     return None
+
+
+def _facing_cell(ch: str) -> int | None:
+    if ch == ".":
+        return DEFAULT_FACING
+    return _FACING_CHARS.index(ch) if ch in _FACING_CHARS else None
 
 
 def _height_cell(ch: str) -> int | None:

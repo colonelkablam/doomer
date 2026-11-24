@@ -15,7 +15,7 @@ import math
 from enum import Enum
 from typing import NamedTuple
 
-from doomer.shared.mapfile import DEFAULT_WALL, GameMap
+from doomer.shared.mapfile import DEFAULT_WALL, EAST, NORTH, SOUTH, WEST, GameMap
 
 
 class Side(Enum):
@@ -44,6 +44,10 @@ class RayHit(NamedTuple):
     exit_distance: float = math.inf
     exit_side: Side = Side.X
     exit_u: float = 0.0
+    # Which compass face of the cell the ray entered and left by
+    # (mapfile.NORTH/EAST/SOUTH/WEST), for per-side textures.
+    face: int = 0
+    exit_face: int = 0
 
 
 def cast_ray(
@@ -102,6 +106,8 @@ def cast_ray(
         else:
             exit_distance, exit_side = next_y, Side.Y
         exit_u = _wall_u(x, y, dx, dy, exit_distance, exit_side)
+        face = _entry_face(side, dx, dy)
+        exit_face = (_entry_face(exit_side, dx, dy) + 2) % 4  # leave by the opposite kind
         hits.append(
             RayHit(
                 distance,
@@ -115,11 +121,22 @@ def cast_ray(
                 exit_distance,
                 exit_side,
                 exit_u,
+                face,
+                exit_face,
             )
         )
         if top >= 1.0:
             return hits
         current_top = top
+
+
+def _entry_face(side: Side, dx: float, dy: float) -> int:
+    """The compass face of a cell a ray enters through. y points down (south):
+    heading east (+x) you enter through a cell's west face; heading south (+y),
+    through its north face."""
+    if side is Side.X:
+        return WEST if dx > 0 else EAST
+    return NORTH if dy > 0 else SOUTH
 
 
 def _wall_u(x: float, y: float, dx: float, dy: float, distance: float, side: Side) -> float:

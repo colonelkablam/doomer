@@ -136,6 +136,9 @@ dm_spawn      1.5   3.5   0
   are solid (no climbing yet). Things may stand on a low block and are drawn
   on its top. `[floor]` values on empty cells (walkable raised floors) and
   `[ceiling]` are parsed but not yet used.
+- `[facing]` (optional): one of `n`, `e`, `s`, `w` per cell (`.` or missing =
+  `s`): which way a cell's front faces, for wall types with different
+  textures per side (desks: the front is where you sit).
 - `[things]`: one per line. Positions are floats in cell units (`1.5` = centre
   of cell 1). Unknown types are an error at load time.
 - Supported modes are derived, not declared: **co-op** if there is a
@@ -162,6 +165,14 @@ dm_spawn      1.5   3.5   0
   `(eye - h) * projection / (y - horizon)`, the same similar-triangles rule as
   the floor. Blocks are drawn in layers (each column's k-th block), each layer
   cropped to the band of rows it can occupy.
+- **Per-side textures**: a wall type may register a different texture for
+  each side, from its own point of view: FRONT, RIGHT, BACK, LEFT
+  (`client/textures.py`). Every ray hit records the compass face it entered
+  and left by; the side is `(face - facing) mod 4`, with compass faces
+  numbered clockwise from north. The atlas lookup is `slot_table[type, side]`.
+  Types registered once use the same texture on every side. A back face seen
+  through an open desk is viewed from inside, so its `u` is mirrored to match
+  the outside view.
 - **Masked textures (open desks)**: a texture may carry an opacity mask
   (`build_opacity()`, parallel to the atlas). Low-block faces skip transparent
   texels without touching the z-buffer, so the floor, walls and sprites behind
