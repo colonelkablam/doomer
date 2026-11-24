@@ -169,3 +169,22 @@ def test_low_ceiling_hides_the_high_one_beyond_it() -> None:
             assert math.isclose(R.zbuffer[COL, y], low, rel_tol=1e-6), y
             checked += 1
     assert checked > 5
+
+
+def test_low_ceiling_stops_at_the_boundary_even_when_a_step_is_there() -> None:
+    # The tall stretch starts at x = 4 with a step (a raised block, not open
+    # floor), as at the lobby door. Beyond x = 4 the default ceiling doesn't
+    # exist: no pixel may show it there.
+    stepped = parse_map(
+        "[walls]\n############\n#...e......#\n############\n\n"
+        "[floor]\n000000000000\n000010000000\n\n"
+        "[ceiling]\n888888888888\n8888gggggggg\n"
+    )
+    R.render_indices(stepped, Camera(1.5, 1.5, 0.0))
+    for y in range(0, CFG.height // 2 - 1):
+        low = (1.0 - EYE_HEIGHT) * R.projection / (CFG.height / 2 - (y + 0.5))
+        z = float(R.zbuffer[COL, y])
+        if low < 2.5 - 0.05:
+            assert math.isclose(z, low, rel_tol=1e-6), y  # our own low ceiling
+        elif low > 2.5 + 0.05:
+            assert not math.isclose(z, low, rel_tol=1e-6), y  # not a phantom low ceiling

@@ -292,7 +292,7 @@ class Renderer:
                 if k == len(layers):
                     layers.append([None] * w)
                 block = span.wall_type != 0
-                if not block and span.ceiling != 1.0:
+                if span.ceiling != 1.0:
                     ceiling_changes = True
                 after = hits[k + 1].distance if k + 1 < len(hits) else dist[col]
                 layers[k][col] = SpanHit(
@@ -381,12 +381,13 @@ class Renderer:
             return  # no default ceiling above the eye on screen
         w = self.config.width
         # Per column, the [near, far] perpendicular intervals where the ceiling
-        # isn't the default (open stretches; the camera's own space).
+        # isn't the default: open stretches, the camera's own space, and blocks
+        # (a step or desk under the atrium's high ceiling is under it too).
         lo = np.full((len(layers), w), np.nan)
         hi = np.full((len(layers), w), np.nan)
         for k, layer in enumerate(layers):
             for col, entry in enumerate(layer):
-                if entry is not None and entry.hit.wall_type == 0 and entry.hit.ceiling != 1.0:
+                if entry is not None and entry.hit.ceiling != 1.0:
                     lo[k, col] = entry.hit.distance * self._cos[col]
                     hi[k, col] = entry.hit.exit_distance * self._cos[col]
         depth = (1.0 - eye) * self.projection / (horizon - self._pixel_y[:rows])  # (rows,)
