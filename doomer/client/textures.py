@@ -9,6 +9,11 @@ Generators draw in (v, u) order; the atlas stores them transposed as [u][v].
 Adding a texture: write a generator returning a (64, 64) uint8 index array and
 register it against a wall type with `register_wall_texture`. The wall types
 are listed in docs/GAME.md.
+
+Masked textures: a texture may come with an opacity mask. Transparent texels
+aren't drawn, so whatever is behind shows through. Only low-block faces
+(desks) honour it: a full-height wall stops the ray, so there's nothing
+behind it to show.
 """
 
 from collections.abc import Callable
@@ -24,6 +29,7 @@ from doomer.client.palette import (
     GREY,
     MAGENTA,
     MOSS,
+    OCHRE,
     ORANGE,
     SAND,
     STEEL,
@@ -35,13 +41,25 @@ from doomer.client.pixelart import ART_MASK, ART_SIZE, grid, indices, noise
 TEX_SIZE = ART_SIZE  # 64
 TEX_MASK = ART_MASK  # u & TEX_MASK == u % 64
 
+BoolArray = npt.NDArray[np.bool_]
+
 _WALL_TEXTURES: dict[int, U8Array] = {}
+_WALL_OPACITY: dict[int, BoolArray] = {}
 
 
-def register_wall_texture(wall_type: int, texture: U8Array) -> None:
+def register_wall_texture(
+    wall_type: int, texture: U8Array, opaque: BoolArray | None = None
+) -> None:
+    """Register a (v, u) texture for a wall type, optionally with an opacity mask."""
     if texture.shape != (TEX_SIZE, TEX_SIZE) or texture.dtype != np.uint8:
         raise ValueError(f"texture must be ({TEX_SIZE}, {TEX_SIZE}) uint8")
+    if opaque is not None and opaque.shape != texture.shape:
+        raise ValueError("opacity mask must match the texture's shape")
     _WALL_TEXTURES[wall_type] = texture
+    if opaque is None:
+        _WALL_OPACITY.pop(wall_type, None)
+    else:
+        _WALL_OPACITY[wall_type] = opaque.astype(np.bool_)
 
 
 def build_atlas() -> tuple[U8Array, npt.NDArray[np.intp]]:
@@ -58,6 +76,13 @@ def build_atlas() -> tuple[U8Array, npt.NDArray[np.intp]]:
         slots.append(_WALL_TEXTURES[wall_type])
     atlas = np.stack([s.T for s in slots])  # (n, u, v)
     return np.ascontiguousarray(atlas), slot_for_type
+
+
+def build_opacity() -> BoolArray:
+    """(n, u, v) opacity per atlas slot, in the same slot order as build_atlas()."""
+    full = np.ones((TEX_SIZE, TEX_SIZE), dtype=np.bool_)
+    masks = [full] + [_WALL_OPACITY.get(t, full) for t in sorted(_WALL_TEXTURES)]
+    return np.ascontiguousarray(np.stack([m.T for m in masks]))
 
 
 def _blocks(
@@ -211,12 +236,54 @@ def mainframe(seed: int = 9) -> U8Array:
     return tex.astype(np.uint8)
 
 
+# --- open desks (masked) ----------------------------------------------------------
+# Designed for desk height 2/8: textures are floor-anchored, so a face of height
+# 0.25 shows texel rows v = 48..63. The slab is the top 4 of those; below it,
+# only the legs or pedestals are opaque and the rest is open space.
+
+DESK_SLAB = (48, 52)  # texel rows of the desktop's front edge
+
+
+def office_desk() -> tuple[U8Array, BoolArray]:
+    """Beige laminate desktop on tubular steel legs, open underneath."""
+    v, u = grid()
+    tex = indices(SAND, np.where(v == 48, 13.0, np.where(v == 51, 8.0, 11.0)))
+    legs = ((u >= 2) & (u < 6)) | ((u >= 58) & (u < 62))
+    leg_shade = np.where((u == 2) | (u == 58), 11.0, np.where((u == 5) | (u == 61), 5.0, 8.0))
+    tex = np.where(legs & (v >= DESK_SLAB[1]), indices(GREY, leg_shade), tex)
+    foot = legs & (v >= 62)
+    tex = np.where(foot, indices(GREY, 4.0), tex)
+    opaque = (v < DESK_SLAB[1]) | legs
+    return tex.astype(np.uint8), opaque
+
+
+def executive_desk(seed: int = 12) -> tuple[U8Array, BoolArray]:
+    """Wooden kneehole desk: drawer pedestals either side, open in the middle."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    grain = 7 + np.sin(u * 0.7 + noise(rng, 8) * 6) * 0.8
+    tex = indices(WOOD, grain)
+    slab = (v >= DESK_SLAB[0]) & (v < DESK_SLAB[1])
+    tex = np.where(slab, indices(WOOD, np.where(v == 48, 11.0, 9.5)), tex)
+    pedestal = (u < 20) | (u >= 44)
+    drawer_line = pedestal & (v >= 52) & ((v - 52) % 4 == 3)
+    tex = np.where(drawer_line, indices(WOOD, 4.0), tex)
+    handle = pedestal & (v >= 52) & ((v - 52) % 4 == 1) & ((u % 22 >= 8) & (u % 22 < 12))
+    tex = np.where(handle, indices(OCHRE, 13.0), tex)
+    edge = (u == 19) | (u == 44)
+    tex = np.where(edge & (v >= 52), indices(WOOD, 5.0), tex)
+    opaque = (v < DESK_SLAB[1]) | pedestal
+    return tex.astype(np.uint8), opaque
+
+
 # Colour of a low block's top surface, by wall type: a partition-fronted desk
 # pod has a beige laminate top, a panelled counter a wooden one. Types not
 # listed fall back to the commonest colour in the top of their texture.
 TOP_COLOURS: dict[int, int] = {
     2: indices(WOOD, 9.0).item(),
     3: indices(SAND, 12.0).item(),
+    10: indices(SAND, 12.0).item(),  # office desk: beige laminate
+    11: indices(WOOD, 10.0).item(),  # executive desk
 }
 
 DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {
@@ -233,3 +300,11 @@ DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {
 
 for _wall_type, _make in DEFAULT_WALL_TEXTURES.items():
     register_wall_texture(_wall_type, _make())
+
+# Masked desk textures: map characters 'a' (10) and 'b' (11).
+MASKED_WALL_TEXTURES: dict[int, Callable[[], tuple[U8Array, BoolArray]]] = {
+    10: office_desk,
+    11: executive_desk,
+}
+for _wall_type, _make_masked in MASKED_WALL_TEXTURES.items():
+    register_wall_texture(_wall_type, *_make_masked())

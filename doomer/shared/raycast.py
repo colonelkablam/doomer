@@ -39,8 +39,11 @@ class RayHit(NamedTuple):
     # the visible front face spans base..top (nothing if base >= top).
     top: float = 1.0
     base: float = 0.0
-    # Where the ray leaves the cell: the far edge of a low block's top surface.
+    # Where the ray leaves the cell: the far edge of a low block's top surface,
+    # and the back face it leaves through (seen through an open desk).
     exit_distance: float = math.inf
+    exit_side: Side = Side.X
+    exit_u: float = 0.0
 
 
 def cast_ray(
@@ -94,9 +97,25 @@ def cast_ray(
         top = game_map.top_height(cell_x, cell_y)
         u = _wall_u(x, y, dx, dy, distance, side)
         # The ray leaves this cell at the next grid line it crosses.
-        exit_distance = next_x if next_x < next_y else next_y
+        if next_x < next_y:
+            exit_distance, exit_side = next_x, Side.X
+        else:
+            exit_distance, exit_side = next_y, Side.Y
+        exit_u = _wall_u(x, y, dx, dy, exit_distance, exit_side)
         hits.append(
-            RayHit(distance, cell_x, cell_y, wall, side, u, top, current_top, exit_distance)
+            RayHit(
+                distance,
+                cell_x,
+                cell_y,
+                wall,
+                side,
+                u,
+                top,
+                current_top,
+                exit_distance,
+                exit_side,
+                exit_u,
+            )
         )
         if top >= 1.0:
             return hits

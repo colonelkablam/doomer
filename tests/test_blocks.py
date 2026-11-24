@@ -6,7 +6,7 @@ import math
 import numpy as np
 
 from doomer.client.config import RenderConfig
-from doomer.client.palette import SAND, STEEL
+from doomer.client.palette import GREY, SAND, STEEL
 from doomer.client.render import EYE_HEIGHT, Camera, Renderer, SpriteInstance, sprites_from_things
 from doomer.shared.mapfile import parse_map
 
@@ -100,3 +100,63 @@ def test_ceiling_hung_things_ignore_desks_below() -> None:
     by_name = {s.name: s for s in sprites_from_things(above)}
     assert by_name["ceiling_light"].z == 0.0
     assert by_name["terminal"].z == DESK_TOP
+
+
+# --- open desks (masked textures) --------------------------------------------------
+
+OPEN_DESK = parse_map(
+    """\
+[walls]
+#########
+#.......#
+#...a...#
+#.......#
+#########
+
+[floor]
+000000000
+000000000
+000020000
+000000000
+000000000
+"""
+)
+# Camera at x = 1.5 facing east: desk front face at x = 4 (2.5 away), back face
+# at x = 5 (3.5 away), wall at x = 8 (6.5 away). Office desk texture: legs at
+# u = 2..5 and 58..61 (of 64), open below the slab.
+
+
+def column_for(y_at_x: float, x: float) -> int:
+    """Screen column of the ray from the camera through (x, y_at_x)."""
+    return round(CFG.width / 2 + (y_at_x - 2.5) / (x - 1.5) * R.projection)
+
+
+def test_open_desk_shows_the_floor_through_the_gap_under_it() -> None:
+    frame = R.render_indices(OPEN_DESK, CAM)
+    col = column_for(2.5, 4.0)  # straight ahead: u = 0.5, between the legs
+    gap_row = int(row_for(0.08, 2.5))  # under the slab, just above the floor at the front
+    slab_row = int(row_for(DESK_TOP - 0.01, 2.5))
+    # Looking low through the gap you see the floor just beyond the desk (the
+    # wall's base is higher up the screen, behind the desktop). Floor = nothing
+    # drawn over the background, so the z-buffer is still infinite there.
+    assert math.isinf(R.zbuffer[col, gap_row])
+    assert frame[col, gap_row] == R.background[col, gap_row]
+    assert math.isclose(R.zbuffer[col, slab_row], 2.5, rel_tol=1e-6)  # the desk's edge
+    assert frame[col, slab_row] >> 4 == SAND
+
+
+def test_open_desk_front_and_back_legs() -> None:
+    frame = R.render_indices(OPEN_DESK, CAM)
+    # Front leg: u = 3.5/64 on the front face.
+    front = column_for(2.0 + 3.5 / 64, 4.0)
+    row = int(row_for(0.1, 2.5))
+    assert frame[front, row] >> 4 == GREY
+    assert math.isclose(R.zbuffer[front, row], 2.5, rel_tol=1e-6)
+    # Back leg: aim at u = 3.5/64 on the back face; the ray passes through the
+    # gap in the front face (u ~ 0.19 there) and hits the leg 3.5 away.
+    # It's only visible below the front slab's underside (height 12/64 at 2.5
+    # away) and above the back face's floor line (3.5 away): pick the middle.
+    back = column_for(2.0 + 3.5 / 64, 5.0)
+    row = int((row_for(12 / 64, 2.5) + row_for(0.0, 3.5)) / 2)
+    assert frame[back, row] >> 4 == GREY
+    assert math.isclose(R.zbuffer[back, row], 3.5, rel_tol=1e-3)

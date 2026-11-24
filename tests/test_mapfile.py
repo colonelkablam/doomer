@@ -66,7 +66,7 @@ def test_partial_height_grid_is_padded_with_default() -> None:
     ("text", "message"),
     [
         ("name: x\n", "missing [walls]"),
-        ("[walls]\n#x#\n", "bad character 'x'"),
+        ("[walls]\n#!#\n", "bad character '!'"),
         ("[walls]\n###\n\n###\n", "blank line inside [walls]"),
         ("[walls]\n###\n#.#\n###\n[things]\nbarrel 1.5 1.5 0\n", "unknown thing type"),
         ("[walls]\n###\n#.#\n###\n[things]\nexit 0.5 0.5 0\n", "inside a wall"),
@@ -145,3 +145,12 @@ def test_things_may_stand_on_low_blocks_but_not_in_full_walls() -> None:
     assert parse_map(BLOCKS).things[2].type == "ficus"
     with pytest.raises(MapError, match="inside a wall"):
         parse_map(BLOCKS.replace("ficus 2.5 1.5 0", "ficus 2.5 2.5 0"))
+
+
+def test_letter_wall_types_and_round_trip() -> None:
+    m = parse_map("[walls]\n#####\n#.az#\n#####\n")
+    assert m.walls[1] == (1, 0, 10, 35, 1)
+    assert format_map(m).splitlines()[4] == "1.az1"  # name, blank, [walls], row 0, row 1
+    assert parse_map(format_map(m)) == m
+    with pytest.raises(MapError, match="bad character 'A'"):
+        parse_map("[walls]\n#A#\n")  # upper case is not a wall type

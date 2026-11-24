@@ -122,8 +122,8 @@ exit          5.5   3.5   0
 dm_spawn      1.5   3.5   0
 ```
 
-- `[walls]`: `.` = empty floor, `1`-`9` = wall type (texture), `#` = alias for
-  `1`. Rows may be ragged; missing cells are walls. The map edge is treated as
+- `[walls]`: `.` = empty floor, `1`-`9` then `a`-`z` = wall types 1-35
+  (texture), `#` = alias for `1`. Rows may be ragged; missing cells are walls. The map edge is treated as
   solid.
 - `[floor]` / `[ceiling]` (optional): one digit `0`-`9` per cell, defaults
   0 and 8; same dimensions as `[walls]`. Heights are in **eighths of a wall**
@@ -162,6 +162,14 @@ dm_spawn      1.5   3.5   0
   `(eye - h) * projection / (y - horizon)`, the same similar-triangles rule as
   the floor. Blocks are drawn in layers (each column's k-th block), each layer
   cropped to the band of rows it can occupy.
+- **Masked textures (open desks)**: a texture may carry an opacity mask
+  (`build_opacity()`, parallel to the atlas). Low-block faces skip transparent
+  texels without touching the z-buffer, so the floor, walls and sprites behind
+  show through the space under a desk. For see-through blocks the ray's exit
+  face is drawn too (the desk's back legs), unless the ray goes straight into
+  another block of the pod. Full walls ignore masks: the ray stops at them, so
+  there's nothing behind to show. Costs ~2-3 ms with desk pods filling the
+  view (~8.5 ms/frame total): the first place to optimise if needed.
 - **8-bit indexed colour.** Every pixel is a byte indexing a 256-colour palette
   (`client/palette.py`), laid out as `index = (ramp << 4) | shade`: 16 hue
   ramps x 16 brightness steps. Brightness is linear in the low nibble, so

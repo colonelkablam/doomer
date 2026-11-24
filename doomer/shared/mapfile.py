@@ -146,7 +146,7 @@ def parse_map(text: str) -> GameMap:
 def format_map(game_map: GameMap) -> str:
     """Serialise a map. parse_map(format_map(m)) == m."""
     out = [f"name: {game_map.name}", "", "[walls]"]
-    out += ["".join("." if c == EMPTY else str(c) for c in row) for row in game_map.walls]
+    out += ["".join(wall_char(c) for c in row) for row in game_map.walls]
     for section, grid, default in (
         ("floor", game_map.floor, DEFAULT_FLOOR),
         ("ceiling", game_map.ceiling, DEFAULT_CEILING),
@@ -171,6 +171,21 @@ def _trim_blank(rows: list[tuple[int, str]]) -> list[tuple[int, str]]:
     return rows[start:end]
 
 
+_LETTERS = "abcdefghijklmnopqrstuvwxyz"
+MAX_WALL_TYPE = 9 + len(_LETTERS)  # 1-9 as digits, then a-z = 10-35
+
+
+def wall_char(wall_type: int) -> str:
+    """The [walls] character for a wall type: '.', '1'-'9', or 'a'-'z' (10-35)."""
+    if wall_type == EMPTY:
+        return "."
+    if 1 <= wall_type <= 9:
+        return str(wall_type)
+    if 10 <= wall_type <= MAX_WALL_TYPE:
+        return _LETTERS[wall_type - 10]
+    raise ValueError(f"wall type {wall_type} has no map character")
+
+
 def _wall_cell(ch: str) -> int | None:
     if ch == ".":
         return EMPTY
@@ -178,6 +193,8 @@ def _wall_cell(ch: str) -> int | None:
         return DEFAULT_WALL
     if ch in "123456789":
         return int(ch)
+    if ch in _LETTERS:
+        return 10 + _LETTERS.index(ch)
     return None
 
 

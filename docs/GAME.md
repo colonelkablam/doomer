@@ -74,7 +74,8 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 
 | Thing | Blocks | Status |
 |---|---|---|
-| Desk pod (2x2 low block, partition front, laminate top) | yes | [built] |
+| Desk pod (2x2 office desks: laminate top on steel legs, open underneath) | yes | [built] |
+| Executive desk (kneehole desk: drawer pedestals, open in the middle) | yes | [built] |
 | Reception counter (low block, wood, 1 m) | yes | [built] |
 | Beige PC terminal (stands on a desk pod or counter) | no | [built] |
 | Desk with beige PC (single desk, sprite) | yes | [built] |
@@ -106,6 +107,8 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | 7 | Toilet / kitchen tiles | Washrooms |
 | 8 | Steel panels | Server room |
 | 9 | Mainframe cabinet (blinking lights) | Server room |
+| a (10) | Office desk: laminate slab on steel legs, open underneath (a low block, height 2) | Open-plan desk pods |
+| b (11) | Executive desk: wood, drawer pedestals, open kneehole (a low block, height 2) | Executive offices |
 
 ## Pickups [planned]
 

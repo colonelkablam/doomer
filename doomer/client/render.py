@@ -40,7 +40,7 @@ import pygame
 from doomer.client.config import RenderConfig
 from doomer.client.palette import COLORMAP, PALETTE, U8Array, light_level, nearest_index
 from doomer.client.sprites import SPRITES
-from doomer.client.textures import TEX_MASK, TEX_SIZE, TOP_COLOURS, build_atlas
+from doomer.client.textures import TEX_MASK, TEX_SIZE, TOP_COLOURS, build_atlas, build_opacity
 from doomer.shared.mapfile import GameMap
 from doomer.shared.raycast import RayHit, Side, cast_ray
 
@@ -106,6 +106,7 @@ class Renderer:
         self._cos = np.cos(np.array(self._offsets))
         self._pixel_y = np.arange(h, dtype=np.float64) + 0.5  # pixel centres
         self.atlas, self.slot_for_type = build_atlas()
+        self.opacity = build_opacity()  # (slot, u, v): False = see-through (open desks)
         self.background = self._build_background()
         self.top_colour = _top_colours(self.atlas, self.slot_for_type)
         # Per-pixel perpendicular distance of whatever was drawn last frame.
@@ -159,14 +160,20 @@ class Renderer:
 
         # 1. One ray per column (Python loop). The last hit is the full-height
         # wall; any before it are low blocks, sorted into layers: layer k holds
-        # each column's k-th block.
+        # each column's k-th block, plus whether the ray leaves it into open
+        # floor (then its back face can be seen through an open desk; between
+        # cells of a desk pod it can't).
         dist = [math.inf] * w
         wall = [0] * w
         tex_u = [0.0] * w
         y_side = [False] * w
-        layers: list[list[RayHit | None]] = []
+        layers: list[list[tuple[RayHit, bool] | None]] = []
         for col in range(w):
             hits = cast_ray(game_map, camera.x, camera.y, camera.angle + self._offsets[col])
+            exits_to_floor = [
+                k + 1 == len(hits) or hits[k + 1].distance > hit.exit_distance + 1e-9
+                for k, hit in enumerate(hits)
+            ]
             if hits and hits[-1].top >= 1.0:
                 hit = hits.pop()
                 dist[col] = hit.distance
@@ -176,7 +183,7 @@ class Renderer:
             for k, block in enumerate(hits):
                 if k == len(layers):
                     layers.append([None] * w)
-                layers[k][col] = block
+                layers[k][col] = (block, exits_to_floor[k])
 
         # 2. Full-height walls for every pixel at once (numpy).
         perp = np.array(dist) * self._cos
@@ -221,10 +228,11 @@ class Renderer:
         return frame, zbuffer
 
     def _draw_block_layer(
-        self, frame: U8Array, zbuffer: FloatArray, layer: list[RayHit | None]
+        self, frame: U8Array, zbuffer: FloatArray, layer: list[tuple[RayHit, bool] | None]
     ) -> None:
-        cols = np.array([c for c, hit in enumerate(layer) if hit is not None], dtype=np.intp)
-        hits = [hit for hit in layer if hit is not None]
+        cols = np.array([c for c, entry in enumerate(layer) if entry is not None], dtype=np.intp)
+        hits = [entry[0] for entry in layer if entry is not None]
+        exits_to_floor = np.array([entry[1] for entry in layer if entry is not None])
         cos = self._cos[cols]
         near = np.array([h.distance for h in hits]) * cos  # perpendicular distances
         far = np.array([h.exit_distance for h in hits]) * cos
@@ -239,24 +247,51 @@ class Renderer:
         y_top = self.horizon + (EYE_HEIGHT - top) * self.projection / near
         y_base = self.horizon + (EYE_HEIGHT - base) * self.projection / near
         y_far = self.horizon + (EYE_HEIGHT - top) * self.projection / far
+        y_far_floor = self.horizon + EYE_HEIGHT * self.projection / far  # back face bottom
         # Only touch the band of rows this layer can occupy: a desk covers a
         # strip below the horizon, not the whole column. Big saving.
-        r0 = max(0, math.floor(min(y_top.min(), y_far.min())))
-        r1 = min(self.config.height, math.ceil(y_base.max()))
+        r0 = max(0, math.floor(min(float(np.min(y_top)), float(np.min(y_far)))))
+        lowest = max(float(np.max(y_base)), float(np.max(y_far_floor)))
+        r1 = min(self.config.height, math.ceil(lowest))
         if r0 >= r1:
             return
         py = self._pixel_y[None, r0:r1]
         sub_frame = frame[cols, r0:r1]
         sub_z = zbuffer[cols, r0:r1]
 
-        # Front face, z-tested.
+        # Front face, z-tested, skipping transparent texels (the space under a
+        # desk): those pixels keep whatever was behind, and its depth.
         face = (py >= y_top[:, None]) & (py < y_base[:, None]) & (near[:, None] < sub_z)
         height = EYE_HEIGHT - (py - self.horizon) * near[:, None] / self.projection
         vi = ((1.0 - height) * TEX_SIZE).astype(np.intp) & TEX_MASK  # textures floor-anchored
+        face &= self.opacity[slot[:, None], u[:, None], vi]
         texel = self.atlas[slot[:, None], u[:, None], vi]
         level = light_level(self._brightness(near) * np.where(y_side, Y_SIDE_SHADE, 1.0))
         sub_frame = np.where(face, COLORMAP[level[:, None], texel], sub_frame)
         sub_z = np.where(face, near[:, None], sub_z)
+
+        # Back face of see-through blocks (an open desk's back legs), from the
+        # floor up to the top at the exit distance. Only visible through the
+        # gaps in the front face; the z-test sorts that out.
+        see_through = ~self.opacity[slot].all(axis=(1, 2))
+        back_cols = see_through & exits_to_floor
+        if back_cols.any():
+            back_u = (np.array([h.exit_u for h in hits]) * TEX_SIZE).astype(np.intp) & TEX_MASK
+            back_y_side = np.array([h.exit_side is Side.Y for h in hits])
+            back = (
+                back_cols[:, None]
+                & (py >= y_far[:, None])
+                & (py < y_far_floor[:, None])
+                & (far[:, None] < sub_z)
+            )
+            height_far = EYE_HEIGHT - (py - self.horizon) * far[:, None] / self.projection
+            vi_far = ((1.0 - height_far) * TEX_SIZE).astype(np.intp) & TEX_MASK
+            back &= self.opacity[slot[:, None], back_u[:, None], vi_far]
+            texel_far = self.atlas[slot[:, None], back_u[:, None], vi_far]
+            shade = self._brightness(far) * np.where(back_y_side, Y_SIDE_SHADE, 1.0)
+            level_far = light_level(shade)
+            sub_frame = np.where(back, COLORMAP[level_far[:, None], texel_far], sub_frame)
+            sub_z = np.where(back, far[:, None], sub_z)
 
         # Top surface, if it's below eye level: rows whose distance lies in near..far.
         with np.errstate(divide="ignore", invalid="ignore"):
