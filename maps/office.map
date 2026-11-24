@@ -118,9 +118,12 @@ mac             17.68 6.3   270
 mac             17.32 6.7   90
 mac             18.68 6.3   270
 mac             18.32 6.7   90
-filing_cabinet  22.5  1.5   180
-filing_cabinet  22.5  2.5   180
-filing_cabinet  22.5  3.5   180
+filing_cabinet  22.84 1.33  180
+filing_cabinet  22.84 1.67  180
+filing_cabinet  22.84 2.33  180
+filing_cabinet  22.84 2.67  180
+filing_cabinet  22.84 3.33  180
+filing_cabinet  22.84 3.67  180
 water_cooler    14.5  8.5   270
 ficus           9.5   1.5   0
 ficus           22.5  9.5   0
@@ -128,8 +131,10 @@ ficus           14.5  4.5   0
 dm_spawn        21.5  6.5   180
 # Boss office: executive desk
 mac             4.5   10.5  270
-filing_cabinet  1.5   8.5   90
-filing_cabinet  2.5   8.5   90
+filing_cabinet  1.33  8.16  90
+filing_cabinet  1.67  8.16  90
+filing_cabinet  2.33  8.16  90
+filing_cabinet  2.67  8.16  90
 ficus           7.5   14.5  0
 dm_spawn        2.5   13.5  270
 # Lower corridor, washroom, lift lobby
