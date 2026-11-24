@@ -41,7 +41,8 @@ for _name, _description, _blocking, _radius in (
     ("water_cooler", "Water cooler", True, 0.12),
     ("filing_cabinet", "Filing cabinet", True, 0.16),
     ("ficus", "Potted ficus", True, 0.16),
-    ("ceiling_light", "Fluorescent ceiling light", False, 0.0),
+    # Drawn as a panel set into its cell's ceiling (not a sprite).
+    ("ceiling_light", "Fluorescent ceiling light panel", False, 0.0),
     # Sits on a desk-pod cell (a low block), so it needs no footprint of its own.
     ("terminal", "Beige PC and CRT, for standing on a desk pod", False, 0.0),
 ):

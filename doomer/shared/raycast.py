@@ -139,7 +139,9 @@ def cast_ray(
                 continue  # same kind of open space as before: nothing to report
             open_ceiling = ceiling_units
 
-        if open_hit >= 0:  # close the open stretch we were in
+        if open_hit >= 0 and not low_block:
+            # Close the open stretch we were in. A desk inside it doesn't: the
+            # desk sits under the same ceiling, which carries on beyond it.
             hits[open_hit] = hits[open_hit]._replace(exit_distance=distance)
             open_hit = -1
 
@@ -195,6 +197,7 @@ def cast_ray(
             return hits
         if not low_block:
             open_hit = len(hits) - 1  # its exit is where this stretch of space ends
+        # (A low block's own exit_distance is its cell's far edge, set above.)
         floor_now, ceiling_now = new_floor, ceiling_units
 
 

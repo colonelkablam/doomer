@@ -126,13 +126,6 @@ def ficus() -> Sprite:
     return _finish(c)
 
 
-def ceiling_light() -> Sprite:
-    c = Canvas()
-    c.paint(c.rect(0, 4, 6, 58), GREY, 8.0)  # housing
-    c.paint(c.rect(1, 3, 8, 56), CREAM, 15.0)  # diffuser
-    return _finish(c, fullbright=True, on_ceiling=True)
-
-
 def exit_sign() -> Sprite:
     c = Canvas()
     c.paint(c.rect(0, 8, 31, 33), GREY, 6.0)  # hanging rod
@@ -148,6 +141,5 @@ SPRITES: dict[str, Sprite] = {
     "water_cooler": water_cooler(),
     "filing_cabinet": filing_cabinet(),
     "ficus": ficus(),
-    "ceiling_light": ceiling_light(),
     "exit": exit_sign(),
 }

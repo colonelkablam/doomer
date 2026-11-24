@@ -235,8 +235,17 @@ dm_spawn      1.5   3.5   0
   height). Runs of identical blocks are merged into one hit. Each layer is
   drawn in a lower pass (risers, back faces, shadows, floors) and an upper
   pass (bulkheads, ceilings), each cropped to its rows. Explicit surfaces are
-  dithered like the background. ~4 ms in corridors, ~9 ms among desk pods,
-  ~11 ms in the double-height lobby.
+  dithered like the background. A ceiling stretch carries on over desks
+  inside it (desks don't interrupt the ceiling); the camera's own space is
+  split into its ceiling (to the next ceiling change) and the floor it
+  stands on (to its cell's edge). ~4 ms in corridors, ~10 ms among desk pods
+  or in the double-height lobby.
+- **Ceiling lights** are panels set into the ceiling, not sprites: ceiling
+  casting. Each `ceiling_light` thing marks a cell; the panel's corners are
+  projected to a screen bounding box, and for those pixels the world point on
+  the ceiling plane decides whether it's inside the 1.2 x 0.6 m panel. Drawn
+  only where nearer than what's there (the default ceiling's own depth where
+  the z-buffer is empty). Full-bright diffuser, shaded grey frame.
 - **Sprites** (`client/sprites.py`): 64x64 palette art with an opacity mask,
   spanning one cell wide by one wall tall and standing on the floor, so texel
   size matches the walls; ceiling-hung things are drawn at the top of the

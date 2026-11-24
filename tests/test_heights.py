@@ -101,3 +101,56 @@ def test_standing_on_a_raised_floor_draws_it_only_to_its_edge() -> None:
     # away) and reaches the lower floor beyond: the default floor, infinitely far.
     assert np.isinf(R.zbuffer[COL, round(row(0.5, 4.0, eye=eye))])
     assert frame.shape == (CFG.width, CFG.height)
+
+
+# A double-height room (ceiling 16/8) with a desk pair in the middle (x = 5).
+DESK_IN_ATRIUM = parse_map(
+    "[walls]\n############\n#....d.....#\n############\n\n"
+    "[floor]\n000000000000\n000002000000\n\n"
+    "[ceiling]\ngggggggggggg\ngggggggggggg\n"
+)
+
+
+def test_high_ceiling_carries_on_beyond_a_desk() -> None:
+    # From outside the tall room it'd be an open stretch closed by the desk;
+    # from inside it's the camera's own space. Either way, ceiling pixels whose
+    # height-2 distance lies beyond the desk (x > 6) must be the high ceiling.
+    for camera in (Camera(1.5, 1.5, 0.0), Camera(2.5, 1.5, 0.0)):
+        R.render_indices(DESK_IN_ATRIUM, camera)
+        end_wall = 11 - camera.x
+        for y in range(0, CFG.height // 2 - 1, 3):
+            depth = (2.0 - EYE_HEIGHT) * R.projection / (CFG.height / 2 - (y + 0.5))
+            if 6 - camera.x < depth < end_wall:
+                assert math.isclose(R.zbuffer[COL, y], depth, rel_tol=1e-6), (camera, y)
+
+
+def test_from_on_a_desk_the_high_ceiling_still_carries_on() -> None:
+    eye = 0.25 + EYE_HEIGHT
+    camera = Camera(5.5, 1.5, 0.0, z=eye)  # standing on the desk, looking east
+    R.render_indices(DESK_IN_ATRIUM, camera)
+    for y in range(0, CFG.height // 2 - 1, 3):
+        depth = (2.0 - eye) * R.projection / (CFG.height / 2 - (y + 0.5))
+        if depth < 11 - camera.x:
+            assert math.isclose(R.zbuffer[COL, y], depth, rel_tol=1e-6), y
+
+
+def test_ceiling_light_panel_is_drawn_into_the_ceiling() -> None:
+    from doomer.client.palette import CREAM
+
+    lit = parse_map("[walls]\n#######\n#.....#\n#######\n\n[things]\nceiling_light 3.5 1.5 0\n")
+    # Standing at the light's cell centre, looking along x and up: the column
+    # straight ahead passes under the panel's long axis.
+    camera = Camera(2.6, 1.5, 0.0, pitch=math.radians(25))
+    frame = R.render_indices(lit, camera)
+    column = frame[COL, : int(R.horizon)]
+    diffuser = (CREAM << 4) | 15
+    hits = [y for y in range(len(column)) if column[y] == diffuser]
+    assert hits, "no light panel pixels"
+    # Those pixels are on the ceiling at x within the panel: 3.5 +/- 0.2.
+    for y in hits:
+        up = R.horizon - (y + 0.5)
+        depth = (1.0 - EYE_HEIGHT) * R.projection / up
+        assert abs(camera.x + depth - 3.5) < 0.23
+    # A room without the light thing has no panel.
+    plain = parse_map("[walls]\n#######\n#.....#\n#######\n")
+    assert diffuser not in R.render_indices(plain, camera)[COL].tolist()

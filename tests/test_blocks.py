@@ -94,11 +94,9 @@ def test_looking_over_the_desk_from_the_side_shows_no_gaps() -> None:
 
 
 def test_ceiling_hung_things_ignore_desks_below() -> None:
-    above = parse_map(
-        ROOM_TEXT.replace("terminal 4.5 2.5 0", "terminal 4.5 2.5 0\nceiling_light 5.5 2.5 0")
-    )
+    above = parse_map(ROOM_TEXT.replace("exit 7.5 2.5 0", "exit 5.5 2.5 0"))
     by_name = {s.name: s for s in sprites_from_things(above)}
-    assert by_name["ceiling_light"].z == 0.0
+    assert by_name["exit"].z == 0.0
     assert by_name["terminal"].z == DESK_TOP
 
 

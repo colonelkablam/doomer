@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 
 from doomer.client.config import RenderConfig
-from doomer.client.palette import CREAM, GREY
+from doomer.client.palette import GREEN, GREY
 from doomer.client.render import EYE_HEIGHT, Camera, Renderer, SpriteInstance
 from doomer.client.sprites import SPRITES
 from doomer.shared.mapfile import GameMap, parse_map
@@ -75,15 +75,13 @@ def test_nearer_sprite_is_drawn_over_farther_one() -> None:
 
 
 def test_fullbright_sprites_are_not_darkened() -> None:
-    # Near enough that the light's 2-texel diffuser covers whole pixels (further
-    # away it falls between pixel centres), far enough to be well shaded if lit.
+    # The exit sign is full-bright: 4 cells away its green body still appears at
+    # its unshaded shade (9). A shaded sprite would be darker at that distance.
     depth = 4.0
-    frame = R.render_indices(OPEN, CAM, [SpriteInstance("ceiling_light", 1.5 + depth, 2.5)])
+    frame = R.render_indices(OPEN, CAM, [SpriteInstance("exit", 1.5 + depth, 2.5)])
     left, top, size = screen_rect(depth)
-    # The screen row whose centre samples texel row 2: the lit diffuser.
-    y = round(top + 2.5 * size / 64 - 0.5)
-    pixel = int(frame[CFG.width // 2, y])
-    assert pixel >> 4 == CREAM and pixel & 0x0F == 15
+    region = frame[int(left) : int(left + size), max(0, int(top)) : int(top + size / 2)]
+    assert ((GREEN << 4) | 9) in set(region.ravel().tolist())
 
 
 def test_unknown_sprite_names_are_ignored() -> None:

@@ -82,7 +82,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Water cooler | yes | [built] |
 | Filing cabinet | yes | [built] |
 | Potted ficus | yes | [built] |
-| Fluorescent ceiling light | no | [built] |
+| Fluorescent ceiling light (a panel set into the ceiling) | no | [built] |
 | Exit sign (marks the exit) | no | [built] |
 | Swivel chair (inert) | no | planned |
 | Photocopier (inert) | yes | planned |

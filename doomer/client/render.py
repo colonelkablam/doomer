@@ -49,7 +49,15 @@ import numpy.typing as npt
 import pygame
 
 from doomer.client.config import RenderConfig
-from doomer.client.palette import COLORMAP, PALETTE, U8Array, light_level, nearest_index
+from doomer.client.palette import (
+    COLORMAP,
+    CREAM,
+    GREY,
+    PALETTE,
+    U8Array,
+    light_level,
+    nearest_index,
+)
 from doomer.client.sprites import SPRITES
 from doomer.client.textures import (
     TEX_MASK,
@@ -73,6 +81,10 @@ BAYER_4X4 = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 
 BULKHEAD_TYPE = 1  # wall type whose upper texture faces a dropped ceiling
 NEAR_PLANE = 0.05  # sprites closer than this (in cells) aren't drawn
 UNDER_DESK_SHADOW = 12  # colormap levels darker (of 32) for the floor under a desk
+# Ceiling light panels: half-size in cells, and colours (diffuser is full-bright).
+LIGHT_HALF = (0.22, 0.11)
+LIGHT_DIFFUSER = (CREAM << 4) | 15
+LIGHT_FRAME = (GREY << 4) | 9
 _BACKGROUND_CACHE_SIZE = 64
 
 FloatArray = npt.NDArray[np.float64]
@@ -149,6 +161,8 @@ class Renderer:
         x, y = np.meshgrid(np.arange(w), np.arange(h), indexing="ij")
         self._dither = (BAYER_4X4[x & 3, y & 3] + 0.5) / 16  # (w, h) thresholds in (0, 1)
         self._backgrounds: dict[tuple[int, int], U8Array] = {}
+        self._light_key = -1
+        self._light_list: list[tuple[float, float, float]] = []
         # Last frame's per-pixel perpendicular distances, and its horizon row.
         self.zbuffer: FloatArray = np.full((w, h), np.inf)
         self.horizon: float = h / 2
@@ -258,13 +272,21 @@ class Renderer:
                 wall_base[col] = hit.base
                 wall_top[col] = hit.prev_ceiling
             if own_space:
-                # The camera's own span ends at the next change, or (standing on
-                # a desk) where the ray leaves the desk's cell.
-                ray_angle = camera.angle + self._offsets[col]
-                end = hits[0].distance if hits else dist[col]
+                # The camera's own space, as up to two pseudo-spans from distance
+                # 0: its ceiling (if not the default) runs to the next change of
+                # ceiling or a wall, carrying on over any desks in between; the
+                # floor it's standing on (a desk, a gallery) ends where the ray
+                # leaves that cell.
+                own: list[RayHit] = []
+                if ceiling0 != WALL_UNITS:
+                    open_change = next((h.distance for h in hits if h.wall_type == 0), dist[col])
+                    own.append(_own_space(0, ceiling0, open_change))
                 if on_block:
-                    end = min(end, cell_exit_distance(camera.x, camera.y, ray_angle))
-                hits.insert(0, _own_space(floor0, ceiling0, end))
+                    ray_angle = camera.angle + self._offsets[col]
+                    edge = cell_exit_distance(camera.x, camera.y, ray_angle)
+                    first = hits[0].distance if hits else dist[col]
+                    own.append(_own_space(floor0, WALL_UNITS, min(first, edge)))
+                hits[0:0] = own
             for k, span in enumerate(hits):
                 if k == len(layers):
                     layers.append([None] * w)
@@ -296,6 +318,7 @@ class Renderer:
         for layer in layers:
             self._draw_span_layer(frame, zbuffer, layer, horizon, eye)
 
+        self._draw_ceiling_lights(frame, zbuffer, game_map, camera, horizon, eye)
         self._draw_sprites(frame, zbuffer, camera, sprites, horizon, eye)
         self.zbuffer = zbuffer
         return frame
@@ -391,7 +414,9 @@ class Renderer:
             cols=cols,
             near=near,
             far=far,
-            finite_far=np.where(np.isfinite(far), far, 1e9),
+            # Never closer than `near` (a camera exactly on a cell boundary can
+            # give a zero-length span), never infinite (open-ended stretches).
+            finite_far=np.maximum(np.where(np.isfinite(far), far, 1e9), near),
             top=np.array([h.top for h in hits]),
             base=np.array([h.base for h in hits]),
             ceiling=np.array([h.ceiling for h in hits]),
@@ -411,9 +436,12 @@ class Renderer:
             self._draw_upper(frame, zbuffer, span, horizon, eye)
 
     def _crop(self, lows: list[FloatArray], highs: list[FloatArray]) -> tuple[int, int]:
-        r0 = max(0, math.floor(min(float(np.min(a)) for a in lows)))
-        r1 = min(self.config.height, math.ceil(max(float(np.max(a)) for a in highs)))
-        return r0, r1
+        """The band of screen rows [r0, r1) that rows in `lows`..`highs` can reach.
+        Off-screen and infinite rows (spans starting at the camera) clamp."""
+        h = self.config.height
+        low = min(float(np.min(np.clip(a, -1.0, h + 1.0))) for a in lows)
+        high = max(float(np.max(np.clip(a, -1.0, h + 1.0))) for a in highs)
+        return max(0, math.floor(low)), min(h, math.ceil(high))
 
     def _draw_lower(
         self,
@@ -552,6 +580,103 @@ class Renderer:
 
         frame[cols, r0:r1] = sub_frame
         zbuffer[cols, r0:r1] = sub_z
+
+    def _lights_in(self, game_map: GameMap) -> list[tuple[float, float, float]]:
+        """(x, y, ceiling height) of each light panel: one per `ceiling_light`
+        thing, centred in its cell."""
+        key = id(game_map)
+        if self._light_key != key:
+            self._light_list = []
+            for t in game_map.things:
+                if t.type == "ceiling_light":
+                    cx, cy = math.floor(t.x), math.floor(t.y)
+                    self._light_list.append((cx + 0.5, cy + 0.5, game_map.ceiling_height(cx, cy)))
+            self._light_key = key
+        return self._light_list
+
+    def _draw_ceiling_lights(
+        self,
+        frame: U8Array,
+        zbuffer: FloatArray,
+        game_map: GameMap,
+        camera: Camera,
+        horizon: float,
+        eye: float,
+    ) -> None:
+        """Fluorescent light panels set into the ceiling, by ceiling casting.
+
+        Each panel's corners are projected to find its screen bounding box (as
+        with sprites), so only those pixels are examined. For each, the column's
+        ray direction and the row give the world point on the panel's ceiling
+        plane; it's drawn if that point is inside the panel and nearer than
+        whatever is there already (the z-buffer, or for the default ceiling,
+        that ceiling's own depth).
+        """
+        w, h = self.config.width, self.config.height
+        cos_a, sin_a = math.cos(camera.angle), math.sin(camera.angle)
+        half_x, half_y = LIGHT_HALF
+        for lx, ly, ceiling in self._lights_in(game_map):
+            if ceiling <= eye:
+                continue
+            corners = [(lx + sx * half_x, ly + sy * half_y) for sx in (-1, 1) for sy in (-1, 1)]
+            cols, rows = [], []
+            for x, y in corners:
+                dx, dy = x - camera.x, y - camera.y
+                depth = dx * cos_a + dy * sin_a
+                if depth <= NEAR_PLANE:
+                    break  # partly behind you: skip (it's overhead and nearly edge-on)
+                lateral = -dx * sin_a + dy * cos_a
+                cols.append(w / 2 + lateral * self.projection / depth)
+                rows.append(horizon + (eye - ceiling) * self.projection / depth)
+            else:
+                c0, c1 = max(0, math.floor(min(cols))), min(w, math.ceil(max(cols)) + 1)
+                r0, r1 = max(0, math.floor(min(rows))), min(h, math.ceil(max(rows)) + 1)
+                r1 = min(r1, math.floor(horizon))
+                if c0 < c1 and r0 < r1:
+                    self._draw_light_panel(
+                        frame, zbuffer, camera, lx, ly, ceiling, c0, c1, r0, r1, horizon, eye
+                    )
+
+    def _draw_light_panel(
+        self,
+        frame: U8Array,
+        zbuffer: FloatArray,
+        camera: Camera,
+        lx: float,
+        ly: float,
+        ceiling: float,
+        c0: int,
+        c1: int,
+        r0: int,
+        r1: int,
+        horizon: float,
+        eye: float,
+    ) -> None:
+        cols = np.arange(c0, c1)
+        up = horizon - self._pixel_y[None, r0:r1]  # > 0 above the horizon
+        depth = (ceiling - eye) * self.projection / up  # (1, rows) perpendicular
+        angles = camera.angle + np.array(self._offsets)[cols]
+        along = depth / self._cos[cols][:, None]  # (cols, rows) along each ray
+        wx = camera.x + np.cos(angles)[:, None] * along
+        wy = camera.y + np.sin(angles)[:, None] * along
+        ox, oy = np.abs(wx - lx), np.abs(wy - ly)
+        half_x, half_y = LIGHT_HALF
+        panel = (ox < half_x) & (oy < half_y)
+        # Visible only if nothing nearer is drawn there. Where the z-buffer is
+        # empty, the default ceiling (height 1) is showing at its own depth.
+        there = zbuffer[c0:c1, r0:r1]
+        default_ceiling = (1.0 - eye) * self.projection / up if eye < 1.0 else np.inf
+        there = np.where(np.isinf(there), default_ceiling, there)
+        panel &= depth <= there * (1 + 1e-6)
+        if not panel.any():
+            return
+        diffuser = panel & (ox < half_x - 0.02) & (oy < half_y - 0.02)
+        frame_colour = COLORMAP[
+            light_level(self._brightness(np.broadcast_to(depth, panel.shape))), LIGHT_FRAME
+        ]
+        region = frame[c0:c1, r0:r1]
+        region[panel] = frame_colour[panel]
+        region[diffuser] = LIGHT_DIFFUSER
 
     def _draw_sprites(
         self,
