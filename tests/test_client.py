@@ -148,3 +148,15 @@ def test_session_camera_follows_feet_and_eases_eye_height() -> None:
         session.update(dt, PlayerInput(crouch=True))
     assert session.camera(0.0, pitch=0.1).z == pytest.approx(move.crouch_eye_height)
     assert session.camera(0.0, pitch=0.1).pitch == 0.1
+
+
+def test_renderer_caches_follow_the_map_not_its_id() -> None:
+    # Render many maps of different sizes in turn: a cache keyed on id() could
+    # serve a freed map's table to a new map that reused its id.
+    renderer = Renderer(CFG)
+    for width in range(5, 25):
+        m = parse_map(
+            "[walls]\n" + "#" * width + "\n#" + "." * (width - 2) + "#\n" + "#" * width + "\n"
+        )
+        renderer.render_indices(m, Camera(1.5, 1.5, 0.0))
+        assert renderer._cell_slots and len(renderer._cell_slots[0]) == width

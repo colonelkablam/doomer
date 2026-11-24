@@ -173,8 +173,11 @@ class Renderer:
         x, y = np.meshgrid(np.arange(w), np.arange(h), indexing="ij")
         self._dither = (BAYER_4X4[x & 3, y & 3] + 0.5) / 16  # (w, h) thresholds in (0, 1)
         self._backgrounds: dict[tuple[int, int], U8Array] = {}
-        self._light_key = -1
-        self._slots_key = -1
+        # Per-map caches remember the map object itself (and compare with `is`),
+        # not id(map): Python reuses the id of a freed object, so a new map
+        # could otherwise be served an old map's table.
+        self._lights_map: GameMap | None = None
+        self._slots_map: GameMap | None = None
         self._cell_slots: list[list[list[int]]] = []
         self._light_list: list[tuple[float, float, float]] = []
         # Last frame's per-pixel perpendicular distances, and its horizon row.
@@ -367,7 +370,7 @@ class Renderer:
         """[slot for each compass face 0-3, upper slot] of the hit's cell, from a
         per-map table (a cell's textures never change during a map). Plain
         nested lists: single-element lookups are much faster than numpy's."""
-        if self._slots_key != id(game_map):
+        if self._slots_map is not game_map:
             self._cell_slots = [
                 [
                     [self._slot_for(game_map, x, y, f) for f in range(4)]
@@ -376,7 +379,7 @@ class Renderer:
                 ]
                 for y in range(game_map.height)
             ]
-            self._slots_key = id(game_map)
+            self._slots_map = game_map
         if 0 <= hit.cell_y < game_map.height and 0 <= hit.cell_x < game_map.width:
             return self._cell_slots[hit.cell_y][hit.cell_x]
         # Outside the map (solid): wall type 1.
@@ -801,14 +804,13 @@ class Renderer:
     def _lights_in(self, game_map: GameMap) -> list[tuple[float, float, float]]:
         """(x, y, ceiling height) of each light panel: one per `ceiling_light`
         thing, centred in its cell."""
-        key = id(game_map)
-        if self._light_key != key:
+        if self._lights_map is not game_map:
             self._light_list = []
             for t in game_map.things:
                 if t.type == "ceiling_light":
                     cx, cy = math.floor(t.x), math.floor(t.y)
                     self._light_list.append((cx + 0.5, cy + 0.5, game_map.ceiling_height(cx, cy)))
-            self._light_key = key
+            self._lights_map = game_map
         return self._light_list
 
     def _draw_ceiling_lights(
