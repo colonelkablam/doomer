@@ -97,8 +97,10 @@ and an `exit`; **deathmatch** needs at least 4 `dm_spawn`s.
 - **Single desks** `c` face where you sit; **executive desks** `b` likewise.
 - **Desk-top things** (`mac`): turn each a few degrees off square (3-10 deg,
   either way, varied between neighbours), so a row of them looks used rather
-  than lined up. Keep it under ~12 deg: the keyboard turns with the Mac and
-  would reach past the desk's edge.
+  than lined up, and nudge it 0.02-0.06 cells along the desk (up to 0.015
+  towards or away from the sitter). Keep the turn under ~12 deg: the
+  keyboard turns with the Mac and would reach past the desk's edge. Every
+  corner of the Mac, keyboard and mouse should stay ~0.05 inside the cell.
 - **Counters**: wall type `2`, height 3: too high to jump onto (cover).
 - **Tall spaces**: `[ceiling]` `g` (16) for two storeys. Walls get their
   upper-storey texture above one storey; a bulkhead face appears where the
