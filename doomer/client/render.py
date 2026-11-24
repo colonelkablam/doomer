@@ -383,8 +383,11 @@ class Renderer:
         # ceiling hides a higher one beyond it (looking from a normal room into
         # the atrium). Inside a stretch with a different ceiling it doesn't
         # exist, so those pixels stay infinitely far and the real ceiling wins.
+        # Where it exists and is nearer than a wall already drawn, it covers
+        # the wall: a wall in a tall room is drawn up to that room's ceiling,
+        # but from a low room you only see it below your own ceiling.
         if ceiling_changes:
-            self._ceiling_depths(zbuffer, layers, horizon, eye)
+            self._ceiling_depths(frame, zbuffer, layers, horizon, eye)
         else:
             self._default_ceiling_depths(zbuffer, horizon, eye)
 
@@ -478,7 +481,12 @@ class Renderer:
         return which, vi
 
     def _ceiling_depths(
-        self, zbuffer: FloatArray, layers: list[list[SpanHit | None]], horizon: float, eye: float
+        self,
+        frame: U8Array,
+        zbuffer: FloatArray,
+        layers: list[list[SpanHit | None]],
+        horizon: float,
+        eye: float,
     ) -> None:
         rows = min(self.config.height, math.floor(horizon))
         if rows <= 0 or eye >= 1.0:
@@ -498,7 +506,13 @@ class Renderer:
         inside = (lo[:, :, None] <= depth[None, None, :]) & (depth[None, None, :] <= hi[:, :, None])
         real = ~inside.any(axis=0)  # (w, rows)
         region = zbuffer[:, :rows]
-        zbuffer[:, :rows] = np.where(np.isinf(region) & real, depth[None, :], region)
+        nearer = real & (depth[None, :] < region)
+        zbuffer[:, :rows] = np.where(nearer, depth[None, :], region)
+        # Uncover the ceiling where a wall beyond was drawn over it.
+        covered = nearer & ~np.isinf(region)
+        if covered.any():
+            sky = self.background(horizon, eye)[:, :rows]
+            frame[:, :rows] = np.where(covered, sky, frame[:, :rows])
 
     def _default_ceiling_depths(self, zbuffer: FloatArray, horizon: float, eye: float) -> None:
         """No ceiling changes in view: the default ceiling is real everywhere."""

@@ -271,3 +271,22 @@ def test_bulkhead_is_drawn_below_eye_level_seen_from_a_balcony() -> None:
     for height in (1.1, 1.3, 1.5, 1.8):  # below and above the eye (1.6)
         row = int(R.horizon + (camera.z - height) * R.projection / 3.0)
         assert math.isclose(R.zbuffer[COL, row], 3.0, rel_tol=1e-6), height
+
+
+def test_low_ceiling_hides_a_tall_rooms_wall_seen_from_the_low_room() -> None:
+    # Two-storey room at x 1..6, one-storey corridor x 7..10. From the corridor,
+    # the tall room's far wall (x = 0) is drawn up to that room's ceiling, but
+    # any sight line that meets the corridor's ceiling first must see ceiling.
+    room = parse_map(
+        "[walls]\n############\n#..........#\n############\n\n"
+        "[ceiling]\n888888888888\n8gggggg88888\n888888888888\n"
+    )
+    camera = Camera(10.5, 1.5, math.pi, pitch=0.2)
+    R.render_indices(room, camera)
+    checked = 0
+    for row in range(int(R.horizon)):
+        reach = (1.0 - EYE_HEIGHT) * R.projection / (R.horizon - (row + 0.5))
+        if reach < 10.5 - 7.0:  # meets the corridor ceiling before the tall room
+            assert math.isclose(R.zbuffer[COL, row], reach, rel_tol=1e-6), row
+            checked += 1
+    assert checked > 10
