@@ -515,15 +515,17 @@ _CROWN_R = 0.23  # cells
 
 def leaves(seed: int, flat: bool = False) -> int:
     """A ragged oval of leaf clusters, see-through between them. Lit from
-    above (upright cards) and darker inside the clumps."""
+    above (upright cards) and darker inside the clumps. Flat cards are
+    sparser: seen nearly edge-on, a dense one squashes into a solid stripe."""
     rng = np.random.default_rng(seed)
     c = Canvas()
     coarse, fine = noise(rng, 8), noise(rng, 32)
     density = 0.6 * coarse + 0.4 * fine
     outline = c.ellipse(32, 32, 31, 31) if flat else c.ellipse(34, 32, 30, 31)
     lit = 0.0 if flat else (32 - c.v) / 32 * 1.5  # tops of the crown catch the light
-    c.paint(outline & (density > 0.42), GREEN, 4.0 + fine * 7.0 + lit)
-    c.paint(outline & (density > 0.42) & (fine < 0.25), GREEN, 2.5)  # shadowed leaves
+    leafy = outline & (density > (0.55 if flat else 0.42))
+    c.paint(leafy, GREEN, 4.0 + fine * 7.0 + lit)
+    c.paint(leafy & (fine < 0.25), GREEN, 2.5)  # shadowed leaves
     return _texture(c)
 
 
@@ -561,8 +563,12 @@ def _ficus() -> tuple[Box, ...]:
     )
     r = (-_CROWN_R, _CROWN_R)
     card = (-0.003, 0.003)
+    # A card shows leaves on its two broad faces only. Its edges are a few mm
+    # wide but would still get the whole texture squeezed across them, solid
+    # middle columns included: thin green lines through (and past) the crown.
+    edge = _texture(Canvas())  # nothing painted: fully see-through
     upright = tuple(
-        Box(card, r, _CROWN, (tex, tex, tex, tex, tex), turn=turn)
+        Box(card, r, _CROWN, (tex, edge, tex, edge, edge), turn=turn)
         for turn, tex in zip(
             (0.0, math.pi / 4, math.pi / 2, 3 * math.pi / 4),
             (leaves(71), leaves(72), leaves(73), leaves(74)),
@@ -574,12 +580,13 @@ def _ficus() -> tuple[Box, ...]:
             (-_CROWN_R * k, _CROWN_R * k),
             (-_CROWN_R * k, _CROWN_R * k),
             (z, z + 0.004),
-            (tex,) * 5,
+            (edge, edge, edge, edge, tex),  # leaves on top (and underneath)
             turn=turn,
         )
         for z, k, turn, tex in (
+            # Away from standing eye level (0.6), where a flat card is edge-on.
             (0.47, 0.9, 0.3, leaves(75, flat=True)),
-            (0.62, 0.7, 1.1, leaves(76, flat=True)),
+            (0.69, 0.6, 1.1, leaves(76, flat=True)),
         )
     )
     return (*pot, *stems, *upright, *flat)

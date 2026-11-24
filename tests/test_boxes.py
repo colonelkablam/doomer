@@ -161,3 +161,17 @@ def test_testing_only_each_boxs_columns_draws_the_same_as_testing_all(
     monkeypatch.setattr(Renderer, "_in_view", every_column)
     for cam, image in zip(views, culled, strict=True):
         assert (R.render_indices(office, cam, things) == image).all()
+
+
+def test_ficus_leaf_cards_show_leaves_only_on_their_broad_faces() -> None:
+    from doomer.client.boxes import BOX_OPAQUE, FRONT, TOP
+
+    for box in BOX_MODELS["ficus"]:
+        sizes = (box.x[1] - box.x[0], box.y[1] - box.y[0], box.z[1] - box.z[0])
+        if min(sizes) > 0.01:
+            continue  # the pot and stems, not a card
+        thin = sizes.index(min(sizes))
+        broad = {0: (FRONT, FRONT + 2), 1: (FRONT + 1, FRONT + 3), 2: (TOP,)}[thin]
+        for face, tex in enumerate(box.faces):
+            # Edges a few mm wide would squeeze the whole texture into a line.
+            assert BOX_OPAQUE[tex].any() == (face in broad), (box, face)
