@@ -90,31 +90,32 @@ ficus           1.5   6.5   0
 water_cooler    6.5   6.5   0
 dm_spawn        2.5   5.5   0
 dm_spawn        4.5   1.5   0
-# Open plan: four pods of back-to-back steel desks, a terminal per sitter
-terminal        10.5  2.3   0
-terminal        10.5  2.7   0
-terminal        11.5  2.3   0
-terminal        11.5  2.7   0
-terminal        12.5  2.3   0
-terminal        12.5  2.7   0
-terminal        16.5  2.3   0
-terminal        16.5  2.7   0
-terminal        17.5  2.3   0
-terminal        17.5  2.7   0
-terminal        18.5  2.3   0
-terminal        18.5  2.7   0
-terminal        10.5  6.3   0
-terminal        10.5  6.7   0
-terminal        11.5  6.3   0
-terminal        11.5  6.7   0
-terminal        12.5  6.3   0
-terminal        12.5  6.7   0
-terminal        16.5  6.3   0
-terminal        16.5  6.7   0
-terminal        17.5  6.3   0
-terminal        17.5  6.7   0
-terminal        18.5  6.3   0
-terminal        18.5  6.7   0
+# Open plan: four pods of back-to-back steel desks, a terminal per sitter,
+# its screen facing them (north half 270, south half 90)
+terminal        10.5  2.3   270
+terminal        10.5  2.7   90
+terminal        11.5  2.3   270
+terminal        11.5  2.7   90
+terminal        12.5  2.3   270
+terminal        12.5  2.7   90
+terminal        16.5  2.3   270
+terminal        16.5  2.7   90
+terminal        17.5  2.3   270
+terminal        17.5  2.7   90
+terminal        18.5  2.3   270
+terminal        18.5  2.7   90
+terminal        10.5  6.3   270
+terminal        10.5  6.7   90
+terminal        11.5  6.3   270
+terminal        11.5  6.7   90
+terminal        12.5  6.3   270
+terminal        12.5  6.7   90
+terminal        16.5  6.3   270
+terminal        16.5  6.7   90
+terminal        17.5  6.3   270
+terminal        17.5  6.7   90
+terminal        18.5  6.3   270
+terminal        18.5  6.7   90
 filing_cabinet  22.5  1.5   0
 filing_cabinet  22.5  2.5   0
 filing_cabinet  22.5  3.5   0
@@ -124,7 +125,7 @@ ficus           22.5  9.5   0
 ficus           14.5  4.5   0
 dm_spawn        21.5  6.5   180
 # Boss office: executive desk
-terminal        4.5   10.5  0
+terminal        4.5   10.5  270
 filing_cabinet  1.5   8.5   0
 filing_cabinet  2.5   8.5   0
 ficus           7.5   14.5  0

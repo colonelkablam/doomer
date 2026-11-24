@@ -8,6 +8,7 @@ import numpy as np
 from doomer.client.config import RenderConfig
 from doomer.client.palette import GREY, SAND, STEEL
 from doomer.client.render import EYE_HEIGHT, Camera, Renderer, SpriteInstance, sprites_from_things
+from doomer.client.sprites import SPRITES
 from doomer.shared.mapfile import GameMap, parse_map
 
 # A desk pod (wall type 3: partition-fronted, laminate top) two cells deep, at
@@ -81,8 +82,12 @@ def test_thing_on_a_desk_stands_on_its_top() -> None:
     without = R.render_indices(ROOM, CAM)
     changed = np.flatnonzero(frame[CENTRE] != without[CENTRE])  # sorted rows
     assert len(changed) > 0
-    # The terminal's lowest pixel is on the desk top at its depth (3), not the floor.
-    assert abs(int(changed[-1]) - row_for(DESK_TOP, 3.0)) <= 1.5
+    # The terminal's lowest pixel is on the desk top at its depth (3), not the
+    # floor: seen from above, its nearest edge may hang `sink` texels lower.
+    sink = SPRITES["terminal"].sink * (R.projection / 3.0) / 64
+    lowest = int(changed[-1]) - row_for(DESK_TOP, 3.0)
+    assert -1.5 <= lowest <= sink + 1.5
+    assert row_for(0.0, 3.0) - row_for(DESK_TOP, 3.0) > sink + 5  # the floor is further down
 
 
 def test_looking_over_the_desk_from_the_side_shows_no_gaps() -> None:

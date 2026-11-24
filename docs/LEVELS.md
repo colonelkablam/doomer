@@ -62,7 +62,7 @@ units at most). Anything higher with no stairs is unreachable.
 | `exit` | Co-op level exit (drawn as a hanging EXIT sign) | Exactly 1 for co-op. Must be reachable on foot from `coop_start` |
 | `dm_spawn` | Deathmatch spawn | At least 4 for deathmatch. Reachable; spread out (see checks) |
 | `desk`, `water_cooler`, `filing_cabinet`, `ficus` | Blocking furniture | Square footprints, half-widths 0.32 / 0.12 / 0.16 / 0.16 |
-| `terminal` | PC on a desk | Put it in a desk/counter cell; it stands on the top |
+| `terminal` | PC on a desk | Put it in a desk/counter cell; it stands on the top. Its angle is where the screen faces (towards the sitter): in a pod, 270 on the north half, 90 on the south |
 | `ceiling_light` | Light panel in the ceiling | Marks the cell; drawn at that cell's ceiling height |
 
 - Positions are cell coordinates (`3.5` = centre of cell 3). Use cell centres

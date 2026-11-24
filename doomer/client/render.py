@@ -124,6 +124,7 @@ class SpriteInstance:
     x: float
     y: float
     z: float = 0.0  # height of its base (a desk top; for hanging things, ceiling - 1)
+    angle: float = 0.0  # which way it faces (radians), for sprites with views
 
 
 def sprites_from_things(game_map: GameMap) -> list[SpriteInstance]:
@@ -137,7 +138,7 @@ def sprites_from_things(game_map: GameMap) -> list[SpriteInstance]:
             z = game_map.ceiling_height(cx, cy) - 1.0  # the image's top at the ceiling
         else:
             z = game_map.floor_at(t.x, t.y) if game_map.is_low_block(cx, cy) else 0.0
-        out.append(SpriteInstance(t.type, t.x, t.y, z))
+        out.append(SpriteInstance(t.type, t.x, t.y, z, t.angle))
     return out
 
 
@@ -931,7 +932,7 @@ class Renderer:
             lateral = -dx * sin_a + dy * cos_a
             size = self.projection / depth  # one cell wide, one wall tall, in pixels
             left = w / 2 + lateral * self.projection / depth - size / 2
-            bottom = horizon + (eye - s.z) * size  # standing on its surface
+            bottom = horizon + (eye - s.z) * size + art.sink * size / 64  # on its surface
             top = bottom - size
             c0, c1 = max(0, math.ceil(left - 0.5)), min(w, math.ceil(left + size - 0.5))
             r0, r1 = max(0, math.ceil(top - 0.5)), min(h, math.ceil(bottom - 0.5))
@@ -941,10 +942,13 @@ class Renderer:
             su = ((np.arange(c0, c1) + 0.5 - left) * scale).astype(np.intp).clip(0, 63)
             sv = ((np.arange(r0, r1) + 0.5 - top) * scale).astype(np.intp).clip(0, 63)
             region_z = zbuffer[c0:c1, r0:r1]
-            draw = art.opaque[su[:, None], sv[None, :]] & (depth <= region_z)  # z-test
+            frame_no = art.frame(math.atan2(-dy, -dx), s.angle)
+            opaque, texels = art.opaque[frame_no], art.index[frame_no]
+            near = max(depth - art.reach, NEAR_PLANE)  # its nearest point, for the z-test
+            draw = opaque[su[:, None], sv[None, :]] & (near <= region_z)
             if not draw.any():
                 continue
-            index = art.index[su[:, None], sv[None, :]]
+            index = texels[su[:, None], sv[None, :]]
             if not art.fullbright:
                 level = light_level(self._brightness(np.array(depth)))
                 index = COLORMAP[level, index]

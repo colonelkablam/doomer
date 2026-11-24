@@ -77,7 +77,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Desk pod (a row of back-to-back steel desk pairs, a terminal per sitter) | yes | [built] |
 | Executive desk (kneehole desk: drawer pedestals, open in the middle) | yes | [built] |
 | Reception counter (low block, wood, 1 m) | yes | [built] |
-| Beige PC terminal (stands on a desk pod or counter) | no | [built] |
+| Beige PC terminal (stands on a desk pod or counter; 8 views, faces its map angle) | no | [built] |
 | Desk with beige PC (single desk, sprite) | yes | [built] |
 | Water cooler | yes | [built] |
 | Filing cabinet | yes | [built] |
@@ -155,5 +155,7 @@ Built to the code design rules in `DESIGN.md`.
   sounds and barks on the client; the AI never touches audio.
 - **Sprites**: frame chosen by state (walk, attack, pain, death) and, for
   enemies that face somewhere, by viewing angle (8 rotations), as in Doom.
+  Rotations are baked from voxel models (`client/models.py`), as the PC
+  terminal's are [built]; animation poses would be one model each.
 - **Modes**: enemies appear in co-op. Deathmatch ignores enemy things in the
   map, like other mode-specific things.

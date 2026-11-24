@@ -6,12 +6,19 @@ hang from the ceiling (a light) is simply drawn at the top of the image.
 
 Sprites are keyed by thing type name (doomer/shared/things.py). Things with no
 sprite (spawn points) are invisible.
+
+Most sprites are one picture, the same from every side. A sprite can instead
+have VIEWS frames, one per 45 degrees round the thing (as Doom's had), baked
+from a voxel model (doomer/client/models.py); the renderer picks the frame
+for the direction the thing is seen from, using its map angle.
 """
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
 
+from doomer.client.models import VoxelModel, bake, view_for
 from doomer.client.palette import (
     BLUE,
     BRICK,
@@ -29,16 +36,29 @@ from doomer.client.pixelart import BoolArray, Canvas, noise
 
 @dataclass(frozen=True, slots=True)
 class Sprite:
-    index: U8Array  # [u][v] palette indices
-    opaque: BoolArray  # [u][v] True where the sprite is drawn
+    index: U8Array  # [frame][u][v] palette indices; 1 frame, or one per view
+    opaque: BoolArray  # [frame][u][v] True where the sprite is drawn
     fullbright: bool = False  # emits light: not darkened by distance
     on_ceiling: bool = False  # hangs from the ceiling, so ignores desks below it
+    # Baked views (models.py) are seen from above: `sink` image rows hang below
+    # the base line, and the model reaches `reach` cells towards you, so it's
+    # depth-tested from its near side, not its centre (or the desk top in front
+    # of the centre would hide the keyboard).
+    sink: int = 0
+    reach: float = 0.0
+
+    def frame(self, viewer_angle: float, facing: float) -> int:
+        """The frame to show to a viewer in direction `viewer_angle` from the
+        thing (radians, as map angles), for a thing facing `facing`."""
+        if len(self.index) == 1:
+            return 0
+        return view_for((viewer_angle - facing) % math.tau)
 
 
 def _finish(canvas: Canvas, fullbright: bool = False, on_ceiling: bool = False) -> Sprite:
     return Sprite(
-        np.ascontiguousarray(canvas.index.T),
-        np.ascontiguousarray(canvas.opaque.T),
+        np.ascontiguousarray(canvas.index.T[None]),
+        np.ascontiguousarray(canvas.opaque.T[None]),
         fullbright,
         on_ceiling,
     )
@@ -73,16 +93,37 @@ def desk() -> Sprite:
 
 
 def terminal() -> Sprite:
-    """Just the beige PC, for standing on a desk-pod cell (drawn from its base up)."""
-    c = Canvas()
-    c.paint(c.rect(59, 64, 19, 45), SAND, 10.0)  # system unit
-    c.paint(c.rect(60, 61, 36, 42), GREY, 3.0)  # floppy slot
-    c.paint(c.rect(47, 59, 22, 42), SAND, 11.0)  # monitor case
-    c.paint(c.rect(47, 59, 40, 42), SAND, 8.0)  # side shading
-    c.paint(c.rect(49, 57, 24, 38), GREEN, 1.0)  # screen
-    for row, length in ((50, 9), (52, 12), (54, 6)):
-        c.paint(c.rect(row, row + 1, 25, 25 + length), GREEN, 13.0)  # green text
-    return _finish(c)
+    """A beige 1980s PC on a desk: a desktop system unit with two floppy
+    drives, a green-screen CRT monitor on it, and a keyboard in front. Drawn
+    from its base up (it stands on a desk top); 8 views, baked from a model.
+
+    Model axes (models.py): x out of the screen, y to the PC's right, z up.
+    Exaggerated ~1.5x in width, like the other sprites; about 24 deep, so two
+    terminals back to back on a desk pod (0.4 cells apart) don't overlap."""
+    m = VoxelModel()
+    # System unit, with a fan grille at the back and two drive bays in front.
+    m.box((-9, 7), (-12, 12), (0, 5), SAND, 10.0)
+    m.box((6, 7), (1, 11), (1, 4), SAND, 7.0)  # drive bay surround
+    for y0 in (2, 7):
+        m.box((6, 7), (y0, y0 + 3), (2, 3), GREY, 2.0)  # floppy slots
+    m.box((6, 7), (-10, -8), (1, 2), BRICK, 9.0)  # power light
+    m.box((-9, -8), (-9, -3), (1, 4), GREY, 3.0)  # fan grille
+    # Monitor: a boxy case with a tapering CRT behind, a bezel in front.
+    m.box((-6, 6), (-9, 9), (5, 19), SAND, 11.0)
+    m.box((-10, -6), (-6, 6), (7, 17), SAND, 10.0)  # tube housing
+    for z0 in (9, 11, 13, 15):
+        m.box((-10, -9), (-4, 4), (z0, z0 + 1), SAND, 5.0)  # vent slots
+    m.clear((5, 6), (-7, 7), (8, 17))  # bezel opening
+    m.box((4, 5), (-7, 7), (8, 17), GREEN, 1.5, glow=True)  # dark phosphor glass
+    # Green text, read left to right from the front: that's from the PC's +y.
+    for z0, length in ((15, 10), (13, 12), (11, 7), (9, 4)):
+        m.box((4, 5), (6 - length, 6), (z0, z0 + 1), GREEN, 13.0, glow=True)
+    # Keyboard in front, with rows of keys on top.
+    m.box((8, 15), (-11, 11), (0, 2), WARM_GREY, 11.0)
+    for x0 in (9, 11, 13):
+        m.box((x0, x0 + 1), (-10, 10), (1, 2), WARM_GREY, 7.0)
+    baked = bake(m)
+    return Sprite(baked.index, baked.opaque, sink=baked.sink, reach=baked.reach)
 
 
 def water_cooler() -> Sprite:

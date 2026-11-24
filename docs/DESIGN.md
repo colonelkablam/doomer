@@ -283,6 +283,17 @@ dm_spawn      1.5   3.5   0
   things without art (spawns) are invisible. A sprite in a low-block cell
   stands on the block's top (`SpriteInstance.z`). Z-tested per pixel.
   `fullbright` sprites (lights, signs) skip distance shading.
+- **Rotating sprites** (`client/models.py`): a sprite can have 8 frames, one
+  per 45 degrees round the thing, as Doom's had; the renderer picks the frame
+  from the direction the camera is in relative to the thing's map angle.
+  Frames aren't hand-drawn: the thing is a small voxel model (boxes in a 64^3
+  grid, 1 voxel = 1 sprite texel), rendered orthographically to each view at
+  startup (~15 ms) with per-voxel normals lit from a light fixed to the model,
+  so all views agree. Views look down 20 degrees, because you mostly see
+  furniture from above; the nearest parts then hang below the base line
+  (`sink` rows), and the sprite is z-tested from its nearest point (`reach`)
+  so a desk top in front of its centre doesn't hide them. The same baker will
+  do enemies (one model per animation pose). The PC terminal is the first.
 - **Blocking things** (`ThingType.blocking`, `radius`) are square footprints
   that the shared collision code treats like walls.
 

@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import numpy.typing as npt
 
@@ -55,7 +57,7 @@ def test_partly_hidden_sprite_is_clipped_per_column() -> None:
 
 def test_transparent_texels_show_what_is_behind() -> None:
     sprite = SPRITES["desk"]
-    assert not sprite.opaque[2, 2]  # top-left corner of the desk image is empty
+    assert not sprite.opaque[0, 2, 2]  # top-left corner of the desk image is empty
     depth = 3.0
     left, top, size = screen_rect(depth)
     x, y = int(left + 2.5 * size / 64), int(top + 2.5 * size / 64)
@@ -90,5 +92,35 @@ def test_unknown_sprite_names_are_ignored() -> None:
 
 def test_every_sprite_is_64x64_with_something_drawn() -> None:
     for name, sprite in SPRITES.items():
-        assert sprite.index.shape == sprite.opaque.shape == (64, 64), name
+        assert sprite.index.shape == sprite.opaque.shape, name
+        assert sprite.index.shape[1:] == (64, 64) and len(sprite.index) in (1, 8), name
         assert sprite.opaque.any() and not sprite.opaque.all(), name
+
+
+def _green(index: npt.NDArray[np.uint8]) -> int:
+    return int(((index >> 4) == GREEN).sum())
+
+
+def test_terminal_has_eight_views_screen_in_front_only() -> None:
+    sprite = SPRITES["terminal"]
+    assert len(sprite.index) == 8
+    front, back = sprite.index[0][sprite.opaque[0]], sprite.index[4][sprite.opaque[4]]
+    assert _green(front) > 50 and _green(back) == 0
+
+
+def test_view_is_picked_from_where_you_see_the_thing() -> None:
+    from doomer.client.models import view_for
+
+    assert view_for(0.0) == 0  # from the front
+    assert view_for(math.pi) == 4  # from behind
+    assert view_for(math.radians(80)) == 2  # from its right (y points down)
+    assert view_for(math.radians(-44)) == 7
+
+
+def test_rotated_terminal_shows_its_screen_only_when_facing_you() -> None:
+    # The camera is west of the thing, looking east.
+    facing_camera = R.render_indices(
+        OPEN, CAM, [SpriteInstance("terminal", 4.5, 2.5, 0.0, math.pi)]
+    )
+    facing_away = R.render_indices(OPEN, CAM, [SpriteInstance("terminal", 4.5, 2.5, 0.0, 0.0)])
+    assert _green(facing_camera) > 20 and _green(facing_away) == 0
