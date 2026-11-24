@@ -66,8 +66,15 @@ from doomer.client.textures import (
     UPPER,
     build_atlas,
     build_opacity,
+    railing,
 )
-from doomer.shared.mapfile import STAIRS_WALL_TYPE, WALL_UNITS, GameMap
+from doomer.shared.mapfile import (
+    RAIL_HEIGHT,
+    RAILING_WALL_TYPE,
+    STAIRS_WALL_TYPE,
+    WALL_UNITS,
+    GameMap,
+)
 from doomer.shared.raycast import RayHit, Side, cast_ray, cell_exit_distance, start_heights
 
 MIN_SHADE = 0.25
@@ -82,6 +89,7 @@ BULKHEAD_TYPE = 1  # wall type whose upper texture faces a dropped ceiling
 NEAR_PLANE = 0.05  # sprites closer than this (in cells) aren't drawn
 UNDER_DESK_SHADOW = 12  # colormap levels darker (of 32) for the floor under a desk
 STAIR_NOSING_DARKEN = 10  # colormap levels darker for the edge line of each step
+STEP_HEIGHT = 0.125  # a rise up to this is a step, not a drop that needs a railing
 # Ceiling light panels: half-size in cells, and colours (diffuser is full-bright).
 LIGHT_HALF = (0.22, 0.11)
 LIGHT_DIFFUSER = (CREAM << 4) | 15
@@ -156,6 +164,9 @@ class Renderer:
         # slot_table[wall_type, side] -> atlas slot; side = FRONT/RIGHT/BACK/LEFT/UPPER
         self.atlas, self.slot_table = build_atlas()
         self.opacity = build_opacity()  # (slot, u, v): False = see-through (open desks)
+        rail_tex, rail_opaque = railing()
+        self.rail_tex = np.ascontiguousarray(rail_tex.T)  # [u][v]
+        self.rail_opaque = np.ascontiguousarray(rail_opaque.T)
         self.top_colour = _top_colours(self.atlas, self.slot_table)
         self.ceiling_colour = nearest_index(PALETTE, config.ceiling_colour)
         self.floor_colour = nearest_index(PALETTE, config.floor_colour)
@@ -481,6 +492,7 @@ class Renderer:
             exit_top=np.array([h.exit_top for h in hits]),
             base=np.array([h.base for h in hits]),
             stairs=np.array([h.wall_type == STAIRS_WALL_TYPE for h in hits]),
+            rail=np.array([h.wall_type == RAILING_WALL_TYPE for h in hits]),
             ceiling=np.array([h.ceiling for h in hits]),
             prev_ceiling=np.array([h.prev_ceiling for h in hits]),
             block=np.array([h.wall_type != 0 for h in hits]),
@@ -520,7 +532,13 @@ class Renderer:
         exit_top = np.where(np.isfinite(s.exit_top), s.exit_top, s.top)
         y_far = self._rows(exit_top, s.finite_far, horizon, eye)  # floor surface far edge
         y_far_floor = self._rows(np.zeros_like(s.top), s.finite_far, horizon, eye)
-        r0, r1 = self._crop([y_top, y_far], [y_base, y_far_floor, y_top])
+        lows = [y_top, y_far]
+        if s.rail.any():  # railings stand above the balcony's edges
+            lows += [
+                self._rows(s.top + RAIL_HEIGHT, s.near, horizon, eye),
+                self._rows(exit_top + RAIL_HEIGHT, s.finite_far, horizon, eye),
+            ]
+        r0, r1 = self._crop(lows, [y_base, y_far_floor, y_top])
         if r0 >= r1:
             return
         cols = s.cols
@@ -613,6 +631,42 @@ class Renderer:
                         lit = np.where(nosing, COLORMAP[STAIR_NOSING_DARKEN, lit], lit)
                     sub_frame = np.where(on_floor, lit, sub_frame)
                     sub_z = np.where(on_floor, row_depth, sub_z)
+
+        if s.rail.any():
+            # Railings along balcony edges that drop to a lower floor: above
+            # the front face where the ray climbs onto the balcony (seen from
+            # below), and where it leaves over the drop (seen from on it).
+            exits = np.array([e.exits_to_floor for e in entries])
+            drop_in = s.rail & (s.top - s.base > STEP_HEIGHT)
+            drop_out = s.rail & exits
+            # Leaving, the ray sees that edge from inside: mirror u (as for
+            # desks' back faces) so the balusters line up with the outside view.
+            exit_u = _texel_u(1.0 - np.array([h.exit_u for h in hits]))
+            for mask, edge_top, depth, rail_u in (
+                (drop_in, s.top, near, s.u),
+                (drop_out, exit_top, s.finite_far, exit_u),
+            ):
+                if not mask.any():
+                    continue
+                y_rail = self._rows(edge_top + RAIL_HEIGHT, depth, horizon, eye)
+                y_edge = self._rows(edge_top, depth, horizon, eye)
+                rail = (
+                    mask[:, None]
+                    & (py >= y_rail[:, None])
+                    & (py < y_edge[:, None])
+                    & (depth[:, None] < sub_z)
+                )
+                if not rail.any():
+                    continue
+                height = eye - (py - horizon) * depth[:, None] / self.projection
+                above = (height - edge_top[:, None]) / RAIL_HEIGHT  # 0 at the floor, 1 at the top
+                rv = np.clip(((1.0 - above) * TEX_SIZE).astype(np.intp), 0, TEX_MASK)
+                ru = rail_u[:, None]
+                rail &= self.rail_opaque[ru, rv]
+                level = light_level(self._brightness(depth))
+                texel = COLORMAP[level[:, None], self.rail_tex[ru, rv]]
+                sub_frame = np.where(rail, texel, sub_frame)
+                sub_z = np.where(rail, depth[:, None], sub_z)
 
         frame[cols, r0:r1] = sub_frame
         zbuffer[cols, r0:r1] = sub_z
@@ -817,6 +871,7 @@ class _Span:
     exit_top: FloatArray
     base: FloatArray
     stairs: npt.NDArray[np.bool_]
+    rail: npt.NDArray[np.bool_]
     ceiling: FloatArray
     prev_ceiling: FloatArray
     block: npt.NDArray[np.bool_]

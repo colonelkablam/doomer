@@ -25,6 +25,10 @@ _FACING_CHARS = "nesw"
 # the top edge. Two stair cells climb a full storey.
 STAIRS_WALL_TYPE = 17  # 'h'
 STAIR_RISE = 4
+# A balcony floor: a raised floor with a railing along every edge that drops
+# to a lower floor (not where stairs or another raised cell meet it).
+RAILING_WALL_TYPE = 18  # 'i'
+RAIL_HEIGHT = 0.4  # walls (~1.1 m)
 
 # Heights are in eighths of a wall (~34 cm with a 2.7 m office ceiling).
 WALL_UNITS = 8

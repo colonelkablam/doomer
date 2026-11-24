@@ -231,3 +231,67 @@ def test_cant_climb_onto_stairs_from_the_side_halfway_up() -> None:
     for _ in range(30):
         step(world, {1: PlayerInput(forward=1.0, angle=0.0)})
     assert p.x == pytest.approx(2 - MOVE.radius)
+
+
+# A balcony (i, a full storey up) at y = 1..2, stairs up to it at x = 2,
+# open floor below at y = 3..4.
+BALCONY = """\
+[walls]
+######
+#iiii#
+#iiii#
+#.h..#
+#.h..#
+#....#
+######
+
+[floor]
+000000
+088880
+088880
+008000
+004000
+000000
+
+[ceiling]
+gggggg
+gggggg
+gggggg
+gggggg
+gggggg
+gggggg
+gggggg
+
+[facing]
+......
+......
+......
+..n...
+..n...
+
+[things]
+coop_start 2.5 5.5 0
+exit 4.5 5.5 0
+"""
+
+
+def test_railings_stop_you_walking_off_a_balcony_but_not_down_the_stairs() -> None:
+    world, p = world_for(BALCONY)
+    p.x, p.y, p.z = 3.5, 1.5, 1.0  # on the balcony, beside the stairs
+    south = math.pi / 2
+    for _ in range(60):
+        step(world, {1: PlayerInput(forward=1.0, angle=south)})
+    assert p.y == pytest.approx(3 - MOVE.radius)  # held by the railing at the edge
+    assert p.z == pytest.approx(1.0)
+    p.x = 2.5  # now in line with the stairs: walk down them
+    for _ in range(120):
+        step(world, {1: PlayerInput(forward=1.0, angle=south)})
+    assert p.y > 5.0 and p.z == pytest.approx(0.0)
+
+
+def test_plain_raised_floor_has_no_railing() -> None:
+    world, p = world_for(BALCONY.replace("#iiii#", "#eeee#"))
+    p.x, p.y, p.z = 3.5, 1.5, 1.0
+    for _ in range(90):
+        step(world, {1: PlayerInput(forward=1.0, angle=math.pi / 2)})
+    assert p.y > 3.0 and p.z == pytest.approx(0.0)  # walked off and fell

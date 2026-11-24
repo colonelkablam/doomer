@@ -407,6 +407,20 @@ def executive_panel(seed: int = 13) -> tuple[U8Array, BoolArray]:
     return tex.astype(np.uint8), np.ones_like(v, dtype=np.bool_)
 
 
+def railing() -> tuple[U8Array, BoolArray]:
+    """A balcony railing, top (v = 0) to the balcony floor (v = 63): a polished
+    handrail, a bottom rail and steel balusters, see-through in between."""
+    v, u = grid()
+    handrail = v < 5
+    tex = indices(WOOD, np.where(v == 0, 12.0, np.where(v == 4, 6.0, 9.5)))
+    bottom = v >= 58
+    balusters = (u % 8 == 3) | (u % 8 == 4)
+    steel = np.where(u % 8 == 3, 12.0, 8.0)
+    tex = np.where(~handrail, indices(GREY, np.where(bottom, 9.0, steel)), tex)
+    opaque = handrail | bottom | balusters
+    return tex.astype(np.uint8), opaque
+
+
 # --- 1980s steel desk (wall type 'c'), after a photo of the real thing --------------
 # Dark mahogany laminate top on a grey steel frame: an apron rail under the top,
 # square steel legs, and one pedestal of drawers at the desk's left end (its own
@@ -522,6 +536,7 @@ TOP_COLOURS: dict[int, int] = {
     13: indices(WOOD, 6.0).item(),  # pair of steel desks back to back
     14: indices(BLUE, 6.0).item(),  # raised floor: 1980s corporate blue carpet
     17: indices(BLUE, 6.0).item(),  # stairs: carpeted
+    18: indices(BLUE, 6.0).item(),  # balcony: carpeted
 }
 
 DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {
@@ -547,6 +562,10 @@ register_wall_texture(5, office_wall_upper(), sides=(UPPER,))
 # stringer with a skirting line; top: the same blue carpet as raised floors.
 register_wall_texture(17, raised_floor_edge())
 register_wall_texture(17, office_wall_upper(), sides=(UPPER,))
+# 'i' (18): balcony floor (railing behaviour in doomer/shared/mapfile.py);
+# its sides and top look like any raised floor.
+register_wall_texture(18, raised_floor_edge())
+register_wall_texture(18, office_wall_upper(), sides=(UPPER,))
 # 'f' (15): glazed curtain wall, 'g' (16): main entrance doors; both carry on
 # as the curtain wall's upper storey above one storey.
 register_wall_texture(15, curtain_wall_lower())

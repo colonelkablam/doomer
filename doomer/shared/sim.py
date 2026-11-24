@@ -15,7 +15,7 @@ from collections.abc import Mapping
 
 from doomer.shared.collision import move_box
 from doomer.shared.config import MovementConfig
-from doomer.shared.mapfile import GameMap
+from doomer.shared.mapfile import RAIL_HEIGHT, RAILING_WALL_TYPE, GameMap
 from doomer.shared.player import PlayerInput, PlayerState
 from doomer.shared.world import World
 
@@ -51,6 +51,7 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
         speed = move.walk_speed * (move.crouch_speed_factor if player.crouching else 1.0)
         distance = speed * dt
         body = body_height(player, move)
+        railed = on_railed_floor(world.map, player, move.radius)
         player.x, player.y = move_box(
             world.map,
             player.x,
@@ -59,8 +60,9 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
             vy * distance,
             move.radius,
             world.obstacles,
-            lambda cx, cy: cell_blocks(
-                world.map, cx, cy, player.z, body, move.step_height, player.x, player.y
+            lambda cx, cy: (
+                cell_blocks(world.map, cx, cy, player.z, body, move.step_height, player.x, player.y)
+                or (railed and _drops_away(world.map, cx, cy, player, move.step_height))
             ),
         )
 
@@ -100,6 +102,24 @@ def cell_blocks(
     if floor > feet + step + _EPS:
         return True
     return game_map.ceiling_height(cx, cy) - max(floor, feet) < body - _EPS
+
+
+def on_railed_floor(game_map: GameMap, player: PlayerState, radius: float) -> bool:
+    """Standing on a balcony (below the top of its railing)? Then its railings
+    stop you walking off any edge that drops away."""
+    for cx, cy in _cells_under(player.x, player.y, radius):
+        if game_map.wall_at(cx, cy) == RAILING_WALL_TYPE and game_map.is_low_block(cx, cy):
+            top = game_map.floor_height(cx, cy)
+            if top - _EPS <= player.z < top + RAIL_HEIGHT:
+                return True
+    return False
+
+
+def _drops_away(game_map: GameMap, cx: int, cy: int, player: PlayerState, step: float) -> bool:
+    """Is the floor of cell (cx, cy), where you'd step into it, more than a step
+    below your feet? (Stairs arriving at a balcony are level with it: fine.)"""
+    floor = game_map.floor_at(_clamp_to(player.x, cx), _clamp_to(player.y, cy))
+    return floor < player.z - step - _EPS
 
 
 def support_height(game_map: GameMap, x: float, y: float, radius: float) -> float:
