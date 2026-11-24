@@ -64,7 +64,7 @@ units at most). Anything higher with no stairs is unreachable.
 | `desk`, `water_cooler`, `filing_cabinet`, `ficus` | Blocking furniture | Square footprints, half-widths 0.32 / 0.12 / 0.16 / 0.16. Cabinets, coolers and ficuses are box models: set the angle so the front faces into the room (away from the wall they stand against); the ficus's crown spreads wider than its footprint |
 | `terminal` | PC on a desk | Put it in a desk/counter cell; it stands on the top. Its angle is where the screen faces (towards the sitter): in a pod, 270 on the north half, 90 on the south |
 | `mac` | Macintosh SE/30, keyboard and mouse | As `terminal` (same angle rule). Solid boxes: costs more than a sprite per thing in view, fine for dozens |
-| `ceiling_light` | Light panel in the ceiling | Marks the cell; drawn at that cell's ceiling height |
+| `ceiling_light` | Light panel in the ceiling; lights the room (baked light map) | Marks the cell; drawn at that cell's ceiling height. Space them 3-6 cells apart for pools of light with darker gaps (every 2 cells saturates a room flat). Light stops at full walls, goes through doorways, and reaches ~6 cells. A room with none sits at ambient (dark): use that on purpose |
 
 - Positions are cell coordinates (`3.5` = centre of cell 3). Use cell centres
   unless there's a reason not to.
@@ -113,7 +113,8 @@ What costs:
   sightlines with full walls.
 - **Map size**: no hard limit, but rays stop at 64 cells; keep maps within
   about 48 x 48.
-- Lights and sprites are cheap; dozens are fine. Box models (Macs) and
+- Lights and sprites are cheap to draw; dozens are fine. Lighting (the baked
+  light map) costs ~1.5-3 ms per frame regardless of how many panels. Box models (Macs) and
   stairs (8 boxes per cell) cost per box per column: dozens of boxes in view
   are fine, hundreds aren't.
 

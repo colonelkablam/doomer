@@ -135,7 +135,8 @@ def test_full_light_everywhere_renders_exactly_as_unlit() -> None:
     camera = Camera(1.5, 1.5, 0.3)
     things = [SpriteInstance("mac", 6.5, 2.5, 0.0, 3.0), SpriteInstance("desk", 9.5, 1.5)]
     unlit = Renderer(RenderConfig()).render_indices(game_map, camera, things).copy()
-    full = Renderer(RenderConfig(), LightingConfig(ambient=1.0))
+    fade = RenderConfig().shade_distance  # the same distance fade as unlit
+    full = Renderer(RenderConfig(), LightingConfig(ambient=1.0, shade_distance=fade))
     assert (full.render_indices(game_map, camera, things) == unlit).all()
 
 
@@ -178,3 +179,49 @@ def test_things_are_lit_where_they_stand() -> None:
             )
             shades.append(_shade(frame, frame != empty))
         assert shades[0] > shades[1] + 1.0, name
+
+
+# --- phase 3: floors, ceilings, desk tops ---
+
+
+def test_full_light_renders_every_surface_of_the_office_exactly_as_unlit() -> None:
+    # The office has every kind of surface: high ceilings, desk tops, a
+    # balcony, stairs, box models, sprites.
+    from doomer.client.config import RenderConfig
+    from doomer.client.render import Camera, Renderer, sprites_from_things
+    from doomer.shared.mapfile import load_map
+
+    office = load_map("maps/office.map")
+    things = sprites_from_things(office)
+    unlit = Renderer(RenderConfig())
+    fade = RenderConfig().shade_distance
+    full = Renderer(
+        RenderConfig(), LightingConfig(ambient=1.0, panel_intensity=0.0, shade_distance=fade)
+    )
+    for camera in (
+        Camera(3.0, 5.0, math.radians(-20)),
+        Camera(11.5, 4.3, math.radians(-90), pitch=-0.3),
+        Camera(6.3, 1.5, math.radians(60), z=1.6, pitch=-0.4),
+        Camera(4.5, 5.0, 0.0, pitch=0.4),  # looking up into the lobby
+    ):
+        expected = unlit.render_indices(office, camera, things).copy()
+        assert (full.render_indices(office, camera, things) == expected).all()
+
+
+def test_floor_is_brighter_near_a_panel_and_ceilings_vary_less() -> None:
+    from doomer.client.config import RenderConfig
+    from doomer.client.render import Camera, Renderer
+
+    game_map = parse_map(LIT_ROOM)
+    lit = Renderer(RenderConfig(), LightingConfig())
+    floor_rows, ceiling_rows = slice(150, 200), slice(0, 50)
+    shades = {}
+    for name, x in (("east", 12.5), ("west", 3.5)):  # the panel is at the east end
+        frame = lit.render_indices(game_map, Camera(x, 2.5, 0.0)).copy()
+        shades[name] = (_shade(frame[:, floor_rows]), _shade(frame[:, ceiling_rows]))
+    # Shade s is brightness (s + 1) / 16, so compare ratios: the ceiling is a
+    # much brighter colour than the carpet, so equal light moves it more steps.
+    floor_ratio = (shades["east"][0] + 1) / (shades["west"][0] + 1)
+    ceiling_ratio = (shades["east"][1] + 1) / (shades["west"][1] + 1)
+    assert floor_ratio > 1.3
+    assert 1.0 < ceiling_ratio < floor_ratio

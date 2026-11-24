@@ -188,6 +188,7 @@ class Renderer:
         self._light_map_map: GameMap | None = None
         self._light_map: LightMap | None = None
         self._light: LightMap | None = None  # this frame's
+        self._frame_background: U8Array = np.zeros((0, 0), dtype=np.uint8)
         w, h = config.width, config.height
         tan_half_fov = math.tan(math.radians(config.fov_degrees) / 2)
         # Distance from the eye to a virtual screen, in pixels.
@@ -256,17 +257,82 @@ class Renderer:
         self._backgrounds[key] = background
         return background
 
+    def _background_depths(
+        self, horizon: float, eye: float
+    ) -> tuple[FloatArray, npt.NDArray[np.bool_]]:
+        """Per screen row: the distance to the default floor (below the
+        horizon) or ceiling (above), inf at the horizon; and which are floor."""
+        rows = self._pixel_y - horizon
+        with np.errstate(divide="ignore", invalid="ignore"):
+            floor_depth = eye * self.projection / rows
+            ceiling_depth = (1.0 - eye) * self.projection / -rows
+        below = rows > 0
+        depth = np.where(below, floor_depth, ceiling_depth)
+        return np.where(np.isfinite(depth) & (depth > 0), depth, np.inf), below
+
+    def _lit_background(
+        self, light: LightMap, camera: Camera, horizon: float, eye: float
+    ) -> U8Array:
+        """The default floor and ceiling, lit: each pixel's distance (the
+        usual floor-casting formula) puts it at a point in the world (camera +
+        ray x distance), where the light map is sampled. Ceilings take the
+        square root of the light: lit mostly by light bounced off the floor,
+        they vary less than floors. Built every frame (it depends on where
+        you are), unlike the unlit background, which is cached."""
+        depth, below = self._background_depths(horizon, eye)  # where each pixel is
+        # Shaded exactly as the cached background (horizon to a pixel, eye to
+        # 1/64), so with light 1 everywhere the frame is unchanged.
+        shade_depth, _ = self._background_depths(round(horizon), round(eye * 64) / 64)
+        # Light changes slowly across the screen (the map has 4 samples per
+        # cell), so it's looked up once per 2x2 pixels and spread; the shading
+        # below is still per pixel, and the dither hides the steps. A quarter
+        # of the lookups: this is the costliest part of lighting.
+        w, h = self.config.width, self.config.height
+        cs, rs = slice(0, w, 2), slice(0, h, 2)
+        along = np.minimum(depth[None, rs] / self._cos[cs, None], 64.0)
+        x = camera.x + self._ray_dx[cs, None] * along
+        y = camera.y + self._ray_dy[cs, None] * along
+        coarse = np.minimum(light.at(x, y), 1.0)
+        coarse = np.where(below[None, rs], coarse, np.sqrt(coarse))
+        lit = np.repeat(np.repeat(coarse, 2, axis=0), 2, axis=1)[:w, :h]
+        base = np.where(below, self.floor_colour, self.ceiling_colour)  # (h,)
+        exact = ((base & 0x0F) + 1)[None, :] * self._brightness(shade_depth)[None, :] * lit - 1
+        shade = np.floor(exact + self._dither).clip(0, 15).astype(np.intp)
+        result: U8Array = ((base[None, :] & 0xF0) | shade).astype(np.uint8)
+        return result
+
     def _dithered(
-        self, colour: npt.NDArray[np.integer], depth: FloatArray, cols: IntArray, r0: int, r1: int
+        self,
+        colour: npt.NDArray[np.integer],
+        depth: FloatArray,
+        cols: IntArray,
+        r0: int,
+        r1: int,
+        light: FloatArray | float = 1.0,
     ) -> U8Array:
         """Distance-shaded, dithered palette indices for a horizontal surface:
         `colour` per column, `depth` per pixel of the (cols, r0:r1) block. Same
         ordered dithering as the background, so large floors and ceilings at
-        other heights don't show hard bands."""
-        brightness = self._brightness(np.nan_to_num(depth, nan=np.inf, posinf=1e9))
+        other heights don't show hard bands. `light`: per pixel, or 1."""
+        brightness = self._brightness(np.nan_to_num(depth, nan=np.inf, posinf=1e9)) * light
         exact = ((colour[:, None] & 0x0F) + 1) * brightness - 1
         shade = np.floor(exact + self._dither[cols, r0:r1]).clip(0, 15).astype(np.intp)
         result: U8Array = ((colour[:, None] & 0xF0) | shade).astype(np.uint8)
+        return result
+
+    def _ceiling_light(self, cols: IntArray, depth: FloatArray) -> FloatArray | float:
+        """Light on a ceiling at per-pixel `depth` in columns `cols` (a block
+        of rows): the light map below it, square-rooted (as the background's
+        ceiling), or 1 without lighting."""
+        if self._light is None:
+            return 1.0
+        along = np.minimum(
+            np.nan_to_num(depth, nan=64.0, posinf=64.0) / self._cos[cols][:, None], 64.0
+        )
+        camera = self._frame_camera
+        x = camera.x + self._ray_dx[cols][:, None] * along
+        y = camera.y + self._ray_dy[cols][:, None] * along
+        result: FloatArray = np.sqrt(np.minimum(self._light.at(x, y), 1.0))
         return result
 
     def _light_map_for(self, game_map: GameMap) -> LightMap | None:
@@ -295,7 +361,8 @@ class Renderer:
         return result
 
     def _brightness(self, distance: FloatArray) -> FloatArray:
-        result: FloatArray = np.maximum(MIN_SHADE, 1.0 - distance / self.config.shade_distance)
+        fade = self.lighting.shade_distance if self.lighting else self.config.shade_distance
+        result: FloatArray = np.maximum(MIN_SHADE, 1.0 - distance / fade)
         return result
 
     # --- frame ------------------------------------------------------------------------
@@ -324,6 +391,11 @@ class Renderer:
         ray = camera.angle + np.array(self._offsets)
         self._ray_dx, self._ray_dy = np.cos(ray), np.sin(ray)
         self._light = self._light_map_for(game_map)
+        self._frame_background = (
+            self.background(horizon, eye)
+            if self._light is None
+            else self._lit_background(self._light, camera, horizon, eye)
+        )
 
         # The space the camera is in. If it isn't the default (standing on a
         # desk, under the atrium's high ceiling), its own floor and ceiling are
@@ -552,7 +624,7 @@ class Renderer:
         # Uncover the ceiling where a wall beyond was drawn over it.
         covered = nearer & ~np.isinf(region)
         if covered.any():
-            sky = self.background(horizon, eye)[:, :rows]
+            sky = self._frame_background[:, :rows]
             frame[:, :rows] = np.where(covered, sky, frame[:, :rows])
 
     def _default_ceiling_depths(self, zbuffer: FloatArray, horizon: float, eye: float) -> None:
@@ -589,7 +661,7 @@ class Renderer:
         which, vi = self._face_texels(py, depth, slot, upper, horizon, eye)
         texel = self.atlas[which, u[:, None], vi]  # (w, h) palette indices
         lit = COLORMAP[level[:, None], texel]  # shading = one table lookup
-        frame: U8Array = np.where(on_wall, lit, self.background(horizon, eye))
+        frame: U8Array = np.where(on_wall, lit, self._frame_background)
         # Default floor and ceiling never hide anything: they count as infinitely far.
         zbuffer: FloatArray = np.where(on_wall, perp[:, None], np.inf)
         return frame, zbuffer
@@ -783,7 +855,8 @@ class Renderer:
                 if ci.size:
                     depth = row_depth[ci, ri]
                     colour = np.where(s.block, self.top_colour[s.slot], self.floor_colour)[ci]
-                    lit = self._dithered_at(colour, depth, cols[ci], r0 + ri)
+                    on_light = self._ray_light(cols[ci], depth / self._cos[cols[ci]], backoff=0.0)
+                    lit = self._dithered_at(colour, depth, cols[ci], r0 + ri, on_light)
                     lit = self._desk_seams(lit, hits, ci, cols[ci], depth, eye - s.top[ci])
                     sub_frame[ci, ri] = lit
                     sub_z[ci, ri] = depth
@@ -927,11 +1000,16 @@ class Renderer:
         return self._seam_grid
 
     def _dithered_at(
-        self, colour: npt.NDArray[np.integer], depth: FloatArray, cols: IntArray, rows: IntArray
+        self,
+        colour: npt.NDArray[np.integer],
+        depth: FloatArray,
+        cols: IntArray,
+        rows: IntArray,
+        light: FloatArray | float = 1.0,
     ) -> U8Array:
         """Distance-shaded, dithered palette indices for individual pixels of a
         horizontal surface (same rule as _dithered)."""
-        brightness = self._brightness(np.nan_to_num(depth, nan=np.inf, posinf=1e9))
+        brightness = self._brightness(np.nan_to_num(depth, nan=np.inf, posinf=1e9)) * light
         exact = ((colour & 0x0F) + 1) * brightness - 1
         shade = np.floor(exact + self._dither[cols, rows]).clip(0, 15).astype(np.intp)
         result: U8Array = ((colour & 0xF0) | shade).astype(np.uint8)
@@ -979,7 +1057,9 @@ class Renderer:
             )
             if on_ceiling.any():
                 colour = np.full(len(cols), self.ceiling_colour)
-                lit = self._dithered(colour, row_depth, cols, r0, r1)
+                lit = self._dithered(
+                    colour, row_depth, cols, r0, r1, self._ceiling_light(cols, row_depth)
+                )
                 sub_frame = np.where(on_ceiling, lit, sub_frame)
                 sub_z = np.where(on_ceiling, row_depth, sub_z)
 

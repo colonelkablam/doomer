@@ -419,8 +419,17 @@ surface is still a single lookup.
    `LightingConfig.enabled` switches it off. ~1 ms in the lobby. Floors and
    ceilings are still unlit until phase 3, so dark walls stand on a bright
    floor for now.
-3. Floor-cast floors and ceilings with the map; tune falloff, ambient and
-   fade; `RenderConfig.lighting` switch for slow machines; check frame time.
+3. ✅ Floors and ceilings lit per pixel: the default floor and ceiling are
+   built each frame (`_lit_background`) instead of cached, each pixel's
+   world position sampling the map; light is looked up once per 2x2 pixels
+   (it changes slowly) and shading stays per pixel. Desk tops, raised floors
+   and non-default ceilings are lit per pixel too. Ceilings take the square
+   root of the light (bounce light varies less). Tuned: ambient 0.3; with
+   lighting on, the distance fade reaches its darkest at 20 cells instead
+   of 14 (`LightingConfig.shade_distance`), since the two multiply. The
+   open plan's 35 panels became 8 (one over each pod, four over the aisles)
+   so it has pools. Cost on the cloud VM: +1.5-3 ms per frame (lobby ~17 ->
+   ~20 ms). `LightingConfig.enabled = false` switches it off.
 4. Dynamic: flicker, muzzle flash, power events (after networking, since
    power events cross the wire).
 

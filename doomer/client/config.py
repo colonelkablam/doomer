@@ -24,11 +24,15 @@ class LightingConfig:
     brightness factors: 1 = full brightness, before distance fade."""
 
     enabled: bool = True  # False: distance fade only (as before lighting; slow machines)
-    ambient: float = 0.35  # light everywhere, with no panel in reach
+    ambient: float = 0.3  # light everywhere, with no panel in reach
     panel_intensity: float = 1.0  # one ceiling panel, at distance 0
     falloff_radius: float = 1.2  # cells: a panel's light halves at this distance
     cutoff: float = 6.0  # cells: panels light nothing further away than this
     samples_per_cell: int = 4  # light map resolution
+    # Distance fade with lighting on, replacing RenderConfig.shade_distance:
+    # gentler, since the light map does the local darkening and the two
+    # multiply (at 14 cells, lit rooms go murky in the distance).
+    shade_distance: float = 20.0
 
 
 @dataclass(frozen=True, slots=True)
