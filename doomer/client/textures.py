@@ -253,14 +253,15 @@ def wood_panelling(seed: int = 2) -> U8Array:
     """Executive-floor panelling: four tall raised panels across, a dado rail
     at about 1 m with short panels below it, skirting at the foot. Each panel
     is framed by rails and stiles, lit from the top left."""
-    rng = np.random.default_rng(seed)
     v, u = grid()
-    shade = 7 + np.sin(v * 0.25 + noise(rng, 8) * 6) * 0.6 + noise(rng, 32) * 1.2  # grain runs up
+    # Even veneer with faint grain lines running up (noise here quantised
+    # into dark blotches).
+    shade = np.where(u % 5 == 2, 6.0, 7.0).astype(np.float64)
     pu = u % 16
     # Stiles split evenly between the panel edges (tiling rule); rails at the
     # top, either side of the dado (v 38-40) and above the skirting.
     frame = (pu < 2) | (pu >= 14) | (v < 3) | ((v >= 35) & (v < 44)) | (v >= 57)
-    shade = np.where(frame, 5.5 + noise(rng, 16), shade)
+    shade = np.where(frame, 5.0, shade)
     lit = ~frame & ((pu == 2) | (v == 3) | (v == 44))
     dark = ~frame & ((pu == 13) | (v == 34) | (v == 56))
     shade = np.where(lit, 9.0, np.where(dark, 3.5, shade))
@@ -614,25 +615,27 @@ def lift_car_side(seed: int = 23) -> U8Array:
     return _car_panels(np.random.default_rng(seed))
 
 
-def stone_cladding(seed: int = 21) -> U8Array:
-    """The lift lobby's polished stone: pale, faintly veined, in big slabs."""
-    rng = np.random.default_rng(seed)
+def _stone_slabs(rng: np.random.Generator, plinth: bool) -> U8Array:
+    """Pale polished stone in big slabs (a cell wide, half a storey high),
+    each a shade apart, fine joints; no veins (at this size they read as
+    scribbles). Shades sit mid-step (12.0 +- 0.3), so nothing blotches."""
     v, u = grid()
-    veins = np.abs(noise(rng, 4) - noise(rng, 16) * 0.5 - 0.25) < 0.02
-    tex = indices(WARM_GREY, 12.0 + (noise(rng, 8) - 0.5) * 0.8)
-    tex = np.where(veins, indices(WARM_GREY, 10.5), tex)  # faint: veins, not cracks
-    tex = np.where((v == 31) | (u == 0), indices(WARM_GREY, 8.0), tex)  # slab joints
-    return np.where(v >= 60, indices(WARM_GREY, 5.0), tex).astype(np.uint8)
+    tone = rng.uniform(-0.3, 0.3, 2)[np.minimum(v // 32, 1)]
+    tex = indices(WARM_GREY, 12.0 + tone)
+    tex = np.where((v == 31) | (v == 63) | (u == 0), indices(WARM_GREY, 9.0), tex)
+    if plinth:
+        tex = np.where(v >= 60, indices(WARM_GREY, 5.0), tex)
+    return tex.astype(np.uint8)
+
+
+def stone_cladding(seed: int = 21) -> U8Array:
+    """The lobby's polished stone: slabs over a dark plinth."""
+    return _stone_slabs(np.random.default_rng(seed), plinth=True)
 
 
 def stone_cladding_upper(seed: int = 21) -> U8Array:
     """The stone above one storey: the slabs carry on, without the plinth."""
-    rng = np.random.default_rng(seed)
-    v, u = grid()
-    veins = np.abs(noise(rng, 4) - noise(rng, 16) * 0.5 - 0.25) < 0.02
-    tex = indices(WARM_GREY, 12.0 + (noise(rng, 8) - 0.5) * 0.8)
-    tex = np.where(veins, indices(WARM_GREY, 10.5), tex)
-    return np.where((v == 31) | (v == 63) | (u == 0), indices(WARM_GREY, 8.0), tex).astype(np.uint8)
+    return _stone_slabs(np.random.default_rng(seed), plinth=False)
 
 
 DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {

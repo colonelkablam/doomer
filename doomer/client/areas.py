@@ -223,12 +223,10 @@ def soffit_wood(seed: int = 43) -> U8Array:
 
 
 def soffit_stone(seed: int = 44) -> U8Array:
-    """The lobby: pale stone slabs, faintly veined as the walls, in a brushed
-    steel edge where they meet the walls."""
-    rng = np.random.default_rng(seed)
+    """The lobby: pale stone slabs, plain as the walls, in a brushed steel
+    edge where they meet the walls."""
     v, u = grid()
-    veins = np.abs(noise(rng, 4) - noise(rng, 16) * 0.5 - 0.25) < 0.02
-    tex = indices(WARM_GREY, np.where(veins, 10.5, 12.5 + (noise(rng, 8) - 0.5) * 0.6))
+    tex = indices(WARM_GREY, 12.0 + np.where((u < 32) == (v < 32), 0.25, -0.25))
     tex = np.where((u == 31) | (v == 31), indices(WARM_GREY, 8.5), tex)  # slab joints
     return np.where(_border(3), indices(GREY, 11.0), tex).astype(np.uint8)
 

@@ -714,12 +714,12 @@ def _ficus() -> tuple[Box, ...]:
 
 
 def door_leaf(handle_on_right: bool) -> int:
-    """One face of a hinged door: wood veneer, a steel kick plate, and the
-    handle at the free end (right or left as you look at this face)."""
-    rng = np.random.default_rng(81)
+    """One face of a hinged door: flush wood veneer (even, a few faint grain
+    lines: noise here quantised into dark streaks), a steel kick plate, and
+    the handle at the free end (right or left as you look at this face)."""
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), WOOD, 8.0 + (noise(rng, 8) - 0.5) * 1.5)
-    c.paint(c.rect(0, 64, 0, 64) & ((c.u * 7 + c.v // 9) % 11 == 0), WOOD, 6.5)  # grain
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 8.0)
+    c.paint(c.rect(4, 52, 0, 64) & (c.u % 9 == 4), WOOD, 7.0)  # grain
     c.paint(c.rect(0, 1, 0, 64) | c.rect(0, 64, 0, 1) | c.rect(0, 64, 63, 64), WOOD, 6.0)
     c.paint(c.rect(54, 63, 3, 61), GREY, 10.0)  # kick plate
     c.paint(c.rect(54, 55, 3, 61), GREY, 13.0)
@@ -741,12 +741,12 @@ def door_edge() -> int:
 
 
 def jamb() -> int:
-    """The fixed panel beside a door: painted plaster with a wooden architrave
-    along both long edges."""
-    rng = np.random.default_rng(82)
+    """The fixed panel beside a door: flat painted plaster with a wooden
+    architrave along both long edges, a lit edge on each."""
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), SAND, 8.5 + (noise(rng, 8) - 0.5))
-    c.paint(c.rect(0, 64, 0, 5) | c.rect(0, 64, 59, 64), WOOD, 5.5)
+    c.paint(c.rect(0, 64, 0, 64), SAND, 9.0)
+    c.paint(c.rect(0, 64, 0, 5) | c.rect(0, 64, 59, 64), WOOD, 6.0)
+    c.paint(c.rect(0, 64, 0, 1) | c.rect(0, 64, 59, 60), WOOD, 8.0)
     c.paint(c.rect(60, 64, 0, 64), WOOD, 4.5)  # skirting
     return _texture(c)
 
@@ -882,12 +882,12 @@ def steel_edge() -> int:
 
 
 def polished_steel() -> int:
-    """The doorway's lining and architrave: polished stainless, brighter than
-    the brushed leaves, with a bright edge."""
+    """The doorway's lining and architrave: polished stainless, flat (a
+    gradient banded into steps), a lit edge and a shadowed one."""
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), GREY, (12.0 - c.v * 0.02).astype(np.float64))
-    c.paint(c.rect(0, 64, 0, 6), GREY, 14.0)
-    c.paint(c.rect(0, 64, 58, 64), GREY, 7.0)
+    c.paint(c.rect(0, 64, 0, 64), GREY, 11.0)
+    c.paint(c.rect(0, 64, 0, 4), GREY, 13.0)
+    c.paint(c.rect(0, 64, 60, 64), GREY, 8.0)
     return _texture(c)
 
 
