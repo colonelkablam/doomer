@@ -137,9 +137,19 @@ _SHORT = (
     "....BB........BB....",
     "....B..........B....",
 )
+
+
+def _with(rows: tuple[str, ...], letter: str, cells: list[tuple[int, int]]) -> tuple[str, ...]:
+    """`rows` with `letter` at each (row, column) in `cells`."""
+    out = [list(r) for r in rows]
+    for r, col in cells:
+        out[r][col] = letter
+    return tuple("".join(r) for r in out)
+
+
 _BEHIND = _below(1, *(("....LBBBBBBBBBBS....",) * 5))  # beside the crown, behind the head
 HAIR_TOPS = {
-    "side_part": _t(*_SHORT),
+    "side_part": _t(*_with(_SHORT, "D", [(0, 7), (1, 7), (2, 7)])),  # a parting
     "mullet": _t(*_SHORT),
     "slicked": _below(
         1,

@@ -122,3 +122,11 @@ def test_hair_is_symmetrical_without_gaps() -> None:
     for row in HAIR_TOPS["side_part"][:4]:  # the crown: solid, no holes
         hair = row.strip(".")
         assert "." not in hair, row
+
+
+def test_a_side_parting_has_a_dark_parting_left_of_centre() -> None:
+    from doomer.client.faces import HAIR_TOPS
+
+    parting = [col for row in HAIR_TOPS["side_part"][:3] for col, ch in enumerate(row) if ch == "D"]
+    assert parting == [7, 7, 7]  # a line down the crown, left of the middle (9.5)
+    assert "D" not in "".join(HAIR_TOPS["mullet"])  # the mullet's crown is plain
