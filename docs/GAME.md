@@ -30,6 +30,46 @@ Suggested floor order:
 | 5 | Executive floor, wood panelling | The Boss (mini-boss) |
 | P | Penthouse boardroom | The CEO (final boss) |
 
+## Game loop
+
+Each floor is a short puzzle-and-fight route: find passes, open the way to
+the plant room, restore power, take the lift up. The team shares passes and
+power, so in co-op anyone can do each step.
+
+The ground floor, as built [built]:
+
+1. Start in the lobby on emergency lighting: only `circuit=emergency` panels
+   are lit, the "Boomer Industries" sign is dark, the lifts are dead.
+2. The **staff (blue) pass** lies on the reception desk. It opens the sliding
+   glass doors into the open-plan office.
+3. The **facilities (red) pass** is on the boss's desk. It opens the plant
+   room's door.
+4. Throw the **main breaker** in the plant room (use, E): the power comes
+   back. The lights come on, the sign lights up, the lifts get power.
+5. **Call a lift** (E at its doors), step into the car. When every player is
+   in a lift car the doors close: "GROUND FLOOR COMPLETE".
+
+Planned, roughly in order [planned]:
+
+- **A full-size ground floor**: about 32 x 24 cells, laid out for the loop
+  above (the current map is the test bed).
+- **Automap** (Tab): a HUD map of the floor plan as you've seen it.
+- **Map checker** (`shared/validate.py`): a floor is completable: every
+  locked door's pass is reachable before it, the breaker is reachable,
+  there's a lift or exit.
+- **The lift ride**: the doors close, a short ride (indicator counting up,
+  maybe a lift-music sting), then the next floor loads with the team in its
+  lift lobby. Until then the floor just ends on the banner.
+- **Later floors** reuse the loop with variations: the **executive (gold)
+  pass** for the upper floors, a stairwell as an alternative exit, power
+  that's already on but a different blocker (a jammed lift, a fire door).
+- **Enemies** on the route (see Enemies), so the passes and breaker are
+  fought for, not just collected.
+- **Where you start**: the floor order below starts in the basement
+  mailroom, but the ground floor is built first and is currently the
+  start. Decide whether B1 comes before it (reached by the lift down?) or
+  is dropped.
+
 ## Player characters
 
 Three classes, each loosely a D&D archetype: a damage dealer, a tank and a
@@ -137,7 +177,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
   facilities (red), executive (gold), for locked doors. Shared by the team:
   one player picks it up, everyone can use it. A floor's loop: the staff
   pass gets you off the lobby, the facilities pass into the plant room,
-  where the power comes on (planned) and the lifts wake up.
+  where the power comes on and the lifts wake up (see Game loop).
 - **Health** [planned]: cup of coffee (small), box of doughnuts (large), sick
   note (full).
 - **Armour** [planned]: shoulder pads.
