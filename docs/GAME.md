@@ -171,10 +171,14 @@ are dressed: in the office, an aluminium frame with a short top light over
 the main pane, a sill at desk height, the beige wall round it; in the
 executive suite, tall panes nearly floor to ceiling in dark wood mullions
 over a deep sill; in service areas, a small high window of wired glass
-(you can't see out) in a steel frame in the blockwork. Office and executive
-windows look out on a dusk skyline, towers with lit windows, in three
-variants picked per cell so a run doesn't repeat. Flat colours, the sky in
-bands: no blinds (their slats aliased into noisy stripes). The curtain wall
+(you can't see out) in a steel frame in the blockwork. Through the office
+and executive windows, the lobby's curtain wall and its entrance doors you
+see the city at night, from the ground floor: flat dark ground up to the
+horizon, black towers on it against a dark sky, small yellow lit windows,
+a red light on some roofs. It's one panorama all round, like Doom's sky:
+it turns with you but doesn't move as you walk, so it reads as far off,
+and it lights itself (the city has power when the office hasn't). No
+blinds (their slats aliased into noisy stripes). The curtain wall
 (`f`), lift doors and furniture keep their own textures wherever they are. Where a ceiling steps down (over a doorway), the face above
 looks like the area you see it from. A doorway's side walls are a door
 lining (painted plaster, timber architraves), whichever rooms it joins.

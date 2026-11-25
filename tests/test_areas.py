@@ -80,21 +80,45 @@ def test_other_wall_types_keep_their_own_textures() -> None:
 
 
 def test_a_window_is_cut_into_the_wall_of_the_area_it_faces() -> None:
-    from doomer.client.areas import WINDOW_VARIANTS, window_type
-    from doomer.client.textures import DEFAULT_WALL_TEXTURES
+    from doomer.client.areas import window_type
+    from doomer.client.textures import DEFAULT_WALL_TEXTURES, GLASS
 
     rooms = ROOMS.replace("#...#...#\n#....", "#...4...#\n#....", 1)
     m = parse_map(rooms.replace("lllll\n" * 5, "lllllssss\n" * 5))
     r = Renderer(RenderConfig())
-    lobby, plant = r._face_type(m, 4, 1, WEST), r._face_type(m, 4, 1, EAST)
-    assert lobby in [window_type(LOBBY, k) for k in range(WINDOW_VARIANTS)]
-    assert plant in [window_type(SERVICE, k) for k in range(WINDOW_VARIANTS)]
-    # Each look is its own texture, and the old blinds are gone.
+    assert r._face_type(m, 4, 1, WEST) == window_type(LOBBY)
+    assert r._face_type(m, 4, 1, EAST) == window_type(SERVICE)
     atlas, slots = r.atlas, r.slot_table
-    office = [atlas[slots[window_type(OFFICE, k), 0]] for k in range(WINDOW_VARIANTS)]
-    assert not (office[0] == office[1]).all()  # skylines vary from cell to cell
-    assert not (atlas[slots[window_type(SERVICE, 0), 0]] == office[0]).all()
+    # Office and executive glass shows the city; the plant room's wired glass
+    # doesn't (you can't see out). The old blinds are gone.
+    for area in (OFFICE, EXECUTIVE):
+        assert (atlas[slots[window_type(area), 0]] == GLASS).any()
+    assert not (atlas[slots[window_type(SERVICE), 0]] == GLASS).any()
     assert 4 not in DEFAULT_WALL_TEXTURES
+
+
+def test_through_glass_the_city_is_far_off_and_lights_itself() -> None:
+    import math as m_
+
+    from doomer.client.palette import OCHRE
+    from doomer.client.render import Camera
+    from doomer.client.textures import GLASS, PANORAMA_ROWS, panorama
+
+    pano = panorama()
+    assert (pano[:, 0] == pano[0, 0]).all()  # the ground: flat, one colour
+    assert (pano == (OCHRE << 4) | 13).any() and (pano[:, PANORAMA_ROWS + 1] == pano[0, -1]).all()
+    # A long room, curtain wall (f) along its north side. Facing it, the same
+    # way, from two points along the room: the view outside is the same (it
+    # doesn't move as you walk), the mullions aren't. With the power off,
+    # the city's windows are still lit.
+    room = parse_map("[walls]\n" + "f" * 12 + "\n" + ("#" + "." * 10 + "#\n") * 3 + "#" * 12 + "\n")
+    r = Renderer(RenderConfig(), LightingConfig())
+    a = r.render_indices(room, Camera(4.3, 2.5, -m_.pi / 2), power=False)
+    b = r.render_indices(room, Camera(5.0, 2.5, -m_.pi / 2), power=False)
+    lit_a, lit_b = a == ((OCHRE << 4) | 13), b == ((OCHRE << 4) | 13)
+    assert lit_a.sum() > 20  # lit at full brightness, the power off
+    assert (lit_a & lit_b).sum() > 0.7 * lit_a.sum()  # in the same places on screen
+    assert ((a >> 4) == (GLASS >> 4)).sum() == 0  # the marker itself is never drawn
 
 
 def test_mipmaps_average_down_to_one_colour() -> None:

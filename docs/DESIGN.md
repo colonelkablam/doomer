@@ -431,6 +431,15 @@ dm_spawn      1.5   3.5   0
   bulkhead drawing; with lighting on, a ceiling lower than a storey (the
   lintel's soffit) takes the plain light times `soffit_shade` (0.85), not
   the square root other ceilings get, so it sits in shadow like the walls.
+- **The view through glass** (`textures.panorama`, `Renderer._outside`):
+  glass in wall textures (windows `4`, curtain wall `f`, entrance doors
+  `g`) is a reserved palette index, `GLASS`; when walls are drawn, those
+  pixels show a panorama instead, looked up by the column's ray angle
+  (512 texels round) and the row's height over the horizon (a tangent,
+  square texels), as Doom draws its sky: infinitely far, so it turns with
+  you but never moves as you walk. Unshaded (the city lights itself). Only
+  computed when glass is on screen: ~0.3 ms a frame. Ground floor for now;
+  higher floors would lower the horizon line of the ground (more city).
 - **Light through doorways lights floors, not walls above**: the light map
   is a floor plan, and faces take their light from the floor just in front
   of them; so a pool of lobby light through the glass doors lit the face

@@ -58,7 +58,6 @@ from doomer.client.areas import (
     SOFFIT,
     TOP_KIND,
     WINDOW_FACES,
-    WINDOW_VARIANTS,
     Surfaces,
     build_surfaces,
     cell_tops,
@@ -87,6 +86,10 @@ from doomer.client.palette import (
 )
 from doomer.client.sprites import SPRITES
 from doomer.client.textures import (
+    GLASS,
+    PANORAMA_ROWS,
+    PANORAMA_ROWS_PER_TAN,
+    PANORAMA_WIDTH,
     TEX_MASK,
     TEX_SIZE,
     TOP_COLOURS,
@@ -94,6 +97,7 @@ from doomer.client.textures import (
     UPPER,
     build_atlas,
     build_opacity,
+    panorama,
     railing,
 )
 from doomer.shared.doors import DOOR_THING_KINDS
@@ -144,6 +148,7 @@ _BACKGROUND_CACHE_SIZE = 64
 
 # The neighbouring cell across each compass face.
 _FACE_STEP = {NORTH: (0, -1), EAST: (1, 0), SOUTH: (0, 1), WEST: (-1, 0)}
+_PANORAMA = panorama()  # the view through windows (textures.panorama)
 
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.intp]
@@ -680,8 +685,7 @@ class Renderer:
         side = (face - game_map.facing_at(x, y)) % 4
         dx, dy = _FACE_STEP[face]
         if side in WINDOW_FACES.get(wall_type, ()):  # a window: cut into the area's wall
-            variant = (x * 5 + y * 11 + x * y) % WINDOW_VARIANTS
-            return window_type(game_map.area_at(x + dx, y + dy), variant)
+            return window_type(game_map.area_at(x + dx, y + dy))
         if side not in AREA_FACES.get(wall_type, ()):
             return wall_type
         if (x + dx, y + dy) in self._door_cells_in(game_map):
@@ -800,9 +804,25 @@ class Renderer:
         texel = self.atlas[which, u[:, None], vi]  # (w, h) palette indices
         lit = COLORMAP[level[:, None], texel]  # shading = one table lookup
         frame: U8Array = np.where(on_wall, lit, self._frame_background)
+        glass = on_wall & (texel == GLASS)
+        if glass.any():  # through windows: the city outside
+            frame = np.where(glass, self._outside(horizon), frame)
         # Default floor and ceiling never hide anything: they count as infinitely far.
         zbuffer: FloatArray = np.where(on_wall, perp[:, None], np.inf)
         return frame, zbuffer
+
+    def _outside(self, horizon: float) -> U8Array:
+        """The view through glass, (w, h): the panorama, by each column's
+        ray angle and each row's height over the horizon (as a tangent), so
+        it's infinitely far: it turns with you but never moves as you walk.
+        Unshaded: the city lights itself."""
+        angle = self._frame_camera.angle + self._offsets_array
+        col = (np.floor(angle * (PANORAMA_WIDTH / (2 * math.pi))).astype(np.intp)) % PANORAMA_WIDTH
+        tan = (horizon - self._pixel_y) / self.projection
+        row = np.floor(tan * PANORAMA_ROWS_PER_TAN).astype(np.intp) + 1  # 0: the ground
+        row = np.clip(row, 0, PANORAMA_ROWS + 1)
+        view: U8Array = _PANORAMA[col[:, None], row[None, :]]
+        return view
 
     def _draw_span_layer(
         self,

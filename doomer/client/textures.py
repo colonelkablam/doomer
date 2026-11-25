@@ -22,6 +22,7 @@ aren't drawn, so whatever is behind shows through. Only low-block faces
 behind it to show.
 """
 
+import math
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -187,14 +188,45 @@ def raised_floor_edge(seed: int = 14) -> U8Array:
 # mullions are split evenly at u 0/63 and centred at 31/32 to tile sideways.
 
 
-def _glass(
-    rng: np.random.Generator, v: npt.NDArray[np.int64], u: npt.NDArray[np.int64], storey: int
-) -> U8Array:
-    """Tinted glazing: sky gradient over two storeys plus a diagonal reflection."""
-    height = (63 - v) / 64 + storey  # 0 at the floor, 2 at the top of the upper storey
-    shade = 7 + height * 1.5 + (noise(rng, 8) - 0.5)
-    glint = ((u + v + storey * 64) % 48) < 6
-    return np.where(glint, indices(STEEL, 13.0), indices(BLUE, shade)).astype(np.uint8)
+# Glass you see the city through: texels of this (reserved) index are drawn
+# with the view outside (panorama), not as a colour. The missing-texture
+# checker is the only other user of its ramp, in other shades.
+GLASS = (MAGENTA << 4) | 7
+
+# --- the view outside -------------------------------------------------------------
+# One panorama all the way round, like Doom's sky: looked up by the ray's
+# angle across and the screen row (its height over the horizon) up, so it
+# never moves as you walk, only as you turn: it reads as far away. Ground
+# floor: the ground outside is flat and dark up to the horizon; above it
+# black towers against a dark sky, small yellow lit windows, a red light on
+# some roofs. Drawn at full brightness: the city has power.
+PANORAMA_WIDTH = 512  # texels round 360 degrees
+PANORAMA_ROWS = 40  # texels above the horizon with towers in them (then sky)
+PANORAMA_ROWS_PER_TAN = PANORAMA_WIDTH / (2 * math.pi)  # square texels
+
+
+def panorama(seed: int = 85) -> U8Array:
+    """(PANORAMA_WIDTH, PANORAMA_ROWS + 2): [column][row], row 0 the ground
+    (below the horizon), 1.. upwards from the horizon, the last the sky above."""
+    rng = np.random.default_rng(seed)
+    sky, ground, tower = indices(BLUE, 1.0), indices(GREY, 0.0), indices(GREY, 1.0)
+    lit, red = indices(OCHRE, 13.0), indices(BRICK, 13.0)
+    pano = np.full((PANORAMA_WIDTH, PANORAMA_ROWS + 2), sky, dtype=np.uint8)
+    pano[:, 0] = ground
+    left = 0
+    while left < PANORAMA_WIDTH:
+        width = int(rng.integers(5, 16))
+        height = int(rng.integers(4, PANORAMA_ROWS - 6))
+        cols = slice(left, min(left + width, PANORAMA_WIDTH))
+        pano[cols, 1 : 1 + height] = tower
+        for c in range(1, width - 1, 2):  # windows: every other texel, a third lit
+            for r in range(2, height - 1, 2):
+                if left + c < PANORAMA_WIDTH and rng.random() < 0.33:
+                    pano[left + c, 1 + r] = lit
+        if rng.random() < 0.25 and left + width // 2 < PANORAMA_WIDTH:
+            pano[left + width // 2, 1 + height] = red  # an aircraft light on the roof
+        left += width + int(rng.integers(0, 3))
+    return pano
 
 
 def _mullions(tex: U8Array, v: npt.NDArray[np.int64], u: npt.NDArray[np.int64]) -> U8Array:
@@ -205,27 +237,24 @@ def _mullions(tex: U8Array, v: npt.NDArray[np.int64], u: npt.NDArray[np.int64]) 
 
 def curtain_wall_lower(seed: int = 15) -> U8Array:
     """Ground storey of a glazed curtain wall: glass between aluminium mullions."""
-    rng = np.random.default_rng(seed)
     v, u = grid()
-    tex = _mullions(_glass(rng, v, u, 0), v, u)
+    tex = _mullions(np.full((64, 64), GLASS, dtype=np.uint8), v, u)
     tex = np.where(v < 2, indices(GREY, 10.0), tex)  # half the transom at the storey line
     return np.where(v >= 60, indices(GREY, 5.0), tex).astype(np.uint8)  # base cill
 
 
 def curtain_wall_upper(seed: int = 16) -> U8Array:
     """Upper storey of the curtain wall: the same mullions, the other half of the transom."""
-    rng = np.random.default_rng(seed)
     v, u = grid()
-    tex = _mullions(_glass(rng, v, u, 1), v, u)
+    tex = _mullions(np.full((64, 64), GLASS, dtype=np.uint8), v, u)
     tex = np.where(v >= 62, indices(GREY, 10.0), tex)  # meets the lower transom
     return np.where(v < 2, indices(GREY, 7.0), tex).astype(np.uint8)  # head at the ceiling
 
 
 def entrance_doors(seed: int = 17) -> U8Array:
     """Main entrance: a pair of closed glass doors in aluminium frames, push bars."""
-    rng = np.random.default_rng(seed)
     v, u = grid()
-    tex = _glass(rng, v, u, 0)
+    tex = np.full((64, 64), GLASS, dtype=np.uint8)
     frame = (u < 4) | (u >= 60) | ((u >= 30) & (u < 34)) | (v < 4) | (v >= 58)
     tex = np.where(frame, indices(GREY, np.where((u == 31) | (u == 32), 6.0, 10.0)), tex)
     bar = (v >= 34) & (v < 37) & (((u >= 8) & (u < 28)) | ((u >= 36) & (u < 56)))
