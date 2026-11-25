@@ -596,7 +596,7 @@ def _water_cooler() -> tuple[Box, ...]:
 # ~1.95 m: a terracotta pot (octagonal, flaring to a rim), a single trunk,
 # and a crown of crossed leaf cards: thin panels with see-through leaf
 # textures, four upright at 45 degrees to each other through the crown's
-# axis and two flat ones across it, so it reads as a bush from any side and
+# axis and a flat one across it, so it reads as a bush from any side and
 # from above. (Solid boxes would look like a topiary cube.) Pot footprint
 # matches its collision (half-width 0.16); the crown spreads wider, at head
 # height, as a real one does.
@@ -698,9 +698,9 @@ def _ficus() -> tuple[Box, ...]:
             turn=turn,
         )
         for z, k, turn, tex in (
-            # Away from standing eye level (0.6), where a flat card is edge-on.
+            # Below standing eye level (0.6), where a flat card is edge-on. (A
+            # second, near the crown's top, stuck out as a flat slab: gone.)
             (0.47, 0.9, 0.3, leaves(75, flat=True)),
-            (0.69, 0.6, 1.1, leaves(76, flat=True)),
         )
     )
     return (*pot, trunk, *upright, *flat)
