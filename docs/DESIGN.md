@@ -446,7 +446,7 @@ dm_spawn      1.5   3.5   0
   (out of its line through a door-high opening). In the dark this showed:
   the exit sign over the office side of the glass doors lit the lobby's
   wall up its two storeys, and a pool on its ceiling. Soffits (low, over a
-  doorway) keep the floor map. (~3x the bake time, ~0.4 s for the office;
+  doorway) keep the floor map. (Three bakes: ~0.2 s for the office on this VM;
   per frame, no extra lookups: each pixel reads one map or the other.)
 - **Furniture footprints** (`things.Footprint`, `shared/furniture.py`): a
   blocking thing type can give its floor plan as rectangles in its own frame,
