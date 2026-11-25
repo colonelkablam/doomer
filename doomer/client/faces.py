@@ -104,26 +104,26 @@ MOUTHS = {  # small and in the middle: never across the face
     "flat": _below(11, "........MMMM........"),
     "stern": _below(10, ".........MM.........", "........M..M........"),
 }
-# Shoulders: a jacket (L B S, lapels D) over a white shirt (W, shaded G);
-# with a tie (T, knot K) a collar (C); without, an open neck (n).
-BODIES = {
+# Shoulders: a jacket (L B S, lapels D) over a white shirt (W); a tie
+# (T, knot K) always comes with a collar (C); without one, an open neck (n).
+BODIES = {  # square on, mirrored about the middle (between columns 9 and 10)
     "tie": _below(
         14,
-        ".....LBDCKKCDBBS....",
-        "...LLBBDWCTTCGDBBSS.",
-        "..LLBBBDWWTTGGDBBBSS",
-        ".LLBBBBDWWTTGGDBBBSS",
-        "LLBBBBBDWWTTGGDBBBSS",
-        "LLBBBBBDWWTTGGDBBBSS",
+        ".....LBDCKKCDBS.....",
+        "...LBBDWCTTCWDBBS...",
+        "..LLBBDWWTTWWDBBSS..",
+        ".LLBBBDWWTTWWDBBBSS.",
+        "LLBBBBDWWTTWWDBBBBSS",
+        "LLBBBBDWWTTWWDBBBBSS",
     ),
     "open": _below(
         14,
-        ".....LBDWnnWDBBS....",
-        "...LLBBDWWnnGGDBBSS.",
-        "..LLBBBDWWWGGGDBBBSS",
-        ".LLBBBBDWWWGGGDBBBSS",
-        "LLBBBBBDWWWGGGDBBBSS",
-        "LLBBBBBDWWWGGGDBBBSS",
+        ".....LBDWnnWDBS.....",
+        "...LBBDWWnnWWDBBS...",
+        "..LLBBDWWWWWWDBBSS..",
+        ".LLBBBDWWWWWWDBBBSS.",
+        "LLBBBBDWWWWWWDBBBBSS",
+        "LLBBBBDWWWWWWDBBBBSS",
     ),
 }
 # Hair: on top of the head, and (long styles) behind it.

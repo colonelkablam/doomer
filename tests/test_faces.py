@@ -99,3 +99,14 @@ def test_glasses_are_closed_rims_round_each_eye_and_nothing_below() -> None:
                 assert glasses[5][col] == top and glasses[7][col] == bottom, (name, col)
         assert all(set(row) == {"."} for row in glasses[8:]), name  # nothing hanging below
     assert EYEWEAR_TEMPLATES["big_glasses"][6][7] == "."  # the eye shows through clear glass
+
+
+def test_the_body_is_square_on() -> None:
+    from doomer.client.faces import BODIES
+
+    for name, body in BODIES.items():
+        for row in body:
+            shape = "".join("." if ch == "." else "x" for ch in row)
+            assert shape == shape[::-1], (name, row)  # the same outline both sides
+            middle = row.replace("L", "B").replace("S", "B")  # shading aside
+            assert middle == middle[::-1], (name, row)  # lapels, collar, tie centred
