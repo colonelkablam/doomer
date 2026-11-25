@@ -166,9 +166,16 @@ room behind it.
 | Service | `s` | Painted breeze block: cream gloss above a grey dado | Grey flecked lino | Bare concrete, formwork marks |
 | Lift car | `c` | Brushed stainless panels with a handrail stopping short of the corners (the car walls `k`: a tinted mirror on the back wall) | Black studded rubber | Perforated brushed steel |
 
-Windows (`4`, ribbon windows with blinds, in offices; `f`, the curtain wall,
-in the lobby), lift doors and furniture keep their own textures wherever
-they are. Where a ceiling steps down (over a doorway), the face above
+Windows (`4`) are cut into the wall of the area they face, as plain walls
+are dressed: in the office, an aluminium frame with a short top light over
+the main pane, a sill at desk height, the beige wall round it; in the
+executive suite, tall panes nearly floor to ceiling in dark wood mullions
+over a deep sill; in service areas, a small high window of wired glass
+(you can't see out) in a steel frame in the blockwork. Office and executive
+windows look out on a dusk skyline, towers with lit windows, in three
+variants picked per cell so a run doesn't repeat. Flat colours, the sky in
+bands: no blinds (their slats aliased into noisy stripes). The curtain wall
+(`f`), lift doors and furniture keep their own textures wherever they are. Where a ceiling steps down (over a doorway), the face above
 looks like the area you see it from. A doorway's side walls are a door
 lining (painted plaster, timber architraves), whichever rooms it joins.
 Doors stand flush with the room they open into, the doorway a recess on the
@@ -196,7 +203,7 @@ buttons by the door (G lit).
 | 1 | Plain wall: looks like the area it faces (see Areas) | Everywhere |
 | 2 | Wood panelling, four tall panels across (the executive look, wherever it's placed) | Executive offices |
 | 3 | Grey cubicle partition | Open-plan floors |
-| 4 | Window with venetian blinds | Outer walls |
+| 4 | Window, dressed by the area it faces (office, executive, service: see Areas) | Outer walls |
 | 5 | Lift doors | Exits |
 | 6 | Stairwell brick | Stairs, basement |
 | 7 | Toilet / kitchen tiles | Washrooms |

@@ -301,20 +301,6 @@ def cubicle_partition(seed: int = 3) -> U8Array:
     return np.where(trim, indices(GREY, np.where(v == 1, 13.0, 10.0)), tex).astype(np.uint8)
 
 
-def window_blinds(seed: int = 4) -> U8Array:
-    """An outer-wall window: frame, venetian blinds, sky glimpsed between the slats."""
-    rng = np.random.default_rng(seed)
-    v, u = grid()
-    sky = indices(BLUE, 12 - v / 16 + (noise(rng, 4) - 0.5))
-    slat = (v % 6) < 4
-    slats = indices(CREAM, np.where((v % 6) == 0, 9.0, 7.5))
-    tex = np.where(slat, slats, sky)
-    frame = (u < 5) | (u >= 59) | (v < 5) | (v >= 56) | (np.abs(u - 31.5) < 1.5)
-    tex = np.where(frame, indices(GREY, np.where((u < 2) | (v < 2), 12.0, 9.0)), tex)
-    sill = v >= 60
-    return np.where(sill, indices(SAND, 7.0), tex).astype(np.uint8)
-
-
 def lift_doors(seed: int = 5) -> U8Array:
     """Brushed steel lift doors with a centre seam and a lit floor indicator."""
     rng = np.random.default_rng(seed)
@@ -651,7 +637,6 @@ DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {
     1: office_wall,
     2: wood_panelling,
     3: cubicle_partition,
-    4: window_blinds,
     5: lift_doors,
     6: stairwell_brick,
     7: avocado_tiles,

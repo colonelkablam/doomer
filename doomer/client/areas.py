@@ -37,6 +37,7 @@ from doomer.client.palette import (
     OCHRE,
     PALETTE,
     PINK,
+    SAND,
     STEEL,
     WARM_GREY,
     WOOD,
@@ -270,6 +271,103 @@ AREA_LOOKS: dict[int, AreaLook] = {
 for _area, _look in AREA_LOOKS.items():
     register_wall_texture(AREA_WALL_TYPE + _area, _look.wall())
     register_wall_texture(AREA_WALL_TYPE + _area, _look.wall_upper(), sides=(UPPER,))
+
+
+# --- windows -------------------------------------------------------------------------
+# A window (`4`) is cut into the wall of the area it faces, like a plain
+# wall (WINDOW_FACES): the room's own wall carries on round it. Outside,
+# a dusk skyline of towers with lit windows (three variants, picked per
+# cell, so a long run doesn't repeat every cell). Flat colours, the sky
+# in bands, no noise: they're seen close up.
+WINDOW_WALL_TYPE = 70  # + 3 * area + variant
+WINDOW_VARIANTS = 3
+WINDOW_FACES: dict[int, tuple[int, ...]] = {4: ALL_SIDES}
+
+
+def skyline(variant: int) -> U8Array:
+    """The view: a dusk sky in bands, darker up high, over towers of
+    different heights and widths, their windows lit here and there."""
+    rng = np.random.default_rng(80 + variant)
+    v, u = grid()
+    tex = indices(BLUE, 6.0 + np.minimum(v // 8, 5) * 0.75)  # sky bands, paler down low
+    left = int(rng.integers(-8, 2))
+    while left < 64:
+        width = int(rng.integers(8, 17))
+        top = int(rng.integers(12, 44))
+        tower = (u >= left) & (u < left + width - 1) & (v >= top)
+        tone = float(rng.choice([2.0, 3.0, 4.0]))
+        tex = np.where(tower, indices(STEEL, tone), tex)
+        # Its windows: a grid of 1 x 2 texel lights, ~a third of them on.
+        lit = rng.random((64, 64)) < 0.35
+        grid_ = ((u - left) % 3 == 1) & ((v - top) % 4 >= 2) & (v >= top + 2)
+        tex = np.where(
+            tower & grid_ & lit[(v - top) // 4 % 64, (u - left) // 3 % 64],
+            indices(OCHRE, 12.0),
+            tex,
+        )
+        if rng.random() < 0.3:  # a spire or mast on some
+            mid = left + width // 2
+            tex = np.where((u == mid) & (v >= top - 6) & (v < top), indices(STEEL, 3.0), tex)
+        left += width + int(rng.integers(0, 4))
+    return tex.astype(np.uint8)
+
+
+def office_window(variant: int) -> U8Array:
+    """An office window (as ref: a plain 80s office): aluminium frame, a short
+    top light over the main pane, a sill at desk height, the beige wall
+    above and below it."""
+    v, u = grid()
+    tex = np.where((v >= 8) & (v < 41), skyline(variant), office_wall())
+    frame = ((v >= 6) & (v < 8)) | ((v >= 17) & (v < 19)) | (u < 2) | (u >= 62)
+    tex = np.where(frame & (v >= 6) & (v < 41), indices(GREY, np.where(v == 6, 12.0, 10.0)), tex)
+    tex = np.where((v >= 40) & (v < 43), indices(SAND, np.where(v == 40, 12.0, 10.0)), tex)  # sill
+    return np.where(v == 43, indices(SAND, 5.0), tex).astype(np.uint8)  # its shadow
+
+
+def executive_window(variant: int) -> U8Array:
+    """The boss's windows (as refs: tall panes in dark wood): nearly floor to
+    ceiling, a heavy mullion between each cell's pane and the next, a deep
+    wood sill over the panelling's short lower panels."""
+    v, u = grid()
+    tex = np.where((v >= 4) & (v < 46), skyline(variant), wood_panelling())
+    mullion = (u < 3) | (u >= 61) | ((v >= 3) & (v < 5))
+    tex = np.where(
+        mullion & (v >= 3) & (v < 46), indices(WOOD, np.where((u == 0) | (v == 3), 6.0, 3.5)), tex
+    )
+    tex = np.where((v >= 45) & (v < 48), indices(WOOD, np.where(v == 45, 9.0, 6.0)), tex)  # sill
+    return np.where(v == 48, indices(WOOD, 2.0), tex).astype(np.uint8)
+
+
+def service_window() -> U8Array:
+    """A plant room's window: small and high in the blockwork, wired glass
+    (pale, a square wire mesh in it: you don't see out) in a steel frame,
+    a concrete sill."""
+    v, u = grid()
+    tex = painted_block()
+    glass = (v >= 9) & (v < 27) & (u >= 10) & (u < 54)
+    pane = indices(STEEL, np.where(((u - 10) % 6 == 0) | ((v - 9) % 6 == 0), 8.0, 10.0))
+    tex = np.where(glass, pane, tex)
+    frame = (v >= 7) & (v < 29) & (u >= 8) & (u < 56) & ~glass
+    tex = np.where(frame, indices(GREY, np.where((v == 7) | (u == 8), 9.0, 6.0)), tex)
+    tex = np.where(
+        (v >= 29) & (v < 31) & (u >= 7) & (u < 57), indices(GREY, np.where(v == 29, 10.0, 7.0)), tex
+    )
+    return tex.astype(np.uint8)
+
+
+def window_type(area: int, variant: int) -> int:
+    return WINDOW_WALL_TYPE + WINDOW_VARIANTS * area + variant
+
+
+for _variant in range(WINDOW_VARIANTS):
+    for _area, _make in (
+        (OFFICE, office_window),
+        (EXECUTIVE, executive_window),
+        (LOBBY, office_window),
+        (LIFT_CAR, office_window),
+    ):
+        register_wall_texture(window_type(_area, _variant), _make(_variant))
+    register_wall_texture(window_type(SERVICE, _variant), service_window())
 
 
 def door_lining(seed: int = 45) -> U8Array:

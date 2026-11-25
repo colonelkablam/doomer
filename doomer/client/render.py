@@ -57,9 +57,12 @@ from doomer.client.areas import (
     REVEAL_WALL_TYPE,
     SOFFIT,
     TOP_KIND,
+    WINDOW_FACES,
+    WINDOW_VARIANTS,
     Surfaces,
     build_surfaces,
     cell_tops,
+    window_type,
 )
 from doomer.client.boxes import (
     BOX_MODELS,
@@ -671,12 +674,16 @@ class Renderer:
 
     def _face_type(self, game_map: GameMap, x: int, y: int, face: int) -> int:
         """The wall type whose textures a face of a cell shows: its own, but
-        a plain wall looks like the area it faces (areas.AREA_FACES)."""
+        a plain wall looks like the area it faces (areas.AREA_FACES), and a
+        window is cut into that area's wall (areas.WINDOW_FACES)."""
         wall_type = game_map.walls[y][x]
         side = (face - game_map.facing_at(x, y)) % 4
+        dx, dy = _FACE_STEP[face]
+        if side in WINDOW_FACES.get(wall_type, ()):  # a window: cut into the area's wall
+            variant = (x * 5 + y * 11 + x * y) % WINDOW_VARIANTS
+            return window_type(game_map.area_at(x + dx, y + dy), variant)
         if side not in AREA_FACES.get(wall_type, ()):
             return wall_type
-        dx, dy = _FACE_STEP[face]
         if (x + dx, y + dy) in self._door_cells_in(game_map):
             return REVEAL_WALL_TYPE  # a doorway's side wall: its lining
         return AREA_WALL_TYPE + game_map.area_at(x + dx, y + dy)

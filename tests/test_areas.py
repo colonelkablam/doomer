@@ -75,8 +75,26 @@ def test_each_side_of_a_plain_wall_looks_like_the_area_it_faces() -> None:
 
 
 def test_other_wall_types_keep_their_own_textures() -> None:
-    m = parse_map(ROOMS.replace("#...#...#\n#....", "#...4...#\n#....", 1))
-    assert Renderer(RenderConfig())._face_type(m, 4, 1, WEST) == 4  # a window stays a window
+    m = parse_map(ROOMS.replace("#...#...#\n#....", "#...6...#\n#....", 1))
+    assert Renderer(RenderConfig())._face_type(m, 4, 1, WEST) == 6  # brick stays brick
+
+
+def test_a_window_is_cut_into_the_wall_of_the_area_it_faces() -> None:
+    from doomer.client.areas import WINDOW_VARIANTS, window_type
+    from doomer.client.textures import DEFAULT_WALL_TEXTURES
+
+    rooms = ROOMS.replace("#...#...#\n#....", "#...4...#\n#....", 1)
+    m = parse_map(rooms.replace("lllll\n" * 5, "lllllssss\n" * 5))
+    r = Renderer(RenderConfig())
+    lobby, plant = r._face_type(m, 4, 1, WEST), r._face_type(m, 4, 1, EAST)
+    assert lobby in [window_type(LOBBY, k) for k in range(WINDOW_VARIANTS)]
+    assert plant in [window_type(SERVICE, k) for k in range(WINDOW_VARIANTS)]
+    # Each look is its own texture, and the old blinds are gone.
+    atlas, slots = r.atlas, r.slot_table
+    office = [atlas[slots[window_type(OFFICE, k), 0]] for k in range(WINDOW_VARIANTS)]
+    assert not (office[0] == office[1]).all()  # skylines vary from cell to cell
+    assert not (atlas[slots[window_type(SERVICE, 0), 0]] == office[0]).all()
+    assert 4 not in DEFAULT_WALL_TEXTURES
 
 
 def test_mipmaps_average_down_to_one_colour() -> None:

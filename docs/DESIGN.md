@@ -711,12 +711,6 @@ Rules that have come out of it (details in the sections above):
 
 Noted at the end of a session, to pick up next:
 
-- **Better office windows.** The blinds (`4`) look bad: the slats and the
-  sky between them alias into noisy stripes. Redesign: fewer, wider slats
-  (or blinds half up, so there's clean glass below), flat colours, no noise.
-- **Windows for service rooms** that match their walls: a small high window
-  in the painted blockwork (wired glass, a steel frame), not the office
-  window with blinds, which the plant room has now on its outer wall.
 - Also outstanding: the `corner=` property for things (LEVELS.md);
   `shared/validate.py` (a floor is completable); the automap; the lift
   ride to the next floor; networking (milestone 3).
