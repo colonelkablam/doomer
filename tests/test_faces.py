@@ -73,6 +73,15 @@ def test_a_tie_comes_with_a_collar_and_no_tie_with_an_open_neck() -> None:
     assert open_[43, 25] != collar
 
 
+def test_faces_look_straight_ahead() -> None:
+    from doomer.client.faces import FEATURES, HEAD
+
+    eyes = [col for col, ch in enumerate(FEATURES[6]) if ch == "E"]
+    assert eyes == [7, 12]  # five apart
+    head = [col for col, ch in enumerate(HEAD[6]) if ch != "."]
+    assert (head[0] + head[-1]) / 2 == sum(eyes) / 2  # centred between the ears
+
+
 def test_pixels_are_solid_blocks() -> None:
     picture = _portrait(CAST["gary"])  # three texels to a pixel
     blocks = picture[:60, :60].reshape(20, 3, 20, 3)

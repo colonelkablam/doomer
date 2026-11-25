@@ -99,11 +99,10 @@ How people look, everywhere a face shows (ID passes, the Employee of the
 Month, the founder's portrait; later the NPCs): early LucasArts adventure
 sprites, as in Monkey Island. Few, chunky pixels: a portrait is a 20 x 20
 grid, the head about 11 pixels wide, each pixel a solid block (crisp when
-drawn at a multiple of 20 texels). Three-quarter view, turned to the left:
-a big nose jutting past the face's edge, heavy dark brows, a dark pixel for
-each eye (no whites) five apart, the far one nearer the nose, a small
-mouth under the nose that never reaches across the face, a big chin, an
-ear and more of the hair at the back. No outlines: edges are a darker
+drawn at a multiple of 20 texels). Straight ahead: a dark pixel for each
+eye (no whites) five apart with skin outside each, heavy brows, a lighter
+strip down the nose between them, a small mouth in the middle that never
+reaches across the face, ears either side. No outlines: edges are a darker
 shade. Warm two- or three-tone shading, lit from the left; hair simple,
 clean shapes. A shirt collar round the neck with a tie, an open neck
 without. Faces are drawn, not computed: each part is a hand-drawn 20 x 20

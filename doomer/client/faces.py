@@ -3,11 +3,10 @@ Employee of the Month, the founder's oil painting; later the NPCs).
 
 The style (docs/GAME.md, "People"): early LucasArts adventure-game sprites
 (think Monkey Island). A portrait is a 20 x 20 grid of chunky pixels, the
-head about 11 wide, in three-quarter view turned to the left: a big nose
-jutting past the face's edge, heavy brows, the far eye nearer the nose,
-the mouth under it, a big chin, an ear and more hair at the back. No
-outlines, edges a darker shade; single-pixel features, well apart; warm
-two- or three-tone shading, lit from the left; simple, clean hair shapes.
+head 10 wide, facing straight ahead; no outlines, edges a darker shade;
+single-pixel features, well apart (eyes five apart, a small mouth in the
+middle); warm two- or three-tone shading, lit from the left; simple,
+clean hair shapes.
 
 Faces are built from hand-drawn templates (pixel art at this size is drawn,
 not computed): each part is a 20 x 20 grid of letters, one per pixel, `.`
@@ -74,35 +73,36 @@ def _below(n: int, *rows: str) -> Template:
 
 # --- the templates (columns: 01234567890123456789) ----------------------------------
 
-HEAD = _t(  # three-quarter view, turned to the left: the nose juts out left, an ear right
+HEAD = _t(  # straight ahead: ten wide, ears either side, the jaw narrowing
     "....................",
-    "........BBBBBB......",
-    "......LBBBBBBBB.....",
-    ".....LLBBBBBBBBS....",
-    ".....LBBBBBBBBBSS...",
-    ".....LBBBBBBBBBSS...",
-    "....LLBBBBBBBBBSSS..",
-    "...LLLBBBBBBBBBSSS..",
-    "...LLBBBBBBBBBBSS...",
-    "....LBBBBBBBBBBS....",
+    ".......BBBBBB.......",
+    "......LBBBBBBB......",
+    ".....LLBBBBBBBS.....",
+    ".....LLBBBBBBBS.....",
+    ".....LBBBBBBBBS.....",
+    "....SLBBBBBBBBSS....",
+    "....SLBBBBBBBBSS....",
+    ".....LBBBBBBBBS.....",
     ".....BBBBBBBBBS.....",
-    ".....BBBBBBBBS......",
-    "......SBBBBBS.......",
+    "......BBBBBBBS......",
+    "......BBBBBBBS......",
+    ".......SBBBBS.......",
     "........SSSS........",
 )
-# Heavy brows (W), eyes (E) five apart, the far one nearer the nose; the
-# nose: its lit ridge (N) running down-left to the tip, its underside (n).
+# Brows (W), eyes (E) five apart with skin outside each, the nose between
+# them: its lit ridge (N) and shaded side (n).
 FEATURES = _below(
     5,
-    ".....WWW..WWW.......",
-    "......E....E........",
-    ".......NN...........",
-    "....nnN.............",
+    "......WW....WW......",
+    ".......E.N..E.......",
+    ".........Nn.........",
+    ".........Nn.........",
+    ".........nn.........",
 )
-MOUTHS = {  # under the nose, on the near side of the face's middle
-    "grin": _below(10, "......M..M..........", ".......MM..........."),
-    "flat": _below(11, "......MMMM.........."),
-    "stern": _below(10, ".......MM...........", "......M..M.........."),
+MOUTHS = {  # small and in the middle: never across the face
+    "grin": _below(10, "........M..M........", ".........MM........."),
+    "flat": _below(11, "........MMMM........"),
+    "stern": _below(10, ".........MM.........", "........M..M........"),
 }
 # Shoulders: a jacket (L B S, lapels D) over a white shirt (W, shaded G);
 # with a tie (T, knot K) a collar (C); without, an open neck (n).
@@ -126,67 +126,66 @@ BODIES = {
         "LLBBBBBDWWWGGGDBBBSS",
     ),
 }
-# Hair: on top of the head, and (long styles) behind it. Turned as the
-# head is: more of it at the back (right), down to the ear.
+# Hair: on top of the head, and (long styles) behind it.
 _SIDE_PART = (
-    ".......BBBBBBB......",
-    ".....LLLBBBBBBBB....",
-    "....LLLBBBBBBBBBS...",
-    "....LBBBBBBBBBBBSS..",
-    "....BB.BBBBBBBBBSS..",
-    ".............BBSS...",
-    "..............BS....",
+    "......BBBBBBB.......",
+    "....LLLBBBBBBBB.....",
+    "...LLLBBBBBBBBBS....",
+    "...LBBBBBBBBBBBSS...",
+    "...BBB.BBBBBBBBBS...",
+    ".....B........BS....",
 )
 HAIR_TOPS = {
     "side_part": _t(*_SIDE_PART),
     "mullet": _t(*_SIDE_PART),
     "slicked": _below(
         1,
-        "......LLLLLBBBBB....",
-        ".....BBBBBBBBBBBS...",
-        ".....BBBBBBBBBBBSS..",
-        "............BBBBSS..",
-        "..............BBS...",
+        ".....LLLLLBBBBB.....",
+        "....BBBBBBBBBBBS....",
+        "....BBBBBBBBBBBS....",
+        "....B..........S....",
+        "....B..........S....",
     ),
     "perm": _t(
-        "......BBBBBBBBB.....",
-        "....LLBBBBBBBBBBB...",
-        "...LLLBBBBBBBBBBBS..",
-        "...LLBBBBBBBBBBBBS..",
-        "...LB.........BBBSS.",
-        "..............BBBSS.",
-        "...............BBS..",
-        "...............BBS..",
-        "..............BBS...",
+        ".....BBBBBBBBBB.....",
+        "...LLBBBBBBBBBBBB...",
+        "..LLLBBBBBBBBBBBBS..",
+        "..LLBBBBBBBBBBBBBS..",
+        "..LBBB........BBBS..",
+        "..BBB..........BBS..",
+        "..BBB..........BBS..",
+        "..BB............BS..",
+        "...B............S...",
     ),
     "bob": _t(
-        ".......BBBBBBB......",
-        ".....LLLBBBBBBBB....",
-        "....LLLBBBBBBBBBS...",
-        "....LBBBBBBBBBBBSS..",
-        "....BBBBBBBBBBBBSS..",
+        "......BBBBBBB.......",
+        "....LLLBBBBBBBB.....",
+        "...LLLBBBBBBBBBS....",
+        "...LBBBBBBBBBBBSS...",
+        "...BBBBBBBBBBBBSS...",
     ),
     "bald": _below(
         3,
-        "..............BS....",
-        ".....B........BBS...",
-        ".....B........BBS...",
-        "..............B.....",
+        "....B..........S....",
+        "....BB........SS....",
+        "....BB........SS....",
+        "....BB........SS....",
+        "....B..........S....",
     ),
 }
 HAIR_BACKS = {
-    "bob": _below(4, *(("...LLBBBBBBBBBBBBSS.",) * 9), "............BBBBSS.."),
-    "mullet": _below(9, *(("..........BBBBBBS...",) * 6)),
+    "bob": _below(4, *(("..LLBBBBBBBBBBBBSS..",) * 9), "..LLBB........BBSS.."),
+    "mullet": _below(9, *(("....BBBBBBBBBBBS....",) * 6)),
 }
-BALD_SHINE = _below(2, ".........LL.........")
+BALD_SHINE = _below(2, "........LL..........")
 FACIAL_HAIR_TEMPLATES = {
-    "moustache": _below(9, "....BBBBBS.........."),
+    "moustache": _below(10, "........BBBS........"),
     "beard": _below(
         9,
-        ".............BS.....",
-        ".....B....BBBBS.....",
-        ".....B....BBBS......",
-        "......BBBBBBS.......",
+        ".....BB......BS.....",
+        "......BB....BS......",
+        "......BBB..BBS......",
+        ".......BBBBBS.......",
     ),
 }
 # Glasses: rims (R) and pale lenses (P) beside the eyes; aviators: dark
@@ -194,16 +193,16 @@ FACIAL_HAIR_TEMPLATES = {
 EYEWEAR_TEMPLATES = {
     "big_glasses": _below(
         5,
-        ".....RRR..RRR.......",
-        ".....P.PRRP.P.......",
-        ".....R.R..R.R.......",
+        "......RRR..RRR......",
+        "......P.PRRP.P......",
+        "......R.R..R.R......",
     ),
     "aviators": _below(
         5,
-        ".....FFFFFFFF.......",
-        ".....GAA..GAA.......",
-        ".....AAA..AAA.......",
-        "......A....A........",
+        "......FFFFFFFF......",
+        "......GAA..GAA......",
+        "......AAA..AAA......",
+        ".......A....A.......",
     ),
 }
 GLASSES_COLOURS = {
