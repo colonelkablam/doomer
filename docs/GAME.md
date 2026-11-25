@@ -135,13 +135,13 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Lifts: brushed steel doors, a call button (lit amber when called) and a floor indicator (lit with power); a steel car with a handrail behind | no | [built] |
 | Card readers by locked doors: stripe in the pass colour, red/green lamp | no | [built] |
 | Desk phone (box model, `phone`): brown 1980s plastic: on the left a raised cradle with the handset lying front to back (one solid box, its cups and narrower grip painted on: shaded beside the grip from above, a dark shadow under it from the side), on a low cradle, on the right a keypad and a column of amber line buttons; three boxes; on the boss's desk and reception's | no | [built] |
-| Late-80s business PC (box model, `pc`): pearly off-white, generic (no badge): a wide system unit lying flat (two 5.25" drives, lamps), a big CRT standing on it (deep bezel, the tube's housing behind), a green-phosphor spreadsheet screen that glows while there's power, a long heavy keyboard in front; five boxes, ~1.9x scale; on the boss's desk | no | [built] |
+| Late-80s business PC (box model, `pc`): pearly off-white, generic (no badge): a wide system unit lying flat (two 5.25" drives, lamps), a big CRT standing on it (deep bezel, the tube's housing behind), a green-phosphor spreadsheet screen that glows while there's power, a long heavy keyboard in front; five boxes, ~1.9x scale; on the boss's desk, turned a little towards the chair | no | [built] |
 | Water cooler (box model: cream cabinet, hot and cold taps, an upturned 19-litre bottle nearly as wide as the cabinet, ~1.45 m to its top; faces its map angle) | yes | [built] |
 | Filing cabinet (box model: five steel drawers with pulls and label cards; faces its map angle) | yes | [built] |
 | Potted ficus (box model: octagonal terracotta pot, a single trunk, a crown of crossed see-through leaf cards drawn as individual drooping leaves in a ragged outline) | yes | [built] |
 | Fluorescent ceiling light (a panel set into the ceiling) | no | [built] |
 | Exit sign (marks the exit) | no | [built] |
-| Swivel chair (inert) | no | planned |
+| Office swivel chair (box model, `chair`): a black five-star base on casters (one flat box, the star painted on its top), a gas column, a charcoal fabric seat and backrest on a black shell; four boxes; one at each sitter's Mac and reception's, each nudged and turned a little | yes (small) | [built] |
 | Photocopier (inert) | yes | planned |
 | Fax machine on stand | yes | planned |
 | Vending machine | yes | planned |

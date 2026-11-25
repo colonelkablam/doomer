@@ -148,3 +148,32 @@ def test_the_boss_has_a_green_screen_pc_on_the_desk() -> None:
     assert monitor.z[0] == unit.z[1] and tube.x[1] <= monitor.x[0]  # standing on it, tube behind
     assert screen.glow and screen.mains  # lit only while there's power
     assert screen.x[0] == monitor.x[1] and keyboard.x[0] > unit.x[1]  # on its face; keys in front
+
+
+def test_a_swivel_chair_is_four_boxes_its_base_a_painted_star() -> None:
+    from doomer.client.boxes import BOX_MODELS, BOX_OPAQUE
+
+    base, column, seat, back = BOX_MODELS["chair"]
+    assert base.z[1] <= column.z[0] and column.z[1] <= seat.z[0] + 1e-9  # stacked up
+    assert back.x[1] <= seat.x[0] + 0.01 and back.z[1] > seat.z[1]  # behind the sitter, higher
+    star = BOX_OPAQUE[base.faces[4]]
+    assert 0.1 < star.mean() < 0.5  # arms and casters; the rest see-through
+    assert not any(BOX_OPAQUE[f].any() for f in base.faces[:4])  # no sides: just the star
+
+
+def test_every_sitter_has_a_chair_at_their_mac_and_the_aisles_stay_passable() -> None:
+    from doomer.shared.config import MovementConfig
+    from doomer.shared.mapfile import load_map
+
+    office = load_map("maps/office.map")
+    macs, chairs = office.things_of_type("mac"), office.things_of_type("chair")
+    assert len(chairs) == len(macs)
+    radius = THING_TYPES["chair"].radius
+    for mac in macs:
+        chair = min(chairs, key=lambda c: math.hypot(c.x - mac.x, c.y - mac.y))
+        assert math.hypot(chair.x - mac.x, chair.y - mac.y) < 0.8  # pulled up to it
+        assert not office.is_solid(math.floor(chair.x), math.floor(chair.y))  # on the floor
+    # Between the north wall (y = 1) and the first pod row (y = 2): room
+    # for a player past the chairs.
+    north = [c for c in chairs if 1.0 < c.y < 2.0]
+    assert north and min(c.y - radius for c in north) - 1.0 >= 2 * MovementConfig().radius

@@ -264,6 +264,86 @@ def _mac_se30() -> tuple[Box, ...]:
     return mac, keyboard, mouse
 
 
+# --- Office swivel chair ---------------------------------------------------------------
+# The cheap 1980s kind: a black five-star base on casters, a gas column, a
+# charcoal fabric seat and a low backrest on a plastic shell. Four boxes, as
+# a pod row has a dozen: the base is one flat box with the star painted on
+# its top (the rest see-through), so the arms cost nothing. Model +x is the
+# way the sitter faces (at the desk); the back is at -x. Real seat ~46 cm
+# wide at ~45 cm, the back to ~95 cm; built a little wide (~1.2x) so it reads.
+
+_CHAIR_SEAT = (-0.085, 0.09, 0.1, (0.15, 0.175))  # x0, x1, half-width, z
+_CHAIR_BACK = (-0.11, -0.08, 0.085, (0.2, 0.36))
+_CHAIR_BASE = 0.13  # half-span of the star, cells
+_CHAIR_COLUMN = 0.018  # half-width
+
+
+def chair_base_top() -> int:
+    """The five-star base from above: five black arms from the hub, each
+    ending in a caster; the rest see-through."""
+    c = Canvas()
+    v, u = c.v + 0.5 - 32.0, c.u + 0.5 - 32.0
+    arms = np.zeros((64, 64), dtype=np.bool_)
+    for k in range(5):
+        a = 2 * math.pi * k / 5
+        along = u * math.cos(a) + v * math.sin(a)
+        across = -u * math.sin(a) + v * math.cos(a)
+        arms |= (along > 0) & (along < 28) & (np.abs(across) < 2.5)
+        cu, cv = 32 + 28 * math.cos(a), 32 + 28 * math.sin(a)
+        c.paint(c.ellipse(cv, cu, 3.5, 3.5), GREY, 1.0)  # the caster
+    c.paint(arms, GREY, 2.0)
+    c.paint(c.ellipse(32, 32, 5, 5), GREY, 3.0)  # the hub
+    return _texture(c)
+
+
+def chair_fabric(edge: bool = True) -> int:
+    """Charcoal tweed, flat (no noise close up): a piped edge round it."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), STEEL, 4.0)
+    if edge:
+        c.paint(c.rect(0, 4, 0, 64) | c.rect(60, 64, 0, 64), STEEL, 2.5)
+        c.paint(c.rect(0, 64, 0, 4) | c.rect(0, 64, 60, 64), STEEL, 2.5)
+    return _texture(c)
+
+
+def chair_shell() -> int:
+    """The black plastic behind the back and under the seat, its edges."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 2.0)
+    c.paint(c.rect(0, 6, 0, 64), GREY, 3.5)  # the top edge catches the light
+    return _texture(c)
+
+
+def chair_column() -> int:
+    """The gas column: chrome, a black sleeve over its lower half."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 11.0)
+    c.paint(c.rect(0, 64, 0, 16), GREY, 13.0)  # a highlight down one side
+    c.paint(c.rect(34, 64, 0, 64), GREY, 2.0)
+    return _texture(c)
+
+
+def _chair() -> tuple[Box, ...]:
+    clear = _texture(Canvas())
+    fabric, plain, shell, column = (
+        chair_fabric(),
+        chair_fabric(edge=False),
+        chair_shell(),
+        chair_column(),
+    )
+    x0, x1, hw, seat_z = _CHAIR_SEAT
+    bx0, bx1, bw, back_z = _CHAIR_BACK
+    b, k = _CHAIR_BASE, _CHAIR_COLUMN
+    return (
+        Box((-b, b), (-b, b), (0.0, 0.02), (clear, clear, clear, clear, chair_base_top())),
+        Box((-k, k), (-k, k), (0.02, seat_z[0]), (column,) * 5),
+        # The seat: fabric on top, the shell's edge round it.
+        Box((x0, x1), (-hw, hw), seat_z, (shell, shell, shell, shell, fabric)),
+        # The back: fabric towards the sitter (+x), the shell behind.
+        Box((bx0, bx1), (-bw, bw), back_z, (fabric, plain, shell, plain, shell)),
+    )
+
+
 # --- Late-80s business PC (the boss's): green screen on a flat system unit -----------
 # Generic (no maker's badge), in the pearly off-white of the time: a wide
 # system unit lying flat, a big 14" CRT standing on it (a deep bezel box,
@@ -1736,6 +1816,7 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "mac": _mac_se30(),
     "phone": _phone(),
     "pc": _pc(),
+    "chair": _chair(),
     "filing_cabinet": _filing_cabinet(),
     "water_cooler": _water_cooler(),
     "ficus": _ficus(),

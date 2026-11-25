@@ -73,6 +73,9 @@ for _name, _description, _blocking, _radius in (
     ("phone", "1980s desk phone, for a desk", False, 0.0),
     # And the boss's late-80s PC: a green screen on a flat system unit.
     ("pc", "Late-1980s business PC with a green screen, for a desk", False, 0.0),
+    # An office swivel chair (boxes): blocks, a small footprint you can't
+    # stand on; angle = the way its sitter faces.
+    ("chair", "Office swivel chair", True, 0.1),
 ):
     register_thing_type(ThingType(_name, _description, _blocking, _radius))
 
