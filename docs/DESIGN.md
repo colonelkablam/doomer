@@ -727,6 +727,14 @@ Noted at the end of a session, to pick up next:
 - **Windows for service rooms** that match their walls: a small high window
   in the painted blockwork (wired glass, a steel frame), not the office
   window with blinds, which the plant room has now on its outer wall.
+- **Office chairs at the desks.** A swivel chair per sitter: cheap, few
+  boxes but well placed (a five-star base as two crossed thin boxes, the
+  column, the seat, the backrest on its stem: ~5 boxes, fabric in the
+  carpet's blue-grey or charcoal). Placed like the Macs: one per sitter, at
+  the sitter's side of each desk half, each turned and nudged a little at
+  random (a few degrees, a few cm), so a row looks used, not lined up.
+  Collision a small footprint (they block, but you can't stand on them).
+  Watch the box budget: a pod row is 12 chairs, so keep each to ~5 boxes.
 - Also outstanding: the `corner=` property for things (LEVELS.md);
   `shared/validate.py` (a floor is completable); the automap; the lift
   ride to the next floor; networking (milestone 3).
