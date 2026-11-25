@@ -12,9 +12,11 @@ class RenderConfig:
     max_fps: int = 144  # 0 = uncapped
     vsync: bool = True
     shade_distance: float = 14.0  # walls fade to their darkest at this distance
-    # Mapped to the nearest palette entry.
-    ceiling_colour: Colour = (205, 200, 180)  # off-white ceiling tiles
-    floor_colour: Colour = (120, 108, 96)  # grey-brown office carpet
+    # Floors and ceilings are textured by area (doomer/client/areas.py). Set
+    # both colours to draw them flat instead (mapped to the nearest palette
+    # entry): cheaper, and tests use it to tell floor from ceiling.
+    ceiling_colour: Colour | None = None
+    floor_colour: Colour | None = None
     show_fps: bool = True
 
 

@@ -1,0 +1,140 @@
+"""Areas: the [areas] grid, and how it sets floors, ceilings and plain walls."""
+
+import math
+
+import numpy as np
+import pytest
+
+from doomer.client import fastcast as fc
+from doomer.client.areas import AREA_WALL_TYPE, MIP_LEVELS, build_surfaces, mipmaps
+from doomer.client.config import LightingConfig, RenderConfig
+from doomer.client.palette import STEEL, WARM_GREY
+from doomer.client.render import Camera, Renderer
+from doomer.shared.mapfile import (
+    EAST,
+    EXECUTIVE,
+    LOBBY,
+    OFFICE,
+    SERVICE,
+    WEST,
+    MapError,
+    format_map,
+    parse_map,
+)
+
+# Two rooms either side of a plain wall at x = 4: the lobby west, service east.
+ROOMS = """\
+[walls]
+#########
+#...#...#
+#.......#
+#...#...#
+#########
+
+[areas]
+lllll
+lllll
+lllll
+lllll
+lllll
+"""
+
+
+def test_areas_parse_default_to_office_and_round_trip() -> None:
+    m = parse_map(ROOMS)
+    assert m.area_at(2, 2) == LOBBY and m.area_at(6, 2) == OFFICE  # past the rows given: '.'
+    assert m.area_at(-1, 0) == OFFICE  # outside the map
+    assert parse_map(format_map(m)) == m
+    plain = parse_map(ROOMS.split("[areas]")[0])
+    assert plain.area_at(2, 2) == OFFICE and "[areas]" not in format_map(plain)
+
+
+def test_a_bad_area_letter_is_an_error() -> None:
+    with pytest.raises(MapError, match="bad character"):
+        parse_map(
+            ROOMS.replace("lllll\n[", "llzll\n[", 1).replace("[areas]\nlllll", "[areas]\nllzll")
+        )
+
+
+def test_each_side_of_a_plain_wall_looks_like_the_area_it_faces() -> None:
+    m = parse_map(ROOMS.replace("[areas]\n" + "lllll\n" * 5, "[areas]\n" + "lllllssss\n" * 5))
+    r = Renderer(RenderConfig())
+    assert r._face_type(m, 4, 1, WEST) == AREA_WALL_TYPE + LOBBY
+    assert r._face_type(m, 4, 1, EAST) == AREA_WALL_TYPE + SERVICE
+    assert r._face_type(m, 0, 2, EAST) == AREA_WALL_TYPE + LOBBY  # the outer wall too
+
+
+def test_other_wall_types_keep_their_own_textures() -> None:
+    m = parse_map(ROOMS.replace("#...#...#\n#....", "#...4...#\n#....", 1))
+    assert Renderer(RenderConfig())._face_type(m, 4, 1, WEST) == 4  # a window stays a window
+
+
+def test_mipmaps_average_down_to_one_colour() -> None:
+    surfaces = build_surfaces()
+    assert surfaces.mips.shape[1:] == (MIP_LEVELS, 64, 64)
+    for level in surfaces.mips[:, -1]:
+        assert (level == level[0, 0]).all()  # the last level is a single colour
+    flat = np.full((64, 64), 0x37, dtype=np.uint8)
+    assert (mipmaps(flat) == 0x37).all()  # averaging one colour changes nothing
+
+
+def test_the_floor_shows_each_areas_texture() -> None:
+    surfaces = build_surfaces()
+    areas = np.array([[OFFICE, LOBBY, EXECUTIVE]], dtype=np.int64)
+    xs = np.array([0.3, 1.3, 2.3, 1.3])
+    ys = np.full(4, 0.4)
+    ceiling = np.array([False, False, False, True])
+    texels = fc.surface_texels(
+        xs,
+        ys,
+        np.zeros(4),
+        ceiling,
+        np.zeros(4),
+        areas,
+        surfaces.floor,
+        surfaces.ceiling,
+        surfaces.mips,
+    )
+    u, v = math.floor(0.3 * 64), math.floor(0.4 * 64)
+    expected = [
+        surfaces.mips[surfaces.floor[OFFICE], 0, v, u],
+        surfaces.mips[surfaces.floor[LOBBY], 0, v, u],
+        surfaces.mips[surfaces.floor[EXECUTIVE], 0, v, u],
+        surfaces.mips[surfaces.ceiling[LOBBY], 0, v, u],
+    ]
+    assert list(texels) == expected
+
+
+def test_far_floor_uses_the_smallest_mip_level() -> None:
+    surfaces = build_surfaces()
+    areas = np.array([[OFFICE]], dtype=np.int64)
+    texel = fc.surface_texels(
+        np.array([0.5]),
+        np.array([0.5]),
+        np.array([99.0]),
+        np.array([False]),
+        np.zeros(1),
+        areas,
+        surfaces.floor,
+        surfaces.ceiling,
+        surfaces.mips,
+    )
+    assert texel[0] == surfaces.mips[surfaces.floor[OFFICE], -1, 0, 0]
+
+
+def test_rendered_floors_follow_the_areas() -> None:
+    hall = parse_map(
+        "[walls]\n"
+        + "#" * 12
+        + "\n"
+        + "#..........#\n" * 3
+        + "#" * 12
+        + "\n\n[areas]\n"
+        + "llllll\n" * 5
+    )
+    r = Renderer(RenderConfig(), LightingConfig(enabled=False))
+    frame = r.render_indices(hall, Camera(1.5, 2.5, 0.0, pitch=-0.3))  # facing east, looking down
+    # Down the middle column: terrazzo (warm grey) near, in the lobby (x < 6),
+    # and carpet tiles (steel) beyond, in the office.
+    ramps = set((frame[160, int(r.horizon) + 1 :] >> 4).tolist())
+    assert WARM_GREY in ramps and STEEL in ramps

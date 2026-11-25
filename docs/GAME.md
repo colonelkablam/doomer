@@ -145,12 +145,30 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Overhead projector on trolley | yes | planned |
 | Fire extinguisher | no | planned |
 
+## Areas [built]
+
+Each cell of a floor is one of four kinds of space (`[areas]` in the map). The
+area sets the floor, the ceiling, and how plain walls (`#`) look from that
+side, so the same wall can be stone in the lobby and blockwork in the plant
+room behind it.
+
+| Area | Map letter | Plain walls | Floor | Ceiling |
+|---|---|---|---|---|
+| Open-plan office | `o` (default) | Beige woodchip above a painted dado, skirting | Blue-grey carpet tiles, laid quarter-turned | Suspended ceiling: fissured tiles in a white grid (light panels take the place of two tiles) |
+| Executive | `e` | Wood panelling: four tall raised panels across, dado rail, short panels below | Deep blue carpet tiles | Suspended ceiling |
+| Lobby | `l` | Pale polished stone slabs | Terrazzo slabs | Smooth plaster |
+| Service | `s` | Painted breeze block: cream gloss above a grey dado | Grey flecked lino | Bare concrete, formwork marks |
+
+Windows (`4`, ribbon windows with blinds, in offices; `f`, the curtain wall,
+in the lobby), lift doors and furniture keep their own textures wherever
+they are.
+
 ## Walls [built]
 
 | Wall type | Texture | Where |
 |---|---|---|
-| 1 | Beige office wall with dado rail | Everywhere |
-| 2 | Wood panelling | Executive offices |
+| 1 | Plain wall: looks like the area it faces (see Areas) | Everywhere |
+| 2 | Wood panelling, four tall panels across (the executive look, wherever it's placed) | Executive offices |
 | 3 | Grey cubicle partition | Open-plan floors |
 | 4 | Window with venetian blinds | Outer walls |
 | 5 | Lift doors | Exits |

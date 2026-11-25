@@ -151,13 +151,21 @@ def missing_texture() -> U8Array:
     return indices(MAGENTA, np.where(checker == 1, 15.0, 3.0))
 
 
+def _woodchip(rng: np.random.Generator) -> npt.NDArray[np.float64]:
+    """Shades for beige woodchip wallpaper: nearly flat, with fine specks (the
+    chips catching the light) rather than a pattern, so it stays calm."""
+    specks = rng.random((TEX_SIZE, TEX_SIZE))
+    shade = 10.4 + (noise(rng, 16) - 0.5) * 0.5
+    result: npt.NDArray[np.float64] = (
+        shade + np.where(specks < 0.07, 0.8, 0.0) - np.where(specks > 0.95, 0.8, 0.0)
+    )
+    return result
+
+
 def office_wall_upper(seed: int = 1) -> U8Array:
-    """The same striped wallpaper as office_wall, without the dado and skirting,
-    for walls taller than a storey."""
-    rng = np.random.default_rng(seed)
-    v, u = grid()
-    stripes = np.where((u % 8) < 4, 0.6, 0.0)
-    return indices(SAND, 10 + stripes + (noise(rng, 16) - 0.5) * 1.2)
+    """The same wallpaper as office_wall, without the dado and skirting, for
+    walls taller than a storey."""
+    return indices(SAND, _woodchip(np.random.default_rng(seed)))
 
 
 def raised_floor_edge(seed: int = 14) -> U8Array:
@@ -226,12 +234,11 @@ def entrance_doors(seed: int = 17) -> U8Array:
 
 
 def office_wall(seed: int = 1) -> U8Array:
-    """Beige wallpaper above a dado rail, a darker painted panel below, skirting board."""
+    """Beige woodchip above a dado rail, a darker painted panel below, skirting board."""
     rng = np.random.default_rng(seed)
     v, u = grid()
-    stripes = np.where((u % 8) < 4, 0.6, 0.0)
-    shade = 10 + stripes + (noise(rng, 16) - 0.5) * 1.2
-    shade = np.where(v >= 40, 8.5 + (noise(rng, 8) - 0.5), shade)  # lower panel
+    shade = _woodchip(rng)
+    shade = np.where(v >= 40, 8.5 + (noise(rng, 8) - 0.5) * 0.6, shade)  # lower panel
     tex = indices(SAND, shade)
     rail = (v >= 38) & (v < 41)
     tex = np.where(rail, indices(WOOD, np.where(v == 38, 10.0, 7.0)), tex)
@@ -241,21 +248,43 @@ def office_wall(seed: int = 1) -> U8Array:
 
 
 def wood_panelling(seed: int = 2) -> U8Array:
-    """Executive-floor panelling: raised panels in a frame of rails and stiles."""
+    """Executive-floor panelling: four tall raised panels across, a dado rail
+    at about 1 m with short panels below it, skirting at the foot. Each panel
+    is framed by rails and stiles, lit from the top left."""
     rng = np.random.default_rng(seed)
     v, u = grid()
-    grain = np.sin(u * 0.7 + noise(rng, 8) * 8) * 0.8
-    shade = 7 + grain + noise(rng, 32) * 1.5
-    pu, pv = u % 32, v % 32
-    # The frame is split evenly between the edges of each 32-texel panel (2 on
-    # each side), so it lines up with the edges of the wall block and two blocks
-    # side by side make one 4-texel stile.
-    frame = (pu < 2) | (pu >= 30) | (pv < 2) | (pv >= 30)
-    shade = np.where(frame, 6 + noise(rng, 16), shade)
-    lit = ~frame & ((pu == 2) | (pv == 2))  # raised panel, lit from the top left
-    shadowed = ~frame & ((pu == 29) | (pv == 29))
-    shade = np.where(lit, 9.5, np.where(shadowed, 4.0, shade))
+    shade = 7 + np.sin(v * 0.25 + noise(rng, 8) * 6) * 0.6 + noise(rng, 32) * 1.2  # grain runs up
+    pu = u % 16
+    # Stiles split evenly between the panel edges (tiling rule); rails at the
+    # top, either side of the dado (v 38-40) and above the skirting.
+    frame = (pu < 2) | (pu >= 14) | (v < 3) | ((v >= 35) & (v < 44)) | (v >= 57)
+    shade = np.where(frame, 5.5 + noise(rng, 16), shade)
+    lit = ~frame & ((pu == 2) | (v == 3) | (v == 44))
+    dark = ~frame & ((pu == 13) | (v == 34) | (v == 56))
+    shade = np.where(lit, 9.0, np.where(dark, 3.5, shade))
+    shade = np.where((v >= 38) & (v < 41), np.where(v == 38, 10.0, 6.0), shade)  # dado rail
+    shade = np.where(v >= 60, np.where(v == 60, 7.0, 4.0), shade)  # skirting
     return indices(WOOD, shade)
+
+
+def painted_block(seed: int = 22) -> U8Array:
+    """Service areas: painted breeze blocks, cream gloss above a grey dado."""
+    rng = np.random.default_rng(seed)
+    v, _ = grid()
+    mortar, tone, bevel = _blocks(16, 8, rng)
+    shade = 11 + tone * 0.6 + bevel * 0.5 + (noise(rng, 16) - 0.5) * 0.6
+    tex = indices(CREAM, np.where(mortar, 9.0, shade))
+    grey = indices(GREY, np.where(mortar, 6.5, 8.5 + tone * 0.5 + bevel * 0.5))
+    tex = np.where(v >= 40, grey, tex)
+    return np.where((v >= 39) & (v < 40), indices(GREY, 5.0), tex).astype(np.uint8)
+
+
+def painted_block_upper(seed: int = 22) -> U8Array:
+    """Painted blocks with no dado, for walls above a storey."""
+    rng = np.random.default_rng(seed)
+    mortar, tone, bevel = _blocks(16, 8, rng)
+    shade = 11 + tone * 0.6 + bevel * 0.5 + (noise(rng, 16) - 0.5) * 0.6
+    return indices(CREAM, np.where(mortar, 9.0, shade))
 
 
 def cubicle_partition(seed: int = 3) -> U8Array:

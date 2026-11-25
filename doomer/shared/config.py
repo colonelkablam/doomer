@@ -7,6 +7,7 @@ defaults), not as magic numbers in the code that uses them.
 import dataclasses
 import math
 import tomllib
+import types
 import typing
 from pathlib import Path
 from typing import Any, TypeVar
@@ -85,6 +86,12 @@ def load_toml(cls: type[T], path: str | Path) -> T:
 
 def _coerce(hint: Any, value: Any, path: str) -> Any:
     origin = typing.get_origin(hint)
+    if origin in (typing.Union, types.UnionType):
+        # An optional setting (`X | None`): TOML has no null, so a value given
+        # is always the X.
+        options = [a for a in typing.get_args(hint) if a is not type(None)]
+        if len(options) == 1:
+            return _coerce(options[0], value, path)
     if hint is float and isinstance(value, int) and not isinstance(value, bool):
         return float(value)
     if origin in (tuple, list):

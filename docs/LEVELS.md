@@ -95,6 +95,15 @@ and an `exit`; **deathmatch** needs at least 4 `dm_spawn`s.
   ceiling you can't jump over them from a desk (no headroom), so a `j` pod
   is no desk-top route, only booths. Under a tall ceiling they can be jumped.
 - **Single desks** `c` face where you sit; **executive desks** `b` likewise.
+- **Areas** (`[areas]`): mark every open cell of a room with its kind of
+  space: `e` the boss's suite, `l` the entrance and lift lobby, `s` plant
+  rooms and back corridors, the rest office (default). Build room walls from
+  plain `#` and let the areas dress them: a wall between two areas shows
+  each side its own look. Use an explicit wall type only for something
+  that's the same from both sides (a window, brick, the curtain wall).
+  Doorway cells take the area of the room they open from (the floor changes
+  under the door). Keep areas to whole rooms: a change of carpet mid-room
+  looks like a mistake.
 - **Desk-top things** (`mac`): turn each a few degrees off square (3-10 deg,
   either way, varied between neighbours), so a row of them looks used rather
   than lined up, and nudge it 0.02-0.06 cells along the desk (up to 0.015

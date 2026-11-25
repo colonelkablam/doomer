@@ -168,6 +168,12 @@ dm_spawn      1.5   3.5   0
 - `[facing]` (optional): one of `n`, `e`, `s`, `w` per cell (`.` or missing =
   `s`): which way a cell's front faces, for wall types with different
   textures per side (desks: the front is where you sit).
+- `[areas]` (optional): one of `o`, `e`, `l`, `s` per cell (`.` or missing
+  = `o`): open-plan office, executive, lobby, service. Cosmetic (the server
+  ignores it): it picks the cell's floor and ceiling textures, and how plain
+  walls (`#`) look from that side. A plain wall face takes the look of the
+  area it faces, so one wall can be stone on its lobby side and painted
+  block on its plant-room side. Looks are in `client/areas.py`.
 - `[things]`: one per line, `type x y angle [key=value ...]`. Positions are
   floats in cell units (`1.5` = centre of cell 1). Unknown types are an
   error at load time. Properties after the angle are declared per thing
@@ -266,6 +272,23 @@ dm_spawn      1.5   3.5   0
   split into its ceiling (to the next ceiling change) and the floor it
   stands on (to its cell's edge). ~4 ms in corridors, ~10 ms among desk pods
   or in the double-height lobby.
+- **Textured floors and ceilings** (`client/areas.py`, the kernel in
+  `client/fastcast.py`): floor casting. Each floor or ceiling pixel's
+  distance (the row formula, inverted) puts it at a world point, camera +
+  ray x distance; the texture is the one for that cell's area, and the
+  texel `(frac(x), frac(y)) * 64`. The default floor and ceiling are one
+  compiled pass that also shades, lights and dithers (the light map still
+  sampled once per 2x2 pixels); ceilings at other heights (the atrium) use
+  the same lookup per pixel. **Mipmaps**: seen at a slant, many texels fall
+  in one pixel and a fine pattern shimmers as you move. Each texture has 7
+  levels, each averaging 2x2 texels of the last (in RGB, then the nearest
+  palette colour) down to one colour; a pixel takes the level where a texel
+  is about a pixel: log2 of its footprint in texels, depth / projection
+  across the ray, x depth / eye height along it at a slant. The level is
+  Bayer-dithered between neighbours so there's no seam. Cost: ~1 ms per
+  frame over flat colours (the level splits into a per-row and a per-column
+  part, so there's no log per pixel). `RenderConfig.floor_colour` /
+  `ceiling_colour` draw flat colours instead (tests use them).
 - **Default ceiling depth**: background ceiling pixels get their real depth in
   the z-buffer wherever the default ceiling really is the ceiling, so a low
   ceiling hides a higher one beyond it (looking from a normal room into the

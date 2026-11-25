@@ -18,6 +18,12 @@ DEFAULT_WALL = 1
 NORTH, EAST, SOUTH, WEST = range(4)
 DEFAULT_FACING = SOUTH
 _FACING_CHARS = "nesw"
+# Areas: what kind of space each cell is, for its look (floor, ceiling, and
+# the plain walls facing into it): open-plan office, executive suite,
+# entrance lobby, service (plant rooms, back corridors). [areas] letters.
+OFFICE, EXECUTIVE, LOBBY, SERVICE = range(4)
+DEFAULT_AREA = OFFICE
+AREA_CHARS = "oels"
 
 # Wall types with built-in shape (the rest are just textures, chosen by the
 # client): a stair cell's floor slopes up across the cell, towards the way
@@ -36,7 +42,7 @@ DEFAULT_FLOOR = 0
 DEFAULT_CEILING = WALL_UNITS
 
 _SECTION = re.compile(r"^\[(\w+)\]\s*$")
-_GRID_SECTIONS = ("walls", "floor", "ceiling", "facing")
+_GRID_SECTIONS = ("walls", "floor", "ceiling", "facing", "areas")
 _KNOWN_SECTIONS = (*_GRID_SECTIONS, "things")
 _KNOWN_HEADERS = ("name",)
 
@@ -71,6 +77,8 @@ class GameMap:
     things: tuple[Thing, ...]
     # Which way each cell's front faces (desks): NORTH/EAST/SOUTH/WEST = 0-3.
     facing: Grid = ()
+    # Each cell's area (OFFICE/EXECUTIVE/LOBBY/SERVICE).
+    areas: Grid = ()
 
     def in_bounds(self, x: int, y: int) -> bool:
         return 0 <= x < self.width and 0 <= y < self.height
@@ -131,6 +139,12 @@ class GameMap:
         if not self.facing or not self.in_bounds(x, y):
             return DEFAULT_FACING
         return self.facing[y][x]
+
+    def area_at(self, x: int, y: int) -> int:
+        """A cell's area (OFFICE outside the map or with no [areas])."""
+        if not self.areas or not self.in_bounds(x, y):
+            return DEFAULT_AREA
+        return self.areas[y][x]
 
     def is_low_block(self, x: int, y: int) -> bool:
         """A wall cell raised only part way: [floor] between 1 and its ceiling."""
@@ -197,6 +211,9 @@ def parse_map(text: str) -> GameMap:
         DEFAULT_FACING,
         "facing",
     )
+    areas = _parse_grid(
+        _trim_blank(sections.get("areas", [])), width, height, _area_cell, DEFAULT_AREA, "areas"
+    )
 
     game_map = GameMap(
         name=headers.get("name", "Untitled"),
@@ -207,6 +224,7 @@ def parse_map(text: str) -> GameMap:
         ceiling=ceiling,
         things=(),
         facing=facing,
+        areas=areas,
     )
     _check_heights(game_map)
     things = tuple(_parse_thing(n, line, game_map) for n, line in sections.get("things", []))
@@ -241,6 +259,9 @@ def format_map(game_map: GameMap) -> str:
     if any(c != DEFAULT_FACING for row in game_map.facing for c in row):
         out += ["", "[facing]"]
         out += ["".join(_FACING_CHARS[c] for c in row) for row in game_map.facing]
+    if any(c != DEFAULT_AREA for row in game_map.areas for c in row):
+        out += ["", "[areas]"]
+        out += ["".join(AREA_CHARS[c] for c in row) for row in game_map.areas]
     if game_map.things:
         out += ["", "[things]", "# type x y angle [key=value ...]"]
         for t in game_map.things:
@@ -290,6 +311,12 @@ def _facing_cell(ch: str) -> int | None:
     if ch == ".":
         return DEFAULT_FACING
     return _FACING_CHARS.index(ch) if ch in _FACING_CHARS else None
+
+
+def _area_cell(ch: str) -> int | None:
+    if ch == ".":
+        return DEFAULT_AREA
+    return AREA_CHARS.index(ch) if ch in AREA_CHARS else None
 
 
 def height_char(units: int) -> str:

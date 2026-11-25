@@ -49,6 +49,7 @@ import numpy.typing as npt
 import pygame
 
 from doomer.client import fastcast as fc
+from doomer.client.areas import AREA_FACES, AREA_WALL_TYPE, Surfaces, build_surfaces
 from doomer.client.boxes import (
     BOX_MODELS,
     BOX_OPAQUE,
@@ -83,9 +84,13 @@ from doomer.client.textures import (
 )
 from doomer.shared.furniture import resting_height
 from doomer.shared.mapfile import (
+    EAST,
+    NORTH,
     RAIL_HEIGHT,
     RAILING_WALL_TYPE,
+    SOUTH,
     STAIRS_WALL_TYPE,
+    WEST,
     GameMap,
 )
 
@@ -103,6 +108,9 @@ NEAR_PLANE = 0.05  # sprites closer than this (in cells) aren't drawn
 # ray meets it: in the open space it faces (the first light sample in front
 # of a wall is 1/8 cell out), not inside the wall, which no light reaches.
 FACE_LIGHT_BACKOFF = 0.13
+# Floor and ceiling mipmaps: + makes them blurrier sooner, - sharper but
+# shimmering. 0 picks the level whose texels are about a pixel.
+MIP_BIAS = 0.0
 MAX_BOX_DISTANCE = 16.0  # box models further than this (cells) aren't drawn: a few pixels
 UNDER_DESK_SHADOW = 12  # colormap levels darker (of 32) for the floor under a desk
 DESK_SEAM_DARKEN = 9  # colormap levels darker for the join between two desks' tops
@@ -110,11 +118,14 @@ DESK_JOIN_DARKEN = 5  # ... and for the joins between neighbouring pairs in a ro
 DESK_SEAM_WIDTH = 0.01  # half-width of those lines, in cells (~3 cm wide)
 STEP_HEIGHT = 0.125  # a rise up to this is a step, not a drop that needs a railing
 # Ceiling light panels: half-size in cells, and colours (diffuser is full-bright).
-LIGHT_HALF = (0.22, 0.11)
+LIGHT_HALF = (0.25, 0.125)  # two ceiling tiles (areas.ceiling_tiles lines up with it)
 LIGHT_DIFFUSER = (CREAM << 4) | 15
 DEAD_DIFFUSER = (GREY << 4) | 8  # a panel with no power
 LIGHT_FRAME = (GREY << 4) | 9
 _BACKGROUND_CACHE_SIZE = 64
+
+# The neighbouring cell across each compass face.
+_FACE_STEP = {NORTH: (0, -1), EAST: (1, 0), SOUTH: (0, 1), WEST: (-1, 0)}
 
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.intp]
@@ -189,10 +200,27 @@ class Renderer:
         self.rail_tex = np.ascontiguousarray(rail_tex.T)  # [u][v]
         self.rail_opaque = np.ascontiguousarray(rail_opaque.T)
         self.top_colour = _top_colours(self.atlas, self.slot_table)
-        self.ceiling_colour = nearest_index(PALETTE, config.ceiling_colour)
-        self.floor_colour = nearest_index(PALETTE, config.floor_colour)
+        # Floors and ceilings: textured by area, unless the config gives flat
+        # colours. The flat floor colour is also used for the odd raised
+        # surface that isn't a block (none in practice): the office carpet's.
+        self.surfaces: Surfaces = build_surfaces()
+        self.textured = config.floor_colour is None or config.ceiling_colour is None
+        average = self.surfaces.mips[:, -1, 0, 0]  # each texture's single-colour level
+        self.ceiling_colour = (
+            int(average[self.surfaces.ceiling[0]])
+            if config.ceiling_colour is None
+            else nearest_index(PALETTE, config.ceiling_colour)
+        )
+        self.floor_colour = (
+            int(average[self.surfaces.floor[0]])
+            if config.floor_colour is None
+            else nearest_index(PALETTE, config.floor_colour)
+        )
         x, y = np.meshgrid(np.arange(w), np.arange(h), indexing="ij")
         self._dither = (BAYER_4X4[x & 3, y & 3] + 0.5) / 16  # (w, h) thresholds in (0, 1)
+        # For choosing between mip levels: the same pattern, out of step with
+        # the shading's (else both round up at the same pixels).
+        self._mip_dither = (self._dither + 0.5) % 1.0
         self._backgrounds: dict[tuple[int, int], U8Array] = {}
         # Per-map caches remember the map object itself (and compare with `is`),
         # not id(map): Python reuses the id of a freed object, so a new map
@@ -290,6 +318,86 @@ class Renderer:
         result: U8Array = ((base[None, :] & 0xF0) | shade).astype(np.uint8)
         return result
 
+    def _textured_background(self, camera: Camera, horizon: float, eye: float) -> U8Array:
+        """The default floor (height 0) and ceiling (height 1), textured by
+        area: each pixel's distance (the floor-casting formula) puts it at a
+        point in the world, camera + ray x distance, whose texel it shows.
+        Lit and shaded as _lit_background (or by distance only, without a
+        light map). Built every frame: it depends on where you are."""
+        depth, below = self._background_depths(horizon, eye)
+        shade_depth, _ = self._background_depths(round(horizon), round(eye * 64) / 64)
+        w, h = self.config.width, self.config.height
+        light = np.ones(((w + 1) // 2, (h + 1) // 2))
+        if self._light is not None:
+            # Light changes slowly across the screen (4 samples per cell), so
+            # it's looked up once per 2x2 pixels; the dither hides the steps.
+            # Ceilings take the square root (bounce light) with the power on,
+            # as in _lit_background.
+            cs, rs = slice(0, w, 2), slice(0, h, 2)
+            along = np.minimum(depth[None, rs] / self._cos[cs, None], 64.0)
+            x = camera.x + self._ray_dx[cs, None] * along
+            y = camera.y + self._ray_dy[cs, None] * along
+            light = np.minimum(self._light.at(x, y), 1.0)
+            ceiling = np.sqrt(light) if self._power else light
+            light = np.where(below[None, rs], light, ceiling)
+        arrays = self._map_arrays_for(self._frame_map)
+        return fc.textured_background(
+            camera.x,
+            camera.y,
+            self._ray_dx,
+            self._ray_dy,
+            self._cos,
+            depth,
+            np.where(below, eye, 1.0 - eye),  # the eye's height above / below the surface
+            ~below,
+            self._brightness(shade_depth),
+            np.ascontiguousarray(light),
+            self._dither,
+            self._mip_dither,
+            self.projection,
+            MIP_BIAS,
+            arrays.areas,
+            self.surfaces.floor,
+            self.surfaces.ceiling,
+            self.surfaces.mips,
+        )
+
+    def _surface_texels(
+        self,
+        x: FloatArray,
+        y: FloatArray,
+        depth: FloatArray,
+        drop: FloatArray,
+        ceiling: npt.NDArray[np.bool_],
+        cols: IntArray | slice,
+        rows: slice = slice(None),
+    ) -> U8Array:
+        """Texels of floor or ceiling pixels at world points (x, y), at
+        perpendicular `depth`, `drop` below or above the eye, in screen
+        columns `cols` and rows `rows` (for the dither). The mip level is
+        picked so a texel is about a pixel: a pixel covers depth / projection
+        across the ray and, seen at a slant, depth^2 / (projection * drop)
+        along it; the larger decides."""
+        cos = self._cos[cols][:, None]
+        footprint = depth / self.projection / cos * np.maximum(1.0, depth / np.maximum(drop, 1e-3))
+        with np.errstate(divide="ignore"):
+            level = np.log2(footprint * TEX_SIZE) + MIP_BIAS
+        level = np.nan_to_num(level, nan=99.0, posinf=99.0, neginf=0.0)
+        dither = self._mip_dither[cols][:, rows]
+        shape = x.shape
+        arrays = self._map_arrays_for(self._frame_map)
+        return fc.surface_texels(
+            np.ascontiguousarray(x, dtype=np.float64),
+            np.ascontiguousarray(np.broadcast_to(y, shape), dtype=np.float64),
+            np.ascontiguousarray(np.broadcast_to(level, shape), dtype=np.float64),
+            np.ascontiguousarray(np.broadcast_to(ceiling, shape)),
+            np.ascontiguousarray(np.broadcast_to(dither, shape), dtype=np.float64),
+            arrays.areas,
+            self.surfaces.floor,
+            self.surfaces.ceiling,
+            self.surfaces.mips,
+        )
+
     def _dithered(
         self,
         colour: npt.NDArray[np.integer],
@@ -304,9 +412,10 @@ class Renderer:
         ordered dithering as the background, so large floors and ceilings at
         other heights don't show hard bands. `light`: per pixel, or 1."""
         brightness = self._brightness(np.nan_to_num(depth, nan=np.inf, posinf=1e9)) * light
-        exact = ((colour[:, None] & 0x0F) + 1) * brightness - 1
+        base = colour if colour.ndim == 2 else colour[:, None]  # per pixel, or per column
+        exact = ((base & 0x0F) + 1) * brightness - 1
         shade = np.floor(exact + self._dither[cols, r0:r1]).clip(0, 15).astype(np.intp)
-        result: U8Array = ((colour[:, None] & 0xF0) | shade).astype(np.uint8)
+        result: U8Array = ((base & 0xF0) | shade).astype(np.uint8)
         return result
 
     def _ceiling_light(
@@ -402,11 +511,12 @@ class Renderer:
         self._light = self._light_map_for(game_map)
         if self._light is not None and not power:
             self._light = self._light.without_power()
-        self._frame_background = (
-            self.background(horizon, eye)
-            if self._light is None
-            else self._lit_background(self._light, camera, horizon, eye)
-        )
+        if self.textured:
+            self._frame_background = self._textured_background(camera, horizon, eye)
+        elif self._light is None:
+            self._frame_background = self.background(horizon, eye)
+        else:
+            self._frame_background = self._lit_background(self._light, camera, horizon, eye)
 
         # 1. One ray per column, compiled (doomer/client/fastcast.py): per
         # column, the full wall it ends at and the changes of space before it,
@@ -471,22 +581,23 @@ class Renderer:
 
     def _map_arrays_for(self, game_map: GameMap) -> fc.MapArrays:
         """The map's grids as arrays for the compiled caster, with each cell's
-        atlas slots [face 0-3, upper] (a cell's textures never change during
-        a map). Outside the map counts as wall type 1."""
+        atlas slots: per compass face, its texture and its texture above one
+        storey (a cell's textures never change during a map). Outside the
+        map counts as wall type 1."""
         if self._map_arrays is None or self._slots_map is not game_map:
             slots = np.array(
                 [
                     [
                         [self._slot_for(game_map, x, y, f) for f in range(4)]
-                        + [self._upper_slot(game_map.walls[y][x])]
+                        + [self._upper_slot(self._face_type(game_map, x, y, f)) for f in range(4)]
                         for x in range(game_map.width)
                     ]
                     for y in range(game_map.height)
                 ],
                 dtype=np.int64,
-            ).reshape(game_map.height, game_map.width, 5)
+            ).reshape(game_map.height, game_map.width, 8)
             outside = np.array(
-                [int(self.slot_table[1, side]) for side in range(4)] + [self._upper_slot(1)],
+                [int(self.slot_table[1, side]) for side in range(4)] + [self._upper_slot(1)] * 4,
                 dtype=np.int64,
             )
             bulkhead = int(self.slot_table[BULKHEAD_TYPE, UPPER])
@@ -494,8 +605,18 @@ class Renderer:
             self._slots_map = game_map
         return self._map_arrays
 
-    def _slot_for(self, game_map: GameMap, x: int, y: int, face: int) -> int:
+    def _face_type(self, game_map: GameMap, x: int, y: int, face: int) -> int:
+        """The wall type whose textures a face of a cell shows: its own, but
+        a plain wall looks like the area it faces (areas.AREA_FACES)."""
         wall_type = game_map.walls[y][x]
+        side = (face - game_map.facing_at(x, y)) % 4
+        if side not in AREA_FACES.get(wall_type, ()):
+            return wall_type
+        dx, dy = _FACE_STEP[face]
+        return AREA_WALL_TYPE + game_map.area_at(x + dx, y + dy)
+
+    def _slot_for(self, game_map: GameMap, x: int, y: int, face: int) -> int:
+        wall_type = self._face_type(game_map, x, y, face)
         if wall_type >= len(self.slot_table):
             return 0  # unknown wall type -> missing texture
         side = (face - game_map.facing_at(x, y)) % 4
@@ -997,7 +1118,19 @@ class Renderer:
                 & (row_depth < sub_z)
             )
             if on_ceiling.any():
-                colour = np.full(len(cols), self.ceiling_colour)
+                colour: npt.NDArray[np.integer] = np.full(len(cols), self.ceiling_colour)
+                if self.textured:
+                    seen = np.where(on_ceiling, row_depth, near[:, None])  # finite everywhere
+                    along = np.minimum(seen / self._cos[cols][:, None], 64.0)
+                    colour = self._surface_texels(
+                        self._frame_camera.x + self._ray_dx[cols][:, None] * along,
+                        self._frame_camera.y + self._ray_dy[cols][:, None] * along,
+                        seen,
+                        (s.ceiling - eye)[:, None],
+                        np.ones(seen.shape, dtype=np.bool_),
+                        cols,
+                        slice(r0, r1),
+                    )
                 lit = self._dithered(
                     colour, row_depth, cols, r0, r1, self._ceiling_light(cols, row_depth, s.ceiling)
                 )

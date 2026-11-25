@@ -8,6 +8,7 @@ fov_degrees = 75.0
 max_fps = 144           # 0 = uncapped
 vsync = true
 show_fps = true
+# Flat floors and ceilings instead of the textured ones (set both):
 # ceiling_colour = [205, 200, 180]
 # floor_colour = [120, 108, 96]
 

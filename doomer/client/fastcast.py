@@ -81,16 +81,18 @@ _EPS = 1e-9
 
 @dataclass(frozen=True, slots=True)
 class MapArrays:
-    """A map's grids as numpy arrays, and each cell's atlas slots: [face 0-3,
-    upper] (for a cell outside the map: `outside`). Built once per map."""
+    """A map's grids as numpy arrays, and each cell's atlas slots: per
+    compass face, its texture and its texture above one storey (for a cell
+    outside the map: `outside`). Built once per map."""
 
     walls: Int64Array
     floors: Int64Array
     ceilings: Int64Array
     facing: Int64Array
-    slots: Int64Array  # (height, width, 5)
-    outside: Int64Array  # (5,)
+    slots: Int64Array  # (height, width, 8): [face 0-3, the upper slot of face 0-3]
+    outside: Int64Array  # (8,)
     bulkhead: int  # the upper slot over any open span (a dropped ceiling's face)
+    areas: Int64Array
 
 
 def map_arrays(
@@ -112,6 +114,13 @@ def map_arrays(
         slots,
         outside,
         bulkhead,
+        np.array(
+            [
+                [game_map.area_at(x, y) for x in range(game_map.width)]
+                for y in range(game_map.height)
+            ],
+            dtype=np.int64,
+        ).reshape(game_map.height, game_map.width),
     )
 
 
@@ -416,10 +425,10 @@ def _cast_columns(
                 # The wall the ray stops at: its own arrays.
                 if 0 <= cell_x < width and 0 <= cell_y < height:
                     wi[W_SLOT, col] = slots[cell_y, cell_x, face]
-                    wi[W_UPPER, col] = slots[cell_y, cell_x, 4]
+                    wi[W_UPPER, col] = slots[cell_y, cell_x, 4 + face]
                 else:
                     wi[W_SLOT, col] = outside[face]
-                    wi[W_UPPER, col] = outside[4]
+                    wi[W_UPPER, col] = outside[4 + face]
                 wf[W_DIST, col] = distance
                 wf[W_U, col] = u
                 wf[W_BASE, col] = floor_now
@@ -506,11 +515,11 @@ def _cast_columns(
             if 0 <= cx < width and 0 <= cy < height:
                 it[SLOT, j, col] = slots[cy, cx, it[FACE, j, col]]
                 it[BACK_SLOT, j, col] = slots[cy, cx, it[EXIT_FACE, j, col]]
-                it[UPPER_SLOT, j, col] = slots[cy, cx, 4]
+                it[UPPER_SLOT, j, col] = slots[cy, cx, 4 + it[FACE, j, col]]
             else:
                 it[SLOT, j, col] = outside[it[FACE, j, col]]
                 it[BACK_SLOT, j, col] = outside[it[EXIT_FACE, j, col]]
-                it[UPPER_SLOT, j, col] = outside[4]
+                it[UPPER_SLOT, j, col] = outside[4 + it[FACE, j, col]]
     return fl, it, counts, wf, wi
 
 
@@ -541,3 +550,101 @@ def _own_span(
     it[EXIT_Y_SIDE, k, col] = 0
     it[FACE, k, col] = 0
     it[EXIT_FACE, k, col] = 0
+
+
+# --- floor and ceiling texels ----------------------------------------------------------
+
+
+@_jit
+def surface_texels(
+    xs: FloatArray,
+    ys: FloatArray,
+    level: FloatArray,
+    ceiling: npt.NDArray[np.bool_],
+    dither: FloatArray,
+    areas: Int64Array,
+    floor_texture: Int64Array,
+    ceiling_texture: Int64Array,
+    mips: npt.NDArray[np.uint8],
+) -> npt.NDArray[np.uint8]:
+    """The texel each floor or ceiling pixel shows, all arrays the same shape:
+    the world point it shows (xs, ys), the mip level it wants (fractional: a
+    per-pixel dither threshold rounds it up or down, so neighbouring levels
+    blend instead of meeting at a seam), and whether it's a ceiling. The
+    texture comes from the area of the cell the point is in."""
+    out = np.empty(xs.shape, dtype=np.uint8)
+    flat_x, flat_y, flat_l = xs.ravel(), ys.ravel(), level.ravel()
+    flat_c, flat_d, flat_out = ceiling.ravel(), dither.ravel(), out.ravel()
+    h, w = areas.shape
+    top = mips.shape[1] - 1
+    for i in range(flat_x.shape[0]):
+        x, y = flat_x[i], flat_y[i]
+        cx, cy = math.floor(x), math.floor(y)
+        area = areas[cy, cx] if 0 <= cx < w and 0 <= cy < h else 0
+        texture = ceiling_texture[area] if flat_c[i] else floor_texture[area]
+        lv = flat_l[i] + flat_d[i]
+        k = top if not lv < top else (0 if lv < 0.0 else int(lv))
+        u = math.floor(x * 64.0) & 63
+        v = math.floor(y * 64.0) & 63
+        flat_out[i] = mips[texture, k, v, u]
+    return out
+
+
+@_jit
+def textured_background(
+    cam_x: float,
+    cam_y: float,
+    ray_dx: FloatArray,
+    ray_dy: FloatArray,
+    cos: FloatArray,
+    depth: FloatArray,
+    drop: FloatArray,
+    ceiling: npt.NDArray[np.bool_],
+    brightness: FloatArray,
+    light: FloatArray,
+    dither: FloatArray,
+    mip_dither: FloatArray,
+    projection: float,
+    bias: float,
+    areas: Int64Array,
+    floor_texture: Int64Array,
+    ceiling_texture: Int64Array,
+    mips: npt.NDArray[np.uint8],
+) -> npt.NDArray[np.uint8]:
+    """The default floor and ceiling, (columns, rows) of shaded palette
+    indices, in one pass: per pixel, the world point it shows (camera + ray x
+    distance), the mip level (as surface_texels), the area's texel, then
+    shading by distance (`brightness` per row) and light (`light`, one value
+    per 2 x 2 pixels), ordered-dithered as the renderer's other surfaces.
+    Per row: perpendicular `depth` (inf at the horizon), the eye's `drop` to
+    the surface, and whether it's the `ceiling`."""
+    w, h = ray_dx.shape[0], depth.shape[0]
+    out = np.empty((w, h), dtype=np.uint8)
+    rows, cols = areas.shape
+    top = mips.shape[1] - 1
+    # The mip level is log2(texels per pixel): a per-row part (distance and
+    # slant) plus a per-column part (1 / cos: rays fan out off-centre).
+    row_level = np.empty(h)
+    for r in range(h):
+        d = depth[r]
+        footprint = d / projection * max(1.0, d / max(drop[r], 1e-3))
+        row_level[r] = math.log2(footprint * 64.0) + bias if footprint < 1e30 else 99.0
+    col_level = np.empty(w)
+    for c in range(w):
+        col_level[c] = -math.log2(cos[c])
+    for c in range(w):
+        for r in range(h):
+            d = depth[r]
+            along = min(d / cos[c], 64.0)
+            x = cam_x + ray_dx[c] * along
+            y = cam_y + ray_dy[c] * along
+            lv = row_level[r] + col_level[c] + mip_dither[c, r]
+            k = top if not lv < top else (0 if lv < 0.0 else int(lv))
+            cx, cy = math.floor(x), math.floor(y)
+            area = areas[cy, cx] if 0 <= cx < cols and 0 <= cy < rows else 0
+            texture = ceiling_texture[area] if ceiling[r] else floor_texture[area]
+            t = mips[texture, k, math.floor(y * 64.0) & 63, math.floor(x * 64.0) & 63]
+            exact = ((t & 15) + 1) * brightness[r] * light[c >> 1, r >> 1] - 1.0
+            s = math.floor(exact + dither[c, r])
+            out[c, r] = (t & 0xF0) | (0 if s < 0 else (15 if s > 15 else s))
+    return out
