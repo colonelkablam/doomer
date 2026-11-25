@@ -126,56 +126,61 @@ BODIES = {  # square on, mirrored about the middle (between columns 9 and 10)
         "LLBBBBDWWWWWWDBBBBSS",
     ),
 }
-# Hair: on top of the head, and (long styles) behind it.
-_SIDE_PART = (
-    "......BBBBBBB.......",
-    "....LLLBBBBBBBB.....",
-    "...LLLBBBBBBBBBS....",
-    "...LBBBBBBBBBBBSS...",
-    "...BBB.BBBBBBBBBS...",
-    ".....B........BS....",
+# Hair: on top of the head, and behind it (filling out round the head;
+# longer styles further down). Symmetrical, only the shading lit from the
+# left (a quiff, when there is one, may break that).
+_SHORT = (
+    "......BBBBBBBB......",
+    ".....LBBBBBBBBS.....",
+    "....LLBBBBBBBBSS....",
+    "....LBBBBBBBBBBS....",
+    "....BB........BB....",
+    "....B..........B....",
 )
+_BEHIND = _below(1, *(("....LBBBBBBBBBBS....",) * 5))  # beside the crown, behind the head
 HAIR_TOPS = {
-    "side_part": _t(*_SIDE_PART),
-    "mullet": _t(*_SIDE_PART),
+    "side_part": _t(*_SHORT),
+    "mullet": _t(*_SHORT),
     "slicked": _below(
         1,
-        ".....LLLLLBBBBB.....",
-        "....BBBBBBBBBBBS....",
-        "....BBBBBBBBBBBS....",
-        "....B..........S....",
-        "....B..........S....",
+        ".....LLBBBBBBSS.....",
+        "....LBBBBBBBBBBS....",
+        "....BBBBBBBBBBBB....",
+        "....B..........B....",
+        "....B..........B....",
     ),
     "perm": _t(
         ".....BBBBBBBBBB.....",
-        "...LLBBBBBBBBBBBB...",
-        "..LLLBBBBBBBBBBBBS..",
-        "..LLBBBBBBBBBBBBBS..",
+        "...LLBBBBBBBBBBSS...",
+        "..LLLBBBBBBBBBBSSS..",
+        "..LLBBBBBBBBBBBBSS..",
         "..LBBB........BBBS..",
-        "..BBB..........BBS..",
-        "..BBB..........BBS..",
-        "..BB............BS..",
-        "...B............S...",
+        "..BBB..........BBB..",
+        "..BBB..........BBB..",
+        "..BB............BB..",
+        "...B............B...",
     ),
     "bob": _t(
-        "......BBBBBBB.......",
-        "....LLLBBBBBBBB.....",
-        "...LLLBBBBBBBBBS....",
-        "...LBBBBBBBBBBBSS...",
-        "...BBBBBBBBBBBBSS...",
+        "......BBBBBBBB......",
+        "....LLLBBBBBBBBS....",
+        "...LLLBBBBBBBBBSS...",
+        "...LBBBBBBBBBBBBS...",
+        "...BBBBBBBBBBBBBB...",
     ),
     "bald": _below(
         3,
-        "....B..........S....",
-        "....BB........SS....",
-        "....BB........SS....",
-        "....BB........SS....",
-        "....B..........S....",
+        "....B..........B....",
+        "....BB........BB....",
+        "....BB........BB....",
+        "....BB........BB....",
+        "....B..........B....",
     ),
 }
 HAIR_BACKS = {
+    "side_part": _BEHIND,
+    "slicked": _BEHIND,
     "bob": _below(4, *(("..LLBBBBBBBBBBBBSS..",) * 9), "..LLBB........BBSS.."),
-    "mullet": _below(9, *(("....BBBBBBBBBBBS....",) * 6)),
+    "mullet": _t(*_BEHIND[:9], *(("....BBBBBBBBBBBB....",) * 6)),
 }
 BALD_SHINE = _below(2, "........LL..........")
 FACIAL_HAIR_TEMPLATES = {

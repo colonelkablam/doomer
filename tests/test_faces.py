@@ -110,3 +110,15 @@ def test_the_body_is_square_on() -> None:
             assert shape == shape[::-1], (name, row)  # the same outline both sides
             middle = row.replace("L", "B").replace("S", "B")  # shading aside
             assert middle == middle[::-1], (name, row)  # lapels, collar, tie centred
+
+
+def test_hair_is_symmetrical_without_gaps() -> None:
+    from doomer.client.faces import HAIR_BACKS, HAIR_TOPS
+
+    for name, template in [*HAIR_TOPS.items(), *HAIR_BACKS.items()]:
+        for row in template:
+            shape = "".join("." if ch == "." else "x" for ch in row)
+            assert shape == shape[::-1], (name, row)  # the same both sides
+    for row in HAIR_TOPS["side_part"][:4]:  # the crown: solid, no holes
+        hair = row.strip(".")
+        assert "." not in hair, row
