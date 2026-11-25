@@ -267,8 +267,9 @@ def _mac_se30() -> tuple[Box, ...]:
 # --- 1980s desk phone ----------------------------------------------------------------
 # Brown plastic, low: on the user's left a raised cradle with the handset
 # lying on it front to back (an earpiece and a mouthpiece, wider and deeper,
-# joined by a narrower grip); on the right the keypad and a column of amber
-# line buttons. Five boxes, so only a few in a map (the boss's desk). Real
+# joined by a narrower grip: its shape in see-through textures on one box);
+# on the right the keypad and a column of amber line buttons. Three boxes;
+# still, only a few in a map (the boss's desk). Real
 # size ~22 x 20 cm; built ~1.6x, as the Mac is, so it reads. Model +x faces
 # whoever uses it (as the Mac's screen); +y is the phone's right, the user's
 # left (they face it, looking along -x).
@@ -303,11 +304,36 @@ def phone_body() -> int:
     return _texture(c)
 
 
-def handset_plastic() -> int:
-    """The handset: a lighter brown than the body, the light along its back."""
+def handset_side() -> int:
+    """The handset's long sides (u along it, v down): an old receiver's
+    profile. The earpiece and mouthpiece ends full height, the grip between
+    them only its upper part; under the grip nothing (see-through), so the
+    dark cradle shows in the gap like the shadow under a real one."""
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), WOOD, 6.5)
-    c.paint(c.rect(0, 64, 24, 40), WOOD, 8.0)
+    ends = c.rect(0, 64, 0, 18) | c.rect(0, 64, 46, 64)
+    grip = c.rect(0, 30, 18, 46)
+    c.paint(ends | grip, WOOD, 6.5)
+    c.paint((ends | grip) & c.rect(0, 6, 0, 64), WOOD, 8.0)  # the light along its back
+    c.paint(ends & c.rect(52, 64, 0, 64), WOOD, 4.0)  # the cups' undersides
+    c.paint(grip & c.rect(26, 30, 0, 64), WOOD, 4.0)
+    return _texture(c)
+
+
+def handset_end() -> int:
+    """An end of the handset (an ear or mouth cup), seen head on."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 5.5)
+    c.paint(c.rect(0, 10, 0, 64), WOOD, 7.5)
+    return _texture(c)
+
+
+def handset_top() -> int:
+    """The handset from above (v along it, u across): a dog-bone, the cups
+    at the ends full width, the grip narrower; see-through beside the grip."""
+    c = Canvas()
+    shape = c.rect(0, 18, 0, 64) | c.rect(46, 64, 0, 64) | c.rect(0, 64, 18, 46)
+    c.paint(shape, WOOD, 6.5)
+    c.paint(shape & c.rect(0, 64, 26, 38), WOOD, 8.0)  # the light along its back
     return _texture(c)
 
 
@@ -319,16 +345,20 @@ def cradle_top() -> int:
 
 
 def _phone() -> tuple[Box, ...]:
-    keys, body, plastic, cradle = phone_keys(), phone_body(), handset_plastic(), cradle_top()
+    keys, body, cradle = phone_keys(), phone_body(), cradle_top()
+    side, end, top = handset_side(), handset_end(), handset_top()
     w, d, h = _PHONE_W, _PHONE_D, _PHONE_HIGH
-    ear = (h, h + 0.024)  # the ear and mouth pieces stand proud of the grip
     return (
         Box((-d, d), (-w, _CRADLE_Y), (0.0, _PHONE_LOW), (body, body, body, body, keys)),
         Box((-d, d), (_CRADLE_Y, w), (0.0, h), (body, body, body, body, cradle)),
-        # The handset, front to back along the cradle, a little beyond it.
-        Box((-d - 0.008, -0.03), (_CRADLE_Y + 0.002, w + 0.004), ear, (plastic,) * 5),  # ear
-        Box((-0.03, 0.03), (_CRADLE_Y + 0.012, w - 0.008), (h, h + 0.016), (plastic,) * 5),
-        Box((0.03, d + 0.008), (_CRADLE_Y + 0.002, w + 0.004), ear, (plastic,) * 5),  # mouth
+        # The handset, front to back along the cradle, a little beyond it; its
+        # shape (cups and grip) in see-through textures on one box.
+        Box(
+            (-d - 0.008, d + 0.008),
+            (_CRADLE_Y + 0.002, w + 0.004),
+            (h, h + 0.026),
+            (end, side, end, side, top),
+        ),
     )
 
 

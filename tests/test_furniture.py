@@ -128,12 +128,9 @@ def test_the_phone_sits_on_the_boss_desk_its_handset_front_to_back() -> None:
     office = load_map("maps/office.map")
     (phone,) = office.things_of_type("phone")
     assert resting_height(office, phone) > 0.3  # on the boss's desk top
-    keypad, cradle, ear, grip, mouth = BOX_MODELS["phone"]
+    keypad, cradle, handset = BOX_MODELS["phone"]  # three boxes
     assert cradle.z[1] > keypad.z[1]  # the cradle raised beside the keypad
     assert cradle.y[0] >= keypad.y[1] - 1e-9  # on the user's left (+y), the keypad right
-    # The handset runs front to back (along x), its ends standing proud of
-    # the narrower grip between them.
-    for part in (ear, grip, mouth):
-        assert part.z[0] >= cradle.z[1] - 1e-9
-    assert ear.x[1] <= grip.x[0] + 1e-9 and grip.x[1] <= mouth.x[0] + 1e-9
-    assert (grip.y[1] - grip.y[0]) < (ear.y[1] - ear.y[0]) and grip.z[1] < ear.z[1]
+    assert handset.z[0] >= cradle.z[1] - 1e-9  # lying on it
+    # Front to back: longer along x than across.
+    assert handset.x[1] - handset.x[0] > 2 * (handset.y[1] - handset.y[0])
