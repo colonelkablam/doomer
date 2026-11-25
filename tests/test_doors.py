@@ -85,7 +85,7 @@ def test_a_shut_hinged_door_stops_you() -> None:
 
 
 def test_use_opens_a_hinged_door_and_you_can_walk_through() -> None:
-    world, p = world_at(3.5, 5.4)
+    world, p = world_at(3.5, 4.95)  # in the doorway's recess, 0.9 from the door
     run(world, 1, use=True, angle=NORTH)
     events = drain_events(world)
     assert any(isinstance(e, DoorToggled) and e.opening for e in events)
@@ -96,7 +96,7 @@ def test_use_opens_a_hinged_door_and_you_can_walk_through() -> None:
 
 
 def test_holding_use_toggles_once() -> None:
-    world, _ = world_at(3.5, 5.4)
+    world, _ = world_at(3.5, 4.95)
     run(world, 30, use=True, angle=NORTH)  # held for half a second
     assert world.doors[0].opening
 
@@ -111,15 +111,15 @@ def test_use_needs_you_to_face_the_door_and_be_near_it() -> None:
 
 
 def test_a_door_wont_shut_on_you() -> None:
-    world, p = world_at(3.5, 5.4)
+    world, p = world_at(3.5, 4.95)
     run(world, 1, use=True, angle=NORTH)
     run(world, ticks_for(HINGED), angle=NORTH)
-    p.y = 4.5  # standing in the doorway
+    p.y = 3.7  # standing where the leaf swings (north of the door)
     run(world, 1, angle=SOUTH)  # (release use)
     run(world, 1, use=True, angle=NORTH)  # try to shut it on yourself
     run(world, ticks_for(HINGED), angle=NORTH)
     assert world.doors[0].open == 1.0
-    p.y = 5.4  # step back, clear of the doorway (> 0.75) but within reach (1.3)
+    p.y = 4.6  # step back into the recess: clear of the swing, within reach (1.3)
     run(world, 1, angle=NORTH)
     run(world, 1, use=True, angle=NORTH)
     run(world, ticks_for(HINGED), angle=NORTH)
@@ -166,8 +166,7 @@ def test_double_doors_block_open_on_use_and_let_you_through() -> None:
     p.x, p.y = 3.5, 6.0
     run(world, 90, forward=1.0, angle=NORTH)
     assert p.y == pytest.approx(4.5 - DOOR_SET + DOOR_HALF + MOVE.radius)  # shut: stopped
-    p.y = 5.4
-    run(world, 1, use=True, angle=NORTH)
+    run(world, 1, use=True, angle=NORTH)  # right in front of it
     run(world, ticks_for(DOUBLE), angle=NORTH)
     run(world, 90, forward=1.0, angle=NORTH)
     assert p.y < 3.0
@@ -214,3 +213,22 @@ def test_open_glass_doors_leave_a_strip_of_each_leaf_in_the_doorway() -> None:
     for w in walls:
         assert w.hi - w.lo == pytest.approx(0.5 - SLIDE[SLIDING])
     assert 1.0 - 2 * (0.5 - SLIDE[SLIDING]) >= 0.7  # still a wide way through
+
+
+@pytest.mark.parametrize(
+    "start, angle",
+    [((10.0, 11.5), math.pi), ((6.5, 11.5), 0.0)],  # from the corridor (its recess), from inside
+)
+def test_the_boss_door_opens_from_either_side_once_youre_against_it(
+    start: tuple[float, float], angle: float
+) -> None:
+    from doomer.shared.events import DoorToggled
+    from doomer.shared.mapfile import load_map
+
+    world = new_world(load_map("maps/office.map"), "coop")
+    p = spawn_player(world, 1, "p")
+    p.x, p.y = start
+    run(world, 120, forward=1.0, angle=angle)  # walk up to it until it stops you
+    drain_events(world)
+    run(world, 1, use=True, angle=angle)
+    assert any(isinstance(e, DoorToggled) and e.opening for e in drain_events(world))

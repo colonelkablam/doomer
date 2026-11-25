@@ -57,7 +57,7 @@ DOOR_HEIGHT = 0.75  # walls (~2 m): up to the lintel (a doorway's ceiling is 6/8
 SWING = math.pi / 2  # a hinged door opens a quarter turn
 
 OPEN_SECONDS = {HINGED: 0.6, DOUBLE: 0.6, SLIDING: 0.5, LIFT: 0.8}  # from shut to fully open
-USE_REACH = 1.3  # cells from the door's centre
+USE_REACH = 1.3  # cells from the door's middle (on its plane)
 USE_CONE = math.cos(math.radians(50))  # must be roughly facing it
 SLIDING_SENSE = 1.6  # cells: sliding doors open for anyone this near
 PASSABLE = 0.95  # open beyond this, a hinged door no longer blocks
@@ -148,9 +148,17 @@ def door_walls(door: Door) -> list[ThinWall]:
     return [wall(lo, lo + closed), wall(hi - closed, hi)]
 
 
+SWING_REACH = 0.65  # cells: how far a hinged leaf sweeps into the room (0.6 leaf)
+
+
 def in_doorway(door: Door, x: float, y: float, radius: float) -> bool:
-    """Is a box of half-width `radius` at (x, y) overlapping the doorway cell?"""
-    return abs(x - door.x) < 0.5 + radius and abs(y - door.y) < 0.5 + radius
+    """Is a box of half-width `radius` at (x, y) where a hinged door's leaves
+    swing: from its plane into the room it opens into, across the doorway?"""
+    across, along = (x, y) if door.across_x else (y, x)
+    middle = door.y if door.across_x else door.x
+    side = round(math.cos(door.facing)) if door.across_x else round(math.sin(door.facing))
+    into = (across - door.plane) * side  # how far into the room
+    return -radius - 0.05 < into < SWING_REACH + radius and abs(along - middle) < 0.5 + radius
 
 
 def try_use(
@@ -171,7 +179,8 @@ def try_use(
     for door in doors:
         if door.kind == SLIDING and door.unlocked_by(passes):
             continue  # opens by itself
-        dx, dy = door.x - x, door.y - y
+        cx, cy = door.centre  # the door itself, at the end of its doorway
+        dx, dy = cx - x, cy - y
         d = math.hypot(dx, dy)
         if d > best_d or d < 1e-9:
             continue
@@ -210,11 +219,13 @@ def update_doors(
                 door.called
                 and power
                 and not departing
+                # From the doorway's middle, not the doors: that covers the car,
+                # so they stay open for someone at the back of it.
                 and any(math.hypot(px - door.x, py - door.y) < SLIDING_SENSE for px, py in players)
             )
         elif door.kind == SLIDING:
             door.opening = door.unlocked_by(passes) and any(
-                math.hypot(px - door.x, py - door.y) < SLIDING_SENSE for px, py in players
+                math.dist((px, py), door.centre) < SLIDING_SENSE for px, py in players
             )
         elif (
             not door.opening
