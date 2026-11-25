@@ -86,3 +86,13 @@ def test_pixels_are_solid_blocks() -> None:
     picture = _portrait(CAST["gary"])  # three texels to a pixel
     blocks = picture[:60, :60].reshape(20, 3, 20, 3)
     assert (blocks == blocks[:, :1, :, :1]).all()
+
+
+def test_big_glasses_are_closed_rims_round_each_eye() -> None:
+    from doomer.client.faces import EYEWEAR_TEMPLATES, FEATURES
+
+    glasses = EYEWEAR_TEMPLATES["big_glasses"]
+    for eye in (7, 12):
+        assert FEATURES[6][eye] == "E" and glasses[6][eye] == "."  # the eye shows through
+        for r, col in ((5, eye - 1), (5, eye), (5, eye + 1), (7, eye - 1), (7, eye), (7, eye + 1)):
+            assert glasses[r][col] == "R", (r, col)  # no gaps top or bottom

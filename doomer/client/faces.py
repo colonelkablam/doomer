@@ -188,14 +188,15 @@ FACIAL_HAIR_TEMPLATES = {
         ".......BBBBBS.......",
     ),
 }
-# Glasses: rims (R) and pale lenses (P) beside the eyes; aviators: dark
+# Glasses: closed square rims (R) round each eye, a bridge between, pale
+# lenses (P) either side of the eye; aviators: dark
 # lenses (A), a gold bar (F), a glint (G).
 EYEWEAR_TEMPLATES = {
     "big_glasses": _below(
         5,
         "......RRR..RRR......",
         "......P.PRRP.P......",
-        "......R.R..R.R......",
+        "......RRR..RRR......",
     ),
     "aviators": _below(
         5,
