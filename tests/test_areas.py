@@ -198,7 +198,7 @@ def test_a_balcony_carries_on_its_rooms_walls_and_floor() -> None:
 
 
 def test_desk_pairs_get_paperwork_tops_turned_to_their_facing() -> None:
-    from doomer.client.areas import DESK_VARIANTS, PENCIL_DESKS, cell_tops
+    from doomer.client.areas import DESK_VARIANTS, cell_tops
 
     surfaces = build_surfaces()
     m = parse_map("[walls]\n######\n#dddd#\n#jj..#\n######\n\n[facing]\n......\n.nnee.\n.ee...\n")
@@ -207,7 +207,7 @@ def test_desk_pairs_get_paperwork_tops_turned_to_their_facing() -> None:
     assert tops[2, 1] in surfaces.desk_tops[:, 1]  # j (with screens) too
     assert tops[2, 3] == -1 and tops[0, 0] == -1  # floor, walls: none
     assert tops[1, 1] != tops[1, 2]  # neighbours differ
-    assert surfaces.desk_tops.shape == (DESK_VARIANTS + PENCIL_DESKS, 2)
+    assert surfaces.desk_tops.shape == (DESK_VARIANTS, 2)
 
 
 def test_paperwork_keeps_clear_of_the_macs() -> None:
@@ -221,11 +221,12 @@ def test_paperwork_keeps_clear_of_the_macs() -> None:
         assert bare[2:30, 37:56].all() and bare[34:62, 8:27].all()
 
 
-def test_only_a_couple_of_desks_have_a_pencil() -> None:
-    from doomer.client.areas import DESK_VARIANTS, PENCIL_DESKS, cell_tops
-    from doomer.shared.mapfile import load_map
+def test_one_desk_variant_has_a_pencil() -> None:
+    from doomer.client.areas import DESK_VARIANTS, PENCIL_VARIANT, desk_top
+    from doomer.client.palette import PINK
 
-    surfaces = build_surfaces()
-    tops = cell_tops(load_map("maps/office.map"), surfaces)
-    pencilled = set(surfaces.desk_tops[DESK_VARIANTS:].ravel().tolist())
-    assert sum(int(t) in pencilled for t in tops.ravel()) == PENCIL_DESKS
+    # The pencil's eraser is a pink no message slip uses.
+    eraser = (PINK << 4) | 12
+    for variant in range(DESK_VARIANTS):
+        has = bool((desk_top(variant) == eraser).any())
+        assert has == (variant == PENCIL_VARIANT)

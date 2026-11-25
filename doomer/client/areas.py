@@ -286,7 +286,7 @@ for _area, _look in AREA_LOOKS.items():
 
 DESK_PAIR_TYPES = (13, 19)
 DESK_VARIANTS = 4
-PENCIL_DESKS = 2  # how many desks on a map have a pencil
+PENCIL_VARIANT = 1  # the one desk-top variant with a pencil on it
 _DESK_ZONES = ((3, 3, 31, 28), (33, 36, 61, 61))  # (u0, v0, u1, v1) per half
 
 
@@ -475,12 +475,12 @@ def _open_file(d: _Desk, cv: float, cu: float, rng: np.random.Generator) -> None
 _LAYOUTS = (_splayed_files, _stack, _loose_sheets, _open_file)
 
 
-def desk_top(variant: int, pencil: bool = False) -> U8Array:
+def desk_top(variant: int) -> U8Array:
     """A desk pair's top (for a pod facing north or south): mahogany
     laminate, and in the free end of each half, some paperwork: manila files
     and A4, in one of four layouts per half, message slips and Post-its.
-    `pencil`: a pencil on the bare desk too (only a couple of desks have one:
-    at this size a pencil is a short yellow stripe, best kept rare)."""
+    One variant (PENCIL_VARIANT) has a pencil too: at this size a pencil is
+    a short yellow stripe, best kept rare."""
     rng = np.random.default_rng(50 + variant)
     desk = _Desk(rng)
     for half, (u0, v0, u1, v1) in enumerate(_DESK_ZONES):
@@ -498,7 +498,7 @@ def desk_top(variant: int, pencil: bool = False) -> U8Array:
             at = desk.place(zone, rng, _post_it_mask)
             if at is not None:
                 desk.post_it(*at)
-        if pencil and half == 0:
+        if variant == PENCIL_VARIANT and half == 0:
             # Roughly along or across the desk: a thin line reads best near the axes.
             square = float(rng.choice([0.0, math.pi / 2]))
             at = desk.place(zone, rng, _pen_mask, (square - 0.35, square + 0.35))
@@ -507,10 +507,10 @@ def desk_top(variant: int, pencil: bool = False) -> U8Array:
     return desk.tex
 
 
-def desk_tops(variant: int, pencil: bool = False) -> tuple[U8Array, U8Array]:
+def desk_tops(variant: int) -> tuple[U8Array, U8Array]:
     """A variant for a north/south pod, and turned a quarter for east/west
     (a pair is symmetric under a half turn, so either way round will do)."""
-    top = desk_top(variant, pencil)
+    top = desk_top(variant)
     return top, np.ascontiguousarray(np.rot90(top))
 
 
@@ -558,11 +558,8 @@ def build_surfaces() -> Surfaces:
         look = AREA_LOOKS.get(area, AREA_LOOKS[OFFICE])
         table.append([add(look.floor), add(look.ceiling), add(look.soffit), *tops])
     desks = []
-    # Rows 0 .. DESK_VARIANTS - 1: the variants; then the first PENCIL_DESKS
-    # of them again with a pencil.
-    for row in range(DESK_VARIANTS + PENCIL_DESKS):
-        variant, pencil = row % DESK_VARIANTS, row >= DESK_VARIANTS
-        for top in desk_tops(variant, pencil):
+    for variant in range(DESK_VARIANTS):
+        for top in desk_tops(variant):
             textures.append(top)
         desks.append([len(textures) - 2, len(textures) - 1])
     mips = np.stack([mipmaps(t) for t in textures])
@@ -573,21 +570,11 @@ def cell_tops(game_map: GameMap, surfaces: Surfaces) -> npt.NDArray[np.int64]:
     """Per cell: its own top texture (a desk pair's: a variant by position,
     turned to its facing), or -1."""
     out = np.full((game_map.height, game_map.width), -1, dtype=np.int64)
-    desks = [
-        (x, y)
-        for y in range(game_map.height)
-        for x in range(game_map.width)
-        if game_map.walls[y][x] in DESK_PAIR_TYPES
-    ]
-    # A couple of desks (chosen by a scramble of their positions, so they're
-    # spread about) have a pencil.
-    with_pencil = sorted(desks, key=lambda c: (c[0] * 7919 + c[1] * 104729) % 1009)
-    pencils = {c: k for k, c in enumerate(with_pencil[:PENCIL_DESKS])}
-    for x, y in desks:
-        variant = (x * 7 + y * 13) % DESK_VARIANTS  # neighbours differ
-        if (x, y) in pencils:
-            variant = DESK_VARIANTS + pencils[(x, y)]
-        out[y, x] = surfaces.desk_tops[variant, game_map.facing_at(x, y) % 2]
+    for y in range(game_map.height):
+        for x in range(game_map.width):
+            if game_map.walls[y][x] in DESK_PAIR_TYPES:
+                variant = (x * 7 + y * 13) % DESK_VARIANTS  # neighbours differ
+                out[y, x] = surfaces.desk_tops[variant, game_map.facing_at(x, y) % 2]
     return out
 
 
