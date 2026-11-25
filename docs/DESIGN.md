@@ -736,6 +736,14 @@ Noted at the end of a session, to pick up next:
   timers (lit with `glow`; the box's texture swapped per frame by time, as
   door boxes are drawn from their state). Few boxes each (one cabinet box,
   a front panel); a thing type `server`, blocking.
+- **A face generator, when something needs many faces** (a wall of staff
+  photos, a photo frame on each desk, NPC portraits): a seeded
+  `random_face(rng)` in `client/faces.py` picking each part of a `Face`
+  (seed it from where it's used, so faces are the same every load). Add a
+  few combination rules or weights then, once its use is known (no beard
+  with a perm, a tie with a collar already holds, variety across a row);
+  the cast (`CAST`) stays hand-picked. Until then the templates are the
+  bank: every new template multiplies the faces possible.
 - Also outstanding: the `corner=` property for things (LEVELS.md);
   `shared/validate.py` (a floor is completable); the automap; the lift
   ride to the next floor; networking (milestone 3).
