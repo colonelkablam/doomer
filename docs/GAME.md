@@ -176,7 +176,8 @@ over a deep sill; in service areas, a small high window of wired glass
 and executive windows, the lobby's curtain wall and its entrance doors you
 see the city at night, from the ground floor: flat dark ground up to the
 horizon, black towers on it against a dark sky, small yellow lit windows,
-a red light on some roofs. It's one panorama all round, like Doom's sky:
+a red light on some roofs, and a big full moon low in the west, rising
+behind the buildings over the entrance. It's one panorama all round, like Doom's sky:
 it turns with you but doesn't move as you walk, so it reads as far off,
 and it lights itself (the city has power when the office hasn't). No
 blinds (their slats aliased into noisy stripes). The curtain wall

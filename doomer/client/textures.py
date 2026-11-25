@@ -203,6 +203,8 @@ GLASS = (MAGENTA << 4) | 7
 PANORAMA_WIDTH = 512  # texels round 360 degrees
 PANORAMA_ROWS = 40  # texels above the horizon with towers in them (then sky)
 PANORAMA_ROWS_PER_TAN = PANORAMA_WIDTH / (2 * math.pi)  # square texels
+MOON_COLUMN, MOON_ROW = 252, 15  # texels: ~177 degrees round (west), ~9 degrees up
+MOON_RADIUS = 7.5
 
 
 def panorama(seed: int = 85) -> U8Array:
@@ -213,10 +215,23 @@ def panorama(seed: int = 85) -> U8Array:
     lit, red = indices(OCHRE, 13.0), indices(BRICK, 13.0)
     pano = np.full((PANORAMA_WIDTH, PANORAMA_ROWS + 2), sky, dtype=np.uint8)
     pano[:, 0] = ground
+    # A big full moon in the west, low, in the lobby's curtain wall (from
+    # most of the lobby; higher, it'd be above the glass). Drawn first, so
+    # the towers under it (kept low there) stand in front of its foot.
+    # Pale, a few darker seas on it.
+    cu, cr, radius = MOON_COLUMN, MOON_ROW, MOON_RADIUS
+    us, rs = np.mgrid[0:PANORAMA_WIDTH, 0 : PANORAMA_ROWS + 2]
+    disc = (us + 0.5 - cu) ** 2 + (rs + 0.5 - cr) ** 2 <= radius**2
+    pano[disc] = indices(CREAM, 15.0)
+    for du, dr, r in ((-3, 2, 2.6), (2, -2, 2.0), (3, 3, 1.6)):
+        sea = (us + 0.5 - cu - du) ** 2 + (rs + 0.5 - cr - dr) ** 2 <= r**2
+        pano[disc & sea] = indices(CREAM, 12.0)
     left = 0
     while left < PANORAMA_WIDTH:
         width = int(rng.integers(5, 16))
         height = int(rng.integers(4, PANORAMA_ROWS - 6))
+        if abs(left + width / 2 - MOON_COLUMN) < MOON_RADIUS + width / 2 + 2:
+            height = min(height, MOON_ROW - int(MOON_RADIUS) + 2)  # under the moon: low
         cols = slice(left, min(left + width, PANORAMA_WIDTH))
         pano[cols, 1 : 1 + height] = tower
         for c in range(1, width - 1, 2):  # windows: every other texel, a third lit

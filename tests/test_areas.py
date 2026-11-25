@@ -301,3 +301,14 @@ def test_a_doorways_side_walls_are_lined() -> None:
     assert r._face_type(m, 4, 1, SOUTH) == REVEAL_WALL_TYPE  # the wall north of the doorway
     assert r._face_type(m, 4, 3, NORTH) == REVEAL_WALL_TYPE  # ... and south of it
     assert r._face_type(m, 4, 1, WEST) == AREA_WALL_TYPE + LOBBY  # its room faces: as before
+
+
+def test_a_big_moon_hangs_low_in_the_west() -> None:
+    from doomer.client.palette import CREAM
+    from doomer.client.textures import MOON_COLUMN, MOON_ROW, panorama
+
+    pano = panorama()
+    assert pano[MOON_COLUMN, MOON_ROW] >> 4 == CREAM  # its middle: clear of towers
+    moon = (pano >> 4) == CREAM
+    cols = moon.any(axis=1).nonzero()[0]
+    assert 12 <= len(cols) <= 18  # big: ~15 texels (~10 degrees) across
