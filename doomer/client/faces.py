@@ -223,6 +223,10 @@ EYEWEAR_TEMPLATES = {
         "......KKK..KKK......",
     ),
 }
+# Earrings: a pixel just under each ear.
+EARRING_TEMPLATES = {"gold": _below(8, "....F..........F....")}
+EARRINGS = ("none", *EARRING_TEMPLATES)
+
 GLASSES_COLOURS = {
     "R": (WOOD, 4.5),
     "P": (STEEL, 13.0),
@@ -270,6 +274,7 @@ class Face:
     mouth: str = "grin"
     jacket: str = "brown"
     tie: str = "red"
+    earrings: str = "none"
 
 
 # The cast so far. New people: a new Face of stock parts.
@@ -279,7 +284,7 @@ CAST = {
     # The founder, in oils: white hair round a bald crown, stern.
     "founder": Face("fair", "bald", "white", "none", "none", "stern", "charcoal", "red"),
     # The faces on the ID passes.
-    "pass_blue": Face("tan", "perm", "black", "none", "none", "grin", "pink", "none"),
+    "pass_blue": Face("tan", "perm", "black", "none", "none", "grin", "pink", "none", "gold"),
     "pass_red": Face("dark", "side_part", "black", "none", "beard", "flat", "grey", "blue"),
     "pass_gold": Face("fair", "slicked", "blond", "aviators", "none", "grin", "navy", "gold"),
 }
@@ -327,3 +332,7 @@ def draw_portrait(
         layer(BALD_SHINE, skin.letters())
     if face.eyewear in EYEWEAR_TEMPLATES:
         layer(EYEWEAR_TEMPLATES[face.eyewear], GLASSES_COLOURS)
+    if face.earrings in EARRING_TEMPLATES:
+        layer(
+            EARRING_TEMPLATES[face.earrings], {"F": (OCHRE, 15.0)}
+        )  # bright: they catch the light

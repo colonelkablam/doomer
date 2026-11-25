@@ -111,7 +111,8 @@ eye), and a builder stacks the chosen parts' templates, coloured from the
 face's skin, hair, jacket and tie. The stock parts (`client/faces.py`, `Face`): skin (fair, tan, dark), hair (side parting,
 slicked back, perm, mullet, bob, bald) and its colour (brown, black, blond,
 ginger, white), glasses (none, big glasses, aviators), facial hair (none,
-moustache, beard), mouth (grin, flat, stern), jacket and tie. The cast so
+moustache, beard), mouth (grin, flat, stern), jacket, tie, earrings (none, gold:
+a pixel under each ear). The cast so
 far (`CAST`): Gary, Employee of the Month every month (side parting, big
 glasses, moustache, brown suit); the founder (white hair round a bald
 crown, stern); a face per ID pass. New people: a new combination; new

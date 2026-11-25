@@ -6,6 +6,7 @@ import numpy as np
 
 from doomer.client.faces import (
     CAST,
+    EARRINGS,
     EYEWEAR,
     FACIAL_HAIR,
     HAIR_COLOURS,
@@ -39,6 +40,7 @@ def test_every_stock_part_changes_the_face() -> None:
         "mouth": MOUTHS,
         "jacket": JACKETS,
         "tie": TIES,
+        "earrings": EARRINGS,
     }
     for part, values in options.items():
         for value in values:
@@ -133,3 +135,23 @@ def test_a_side_parting_has_a_dark_parting_left_of_centre() -> None:
     assert parting == [7, 7, 7]  # a line down the crown, left of the middle (9.5)
     assert HAIR_TOPS["side_part"][3][7] == "."  # skin shows just below it
     assert "D" not in "".join(HAIR_TOPS["mullet"])  # the mullet's crown is plain
+
+
+def test_earrings_hang_just_under_the_ears() -> None:
+    from doomer.client.faces import EARRING_TEMPLATES, HEAD
+
+    ears = [
+        (r, col)
+        for r, row in enumerate(HEAD)
+        for col, ch in enumerate(row)
+        if col in (4, 15) and ch != "."
+    ]
+    lowest = max(r for r, _ in ears)
+    rings = [
+        (r, col)
+        for r, row in enumerate(EARRING_TEMPLATES["gold"])
+        for col, ch in enumerate(row)
+        if ch != "."
+    ]
+    assert rings == [(lowest + 1, 4), (lowest + 1, 15)]
+    assert CAST["pass_blue"].earrings == "gold"
