@@ -77,6 +77,11 @@ class LightMap:
     # through a doorway passes under its lintel and lights the floor beyond,
     # not the wall above it on that side.
     upper: "LightMap | None" = None
+    # Light for full walls' faces: every door stops it, glass ones too. Light
+    # through a glass door lights the floor beyond it, not the walls either
+    # side (which it only grazes); else the exit sign over a glass door, the
+    # only light in the dark, would light the far side's wall to the top.
+    walls: "LightMap | None" = None
 
     def without_power(self) -> "LightMap":
         """This map as it is with the power off (itself, if it has no
@@ -84,13 +89,18 @@ class LightMap:
         if self.unpowered is None:
             return self
         upper = self.upper.without_power() if self.upper is not None else None
+        walls = self.walls.without_power() if self.walls is not None else None
         return LightMap(
-            self.samples_per_cell, self.ambient, self.unpowered, self.patches, None, upper
+            self.samples_per_cell, self.ambient, self.unpowered, self.patches, None, upper, walls
         )
 
     def high(self) -> "LightMap":
         """The light for faces above head height (itself, if it has none)."""
         return self.upper if self.upper is not None else self
+
+    def wall_faces(self) -> "LightMap":
+        """The light for full walls' faces (itself, if it has none)."""
+        return self.walls if self.walls is not None else self
 
     def at(self, x: FloatArray, y: FloatArray) -> FloatArray:
         """Light at points (cells), interpolated bilinearly between samples;
@@ -155,10 +165,16 @@ def bake_light_map(game_map: GameMap, config: LightingConfig | None = None) -> L
     )
     lights = panels_in(game_map, config)
     floor_light = _compose(lights, config, walls, floors, doors, rows, cols, keep=True)
-    face_light = _compose(lights, config, walls | low, floors, [p for p, _ in planes], rows, cols)
+    every_door = [p for p, _ in planes]
+    face_light = _compose(lights, config, walls | low, floors, every_door, rows, cols)
     values, unpowered, patches = floor_light
     upper = LightMap(s, config.ambient, face_light[0], (), face_light[1])
-    return LightMap(s, config.ambient, values, patches, unpowered, upper)
+    if len(every_door) > len(doors):  # glass doors: the walls need a map of their own
+        wall_light = _compose(lights, config, walls, floors, every_door, rows, cols)
+        wall_map = LightMap(s, config.ambient, wall_light[0], (), wall_light[1])
+    else:
+        wall_map = None
+    return LightMap(s, config.ambient, values, patches, unpowered, upper, wall_map)
 
 
 def _compose(

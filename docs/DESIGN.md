@@ -438,8 +438,16 @@ dm_spawn      1.5   3.5   0
   can't reach. A second map (`LightMap.upper`, `high()`) is baked with
   lowered ceilings (lintels) and every door plane stopping light; faces
   above head height (bulkheads, the face over a doorway) take their light
-  from it. Floors and ordinary walls use the first. (~2x the bake time,
-  ~0.3 s for the office; nothing per frame but a second lookup.)
+  from it. Floors use the first. A third (`LightMap.walls`,
+  `wall_faces()`), baked only when the map has glass doors, has every door
+  plane stopping light but no lintels: full walls and full-height ceilings
+  take their light from it, so light through a glass door lights the floor
+  beyond, not the walls either side (it only grazes them) or the ceiling
+  (out of its line through a door-high opening). In the dark this showed:
+  the exit sign over the office side of the glass doors lit the lobby's
+  wall up its two storeys, and a pool on its ceiling. Soffits (low, over a
+  doorway) keep the floor map. (~3x the bake time, ~0.4 s for the office;
+  per frame, no extra lookups: each pixel reads one map or the other.)
 - **Furniture footprints** (`things.Footprint`, `shared/furniture.py`): a
   blocking thing type can give its floor plan as rectangles in its own frame,
   each with a top height, instead of the square `radius`. Placed at the
@@ -703,14 +711,6 @@ Rules that have come out of it (details in the sections above):
 
 Noted at the end of a session, to pick up next:
 
-- **Light leaking up the wall round the lobby's glass doors.** Lobby light
-  passing through the glass doorway lights the office floor just inside,
-  and the full walls either side of the doors take their light from that
-  floor, so they brighten all the way up. Bulkheads already use the
-  upper map (`LightMap.high()`); the fix to try: walls light the part above
-  door height from the upper map too (per pixel by height, or by a blend),
-  or bake light through doorways onto the floor only (`_compose` with
-  doorway cells blocking for every face lookup but floors).
 - **Better office windows.** The blinds (`4`) look bad: the slats and the
   sky between them alias into noisy stripes. Redesign: fewer, wider slats
   (or blinds half up, so there's clean glass below), flat colours, no noise.

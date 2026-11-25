@@ -288,3 +288,22 @@ def test_light_through_a_doorway_lights_the_floor_not_the_wall_over_it() -> None
     west = (np.array([3.7]), np.array([2.5]))
     assert float(light.at(*west)[0]) > CONFIG.ambient + 0.05
     assert float(light.high().at(*west)[0]) == pytest.approx(CONFIG.ambient)
+
+
+def test_light_through_glass_doors_lights_floors_not_walls_or_ceilings() -> None:
+    # As above: the panel east of a glass door. West of it, the floor by the
+    # door is lit, but the walls either side of the door (they'd only be
+    # grazed) and the ceiling (out of the light's line through the doorway)
+    # take the walls' map, which every door stops.
+    two_rooms = parse_map(
+        "[walls]\n#########\n#...#...#\n#.......#\n#...#...#\n#########\n"
+        "\n[things]\nceiling_light 6.5 2.5 0\ndoor_sliding 4.5 2.5 0\n"
+    )
+    light = bake_light_map(two_rooms, CONFIG)
+    by_wall = (np.array([3.9]), np.array([1.9]))  # by the wall beside the door, lit diagonally
+    assert float(light.at(*by_wall)[0]) > CONFIG.ambient + 0.005
+    assert float(light.wall_faces().at(*by_wall)[0]) == pytest.approx(CONFIG.ambient)
+    east = (np.array([5.5]), np.array([2.5]))  # the panel's own room: lit as before
+    assert float(light.wall_faces().at(*east)[0]) == pytest.approx(float(light.at(*east)[0]))
+    # Without glass doors there's no need for a map of its own.
+    assert bake_light_map(parse_map("[walls]\n###\n#.#\n###\n"), CONFIG).walls is None

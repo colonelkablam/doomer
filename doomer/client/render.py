@@ -330,7 +330,7 @@ class Renderer:
         along = np.minimum(depth[None, rs] / self._cos[cs, None], 64.0)
         x = camera.x + self._ray_dx[cs, None] * along
         y = camera.y + self._ray_dy[cs, None] * along
-        coarse = np.minimum(light.at(x, y), 1.0)
+        coarse = self._floor_and_ceiling_light(light, x, y, below[rs])
         # Ceilings: the square root (light bounced off a lit floor), but with
         # the power off there's little to bounce: the plain light.
         ceiling = np.sqrt(coarse) if self._power else coarse
@@ -361,7 +361,7 @@ class Renderer:
             along = np.minimum(depth[None, rs] / self._cos[cs, None], 64.0)
             x = camera.x + self._ray_dx[cs, None] * along
             y = camera.y + self._ray_dy[cs, None] * along
-            light = np.minimum(self._light.at(x, y), 1.0)
+            light = self._floor_and_ceiling_light(self._light, x, y, below[rs])
             ceiling = np.sqrt(light) if self._power else light
             light = np.where(below[None, rs], light, ceiling)
         arrays = self._map_arrays_for(self._frame_map)
@@ -468,8 +468,14 @@ class Renderer:
         camera = self._frame_camera
         x = camera.x + self._ray_dx[cols][:, None] * along
         y = camera.y + self._ray_dy[cols][:, None] * along
-        light = np.minimum(self._light.at(x, y), 1.0)
+        # Ceilings take the walls' light (no light through a door reaches
+        # them); soffits, low over a doorway, the floor's.
         low = (height < 1.0)[:, None]
+        soffit = low[:, 0]
+        light = np.empty(x.shape)
+        light[soffit] = self._light.at(x[soffit], y[soffit])
+        light[~soffit] = self._light.wall_faces().at(x[~soffit], y[~soffit])
+        light = np.minimum(light, 1.0)
         shade = self.lighting.soffit_shade if self.lighting else 1.0
         bounce = np.sqrt(light) if self._power else light  # (as the background's ceiling)
         result: FloatArray = np.where(low, light * shade, bounce)
@@ -484,25 +490,40 @@ class Renderer:
             self._light_map_map = game_map
         return self._light_map
 
+    @staticmethod
+    def _floor_and_ceiling_light(
+        light: LightMap, x: FloatArray, y: FloatArray, below: npt.NDArray[np.bool_]
+    ) -> FloatArray:
+        """Light at points [col][row] on the floor (rows `below` the
+        horizon) or the ceiling: floors take the floor map, ceilings the
+        walls' (light through a door lights the floor beyond, not the
+        ceiling). Each point looked up once."""
+        result = np.empty(x.shape)
+        result[:, below] = light.at(x[:, below], y[:, below])
+        result[:, ~below] = light.wall_faces().at(x[:, ~below], y[:, ~below])
+        return np.minimum(result, 1.0)
+
     def _ray_light(
         self,
         cols: IntArray,
         along: FloatArray,
         backoff: float = FACE_LIGHT_BACKOFF,
         high: bool = False,
+        wall: bool = False,
     ) -> FloatArray:
         """Light (0..1) at a distance `along` each column's ray (moved back
         `backoff` towards the camera), from this frame's light map; 1 without
         one. Light over 1 (overlapping pools) is clamped: the colormap can
         darken, not brighten. `high`: for a face above head height (over a
-        doorway), lit only by light that doesn't pass under a lintel."""
+        doorway), lit only by light that doesn't pass under a lintel. `wall`:
+        for a full wall's face, lit only by light that passes no door."""
         if self._light is None:
             return np.ones(np.shape(cols))
         t = np.clip(np.nan_to_num(along - backoff, posinf=64.0), 0.0, 64.0)
         camera = self._frame_camera
         x = camera.x + self._ray_dx[cols] * t
         y = camera.y + self._ray_dy[cols] * t
-        light = self._light.high() if high else self._light
+        light = self._light.high() if high else self._light.wall_faces() if wall else self._light
         result: FloatArray = np.minimum(light.at(x, y), 1.0)
         return result
 
@@ -573,7 +594,7 @@ class Renderer:
         perp = dist * self._cos
         frame, zbuffer = self._draw_walls(
             perp,
-            self._ray_light(np.arange(w), dist),
+            self._ray_light(np.arange(w), dist, wall=True),
             columns.wall_ints[fc.W_SLOT].astype(np.intp),
             columns.wall_ints[fc.W_UPPER].astype(np.intp),
             columns.wall_floats[fc.W_U],
