@@ -11,8 +11,9 @@ on desks being quietly removed. Ends before Windows 95, email and the
 internet. The baby boomers (born 1946–64) are 19–45 and running the place.
 
 **Where**: one corporate office block, climbed floor by floor. Each map is a
-floor; the exit is the lift or the stairwell. You start in the basement
-mailroom and finish in the penthouse boardroom.
+floor; the exit is the lift or the stairwell. You start in the ground-floor
+lobby and finish in the penthouse boardroom (a basement may come later: see
+Game loop).
 
 **Tone**: deadpan office comedy played straight as a shooter. Nothing is gory:
 enemies break, spark, jam, or storm off.
@@ -65,10 +66,9 @@ Planned, roughly in order [planned]:
   that's already on but a different blocker (a jammed lift, a fire door).
 - **Enemies** on the route (see Enemies), so the passes and breaker are
   fought for, not just collected.
-- **Where you start**: the floor order below starts in the basement
-  mailroom, but the ground floor is built first and is currently the
-  start. Decide whether B1 comes before it (reached by the lift down?) or
-  is dropped.
+- **Where you start** (open, revisit): the game starts in the ground-floor
+  lobby for now. The basement mailroom (B1 in the floor order below) is
+  undecided: maybe added later, e.g. reached by taking the lift down.
 
 ## Player characters
 
