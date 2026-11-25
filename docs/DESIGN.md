@@ -280,8 +280,18 @@ dm_spawn      1.5   3.5   0
   ray x distance; the texture is the one for that cell's area, and the
   texel `(frac(x), frac(y)) * 64`. The default floor and ceiling are one
   compiled pass that also shades, lights and dithers (the light map still
-  sampled once per 2x2 pixels); ceilings at other heights (the atrium) use
-  the same lookup per pixel. **Mipmaps**: seen at a slant, many texels fall
+  sampled once per 2x2 pixels); ceilings at other heights (the atrium) and
+  the tops of raised floors (`areas.TOP_TEXTURES`: the balcony's carpet;
+  desk tops stay flat colours, with their seams) use the same lookup per
+  pixel. Textures come from a table by (area, kind): floor, ceiling, soffit
+  (a ceiling lower than a storey, over a doorway: a lining, not ceiling
+  tiles), then the raised tops. Stair treads are box tops, stretched once
+  over each step (a cell wide, an eighth deep), so their carpet is drawn
+  pre-squashed 8:1 to come out square.
+- **Texture shading rule**: a texture's gentle variation (noise, ± a
+  fraction of a shade) must sit mid-shade, e.g. 10.0 ± 0.25, never 8.5 ±
+  0.5: textures are quantised to whole shades, and variation that crosses a
+  step turns into big blotches up close. **Mipmaps**: seen at a slant, many texels fall
   in one pixel and a fine pattern shimmers as you move. Each texture has 7
   levels, each averaging 2x2 texels of the last (in RGB, then the nearest
   palette colour) down to one colour; a pixel takes the level where a texel

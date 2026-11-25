@@ -154,8 +154,10 @@ def missing_texture() -> U8Array:
 def _woodchip(rng: np.random.Generator) -> npt.NDArray[np.float64]:
     """Shades for beige woodchip wallpaper: nearly flat, with fine specks (the
     chips catching the light) rather than a pattern, so it stays calm."""
+    # The base sits mid-shade (10.0, ± 0.25), so the gentle variation never
+    # crosses a palette step: crossing one made big blotches.
     specks = rng.random((TEX_SIZE, TEX_SIZE))
-    shade = 10.4 + (noise(rng, 16) - 0.5) * 0.5
+    shade = 10.0 + (noise(rng, 16) - 0.5) * 0.5
     result: npt.NDArray[np.float64] = (
         shade + np.where(specks < 0.07, 0.8, 0.0) - np.where(specks > 0.95, 0.8, 0.0)
     )
@@ -173,7 +175,7 @@ def raised_floor_edge(seed: int = 14) -> U8Array:
     carpet-gripper strip at the top edge and skirting at the bottom."""
     rng = np.random.default_rng(seed)
     v, u = grid()
-    tex = indices(SAND, 8.5 + (noise(rng, 8) - 0.5))
+    tex = indices(SAND, 9.0 + (noise(rng, 8) - 0.5) * 0.5)  # mid-shade: no blotches
     tex = np.where(v % 8 == 0, indices(GREY, 10.0), tex)  # nosing at each 1/8 step edge
     return np.where(v >= 60, indices(WOOD, 5.0), tex).astype(np.uint8)
 

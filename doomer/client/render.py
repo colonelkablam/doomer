@@ -43,13 +43,22 @@ import functools
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 import pygame
 
 from doomer.client import fastcast as fc
-from doomer.client.areas import AREA_FACES, AREA_WALL_TYPE, Surfaces, build_surfaces
+from doomer.client.areas import (
+    AREA_FACES,
+    AREA_WALL_TYPE,
+    CEILING,
+    SOFFIT,
+    TOP_KIND,
+    Surfaces,
+    build_surfaces,
+)
 from doomer.client.boxes import (
     BOX_MODELS,
     BOX_OPAQUE,
@@ -204,6 +213,11 @@ class Renderer:
         # colours. The flat floor colour is also used for the odd raised
         # surface that isn't a block (none in practice): the office carpet's.
         self.surfaces: Surfaces = build_surfaces()
+        # Per wall type: the surface kind of its top if it's textured like a
+        # floor (a balcony's carpet), else -1 (a flat colour: desk tops).
+        self._top_kind = np.full(max(TOP_KIND, default=0) + 2, -1, dtype=np.int64)
+        for wall_type, kind in TOP_KIND.items():
+            self._top_kind[wall_type] = kind
         self.textured = config.floor_colour is None or config.ceiling_colour is None
         average = self.surfaces.mips[:, -1, 0, 0]  # each texture's single-colour level
         self.ceiling_colour = (
@@ -367,34 +381,36 @@ class Renderer:
         x: FloatArray,
         y: FloatArray,
         depth: FloatArray,
-        drop: FloatArray,
-        ceiling: npt.NDArray[np.bool_],
-        cols: IntArray | slice,
-        rows: slice = slice(None),
+        drop: FloatArray | float,
+        cos: FloatArray,
+        kind: npt.NDArray[np.int64] | int,
+        dither: FloatArray,
     ) -> U8Array:
-        """Texels of floor or ceiling pixels at world points (x, y), at
-        perpendicular `depth`, `drop` below or above the eye, in screen
-        columns `cols` and rows `rows` (for the dither). The mip level is
-        picked so a texel is about a pixel: a pixel covers depth / projection
-        across the ray and, seen at a slant, depth^2 / (projection * drop)
-        along it; the larger decides."""
-        cos = self._cos[cols][:, None]
+        """Texels of horizontal surface pixels (all arguments broadcast to
+        x's shape): world points (x, y), perpendicular `depth`, the eye's
+        `drop` to the surface (its height difference), the ray's `cos`, the
+        kind of surface (areas.FLOOR, CEILING, SOFFIT, a raised top) and a
+        dither threshold for choosing the mip level. The level is picked so a
+        texel is about a pixel: a pixel covers depth / projection across the
+        ray and, seen at a slant, depth^2 / (projection * drop) along it; the
+        larger decides."""
         footprint = depth / self.projection / cos * np.maximum(1.0, depth / np.maximum(drop, 1e-3))
-        with np.errstate(divide="ignore"):
+        with np.errstate(divide="ignore", invalid="ignore"):
             level = np.log2(footprint * TEX_SIZE) + MIP_BIAS
         level = np.nan_to_num(level, nan=99.0, posinf=99.0, neginf=0.0)
-        dither = self._mip_dither[cols][:, rows]
         shape = x.shape
-        arrays = self._map_arrays_for(self._frame_map)
+
+        def flat(a: npt.ArrayLike, dtype: type) -> npt.NDArray[Any]:
+            return np.ascontiguousarray(np.broadcast_to(a, shape), dtype=dtype)
+
         return fc.surface_texels(
-            np.ascontiguousarray(x, dtype=np.float64),
-            np.ascontiguousarray(np.broadcast_to(y, shape), dtype=np.float64),
-            np.ascontiguousarray(np.broadcast_to(level, shape), dtype=np.float64),
-            np.ascontiguousarray(np.broadcast_to(ceiling, shape)),
-            np.ascontiguousarray(np.broadcast_to(dither, shape), dtype=np.float64),
-            arrays.areas,
-            self.surfaces.floor,
-            self.surfaces.ceiling,
+            flat(x, np.float64),
+            flat(y, np.float64),
+            flat(level, np.float64),
+            flat(kind, np.int64),
+            flat(dither, np.float64),
+            self._map_arrays_for(self._frame_map).areas,
+            self.surfaces.table,
             self.surfaces.mips,
         )
 
@@ -920,6 +936,20 @@ class Renderer:
                 if ci.size:
                     depth = row_depth[ci, ri]
                     colour = np.where(s.block, self.top_colour[s.slot], self.floor_colour)[ci]
+                    kind = self._top_kind[np.minimum(s.wall_type, len(self._top_kind) - 1)][ci]
+                    carpeted = kind >= 0  # textured like a floor (areas.TOP_TEXTURES)
+                    if self.textured and carpeted.any():
+                        c, k, d = cols[ci][carpeted], kind[carpeted], depth[carpeted]
+                        along = d / self._cos[c]
+                        colour[carpeted] = self._surface_texels(
+                            self._frame_camera.x + self._ray_dx[c] * along,
+                            self._frame_camera.y + self._ray_dy[c] * along,
+                            d,
+                            eye - s.top[ci][carpeted],
+                            self._cos[c],
+                            k,
+                            self._mip_dither[c, (r0 + ri)[carpeted]],
+                        )
                     on_light = self._ray_light(cols[ci], depth / self._cos[cols[ci]], backoff=0.0)
                     lit = self._dithered_at(colour, depth, cols[ci], r0 + ri, on_light)
                     lit = self._desk_seams(lit, s.wall_type, ci, cols[ci], depth, eye - s.top[ci])
@@ -1124,15 +1154,18 @@ class Renderer:
                 colour: npt.NDArray[np.integer] = np.full(len(cols), self.ceiling_colour)
                 if self.textured:
                     seen = np.where(on_ceiling, row_depth, near[:, None])  # finite everywhere
-                    along = np.minimum(seen / self._cos[cols][:, None], 64.0)
+                    cos = self._cos[cols][:, None]
+                    along = np.minimum(seen / cos, 64.0)
+                    # Lower than a storey: a soffit (over a doorway), lined, not tiled.
+                    kind = np.where(s.ceiling < 1.0, SOFFIT, CEILING)[:, None]
                     colour = self._surface_texels(
                         self._frame_camera.x + self._ray_dx[cols][:, None] * along,
                         self._frame_camera.y + self._ray_dy[cols][:, None] * along,
                         seen,
                         (s.ceiling - eye)[:, None],
-                        np.ones(seen.shape, dtype=np.bool_),
-                        cols,
-                        slice(r0, r1),
+                        cos,
+                        kind,
+                        self._mip_dither[cols, r0:r1],
                     )
                 lit = self._dithered(
                     colour, row_depth, cols, r0, r1, self._ceiling_light(cols, row_depth, s.ceiling)

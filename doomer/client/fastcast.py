@@ -575,28 +575,28 @@ def surface_texels(
     xs: FloatArray,
     ys: FloatArray,
     level: FloatArray,
-    ceiling: npt.NDArray[np.bool_],
+    kind: Int64Array,
     dither: FloatArray,
     areas: Int64Array,
-    floor_texture: Int64Array,
-    ceiling_texture: Int64Array,
+    table: Int64Array,
     mips: npt.NDArray[np.uint8],
 ) -> npt.NDArray[np.uint8]:
-    """The texel each floor or ceiling pixel shows, all arrays the same shape:
-    the world point it shows (xs, ys), the mip level it wants (fractional: a
-    per-pixel dither threshold rounds it up or down, so neighbouring levels
-    blend instead of meeting at a seam), and whether it's a ceiling. The
-    texture comes from the area of the cell the point is in."""
+    """The texel each horizontal surface pixel shows, all arrays the same
+    shape: the world point it shows (xs, ys), the mip level it wants
+    (fractional: a per-pixel dither threshold rounds it up or down, so
+    neighbouring levels blend instead of meeting at a seam), and the kind of
+    surface (areas.FLOOR, CEILING, SOFFIT, a raised top). The texture is
+    table[area of the point's cell, kind]."""
     out = np.empty(xs.shape, dtype=np.uint8)
     flat_x, flat_y, flat_l = xs.ravel(), ys.ravel(), level.ravel()
-    flat_c, flat_d, flat_out = ceiling.ravel(), dither.ravel(), out.ravel()
+    flat_k, flat_d, flat_out = kind.ravel(), dither.ravel(), out.ravel()
     h, w = areas.shape
     top = mips.shape[1] - 1
     for i in range(flat_x.shape[0]):
         x, y = flat_x[i], flat_y[i]
         cx, cy = math.floor(x), math.floor(y)
         area = areas[cy, cx] if 0 <= cx < w and 0 <= cy < h else 0
-        texture = ceiling_texture[area] if flat_c[i] else floor_texture[area]
+        texture = table[area, flat_k[i]]
         lv = flat_l[i] + flat_d[i]
         k = top if not lv < top else (0 if lv < 0.0 else int(lv))
         u = math.floor(x * 64.0) & 63

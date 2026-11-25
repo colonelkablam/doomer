@@ -165,6 +165,12 @@ in the lobby), lift doors and furniture keep their own textures wherever
 they are. Where a ceiling steps down (over a doorway), the face above
 looks like the area you see it from.
 
+Soffits, the underside of a doorway's lintel, are lined rather than tiled:
+painted plaster framed in timber (office), timber boards in a moulding
+(executive), veined stone in a steel edge (lobby), concrete (service),
+perforated steel (lift car). Balconies and raised floors are fitted blue
+carpet, and the stairs' treads match it, each with its metal nosing.
+
 Lifts [built]: brushed stainless doors in a doorway lined with polished
 steel (architrave, grooved sill), a floor indicator above (amber G between
 up and down arrows, dark without power), a call plate beside (the up

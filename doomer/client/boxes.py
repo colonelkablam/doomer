@@ -271,10 +271,22 @@ STEPS_PER_STOREY = 16
 
 def stair_tread() -> int:
     """A tread from above: blue carpet, a metal nosing strip along the front
-    edge (the downhill side: the top of the image is a box's -x side)."""
+    edge (the downhill side: the top of the image is a box's -x side).
+
+    A box's top is stretched once over it, and a tread is a cell wide but an
+    eighth deep: v is squashed 8:1. So the carpet's speckle (as
+    areas.blue_carpet, the balcony's) varies per texel across the step but
+    only in 8-texel bands front to back, which comes out square."""
     rng = np.random.default_rng(31)
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), BLUE, 6.0 + (noise(rng, 16) - 0.5) * 1.2)
+    speckle = rng.random((8, 64))[c.v // 8, c.u]
+    shade = (
+        6.0
+        + (noise(rng, 8)[:1, :] - 0.5) * 0.6
+        + np.where(speckle < 0.1, -1.0, 0.0)
+        + np.where(speckle > 0.93, 1.0, 0.0)
+    )
+    c.paint(c.rect(0, 64, 0, 64), BLUE, shade)
     c.paint(c.rect(0, 6, 0, 64), GREY, 10.0)
     c.paint(c.rect(0, 1, 0, 64), GREY, 13.0)
     return _texture(c)
@@ -294,7 +306,7 @@ def stair_side() -> int:
     skirting at the floor (as raised floors' edges)."""
     rng = np.random.default_rng(14)
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), SAND, 8.5 + (noise(rng, 8) - 0.5))
+    c.paint(c.rect(0, 64, 0, 64), SAND, 9.0 + (noise(rng, 8) - 0.5) * 0.5)
     c.paint(c.rect(60, 64, 0, 64), WOOD, 5.0)
     return _texture(c)
 

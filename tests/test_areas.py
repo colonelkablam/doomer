@@ -6,9 +6,17 @@ import numpy as np
 import pytest
 
 from doomer.client import fastcast as fc
-from doomer.client.areas import AREA_WALL_TYPE, MIP_LEVELS, build_surfaces, mipmaps
+from doomer.client.areas import (
+    AREA_WALL_TYPE,
+    CEILING,
+    FLOOR,
+    MIP_LEVELS,
+    SOFFIT,
+    build_surfaces,
+    mipmaps,
+)
 from doomer.client.config import LightingConfig, RenderConfig
-from doomer.client.palette import STEEL, WARM_GREY
+from doomer.client.palette import BLUE, STEEL, WARM_GREY
 from doomer.client.render import Camera, Renderer
 from doomer.shared.mapfile import (
     EAST,
@@ -78,31 +86,26 @@ def test_mipmaps_average_down_to_one_colour() -> None:
     assert (mipmaps(flat) == 0x37).all()  # averaging one colour changes nothing
 
 
-def test_the_floor_shows_each_areas_texture() -> None:
+def test_each_surface_shows_its_areas_texture() -> None:
     surfaces = build_surfaces()
     areas = np.array([[OFFICE, LOBBY, EXECUTIVE]], dtype=np.int64)
-    xs = np.array([0.3, 1.3, 2.3, 1.3])
-    ys = np.full(4, 0.4)
-    ceiling = np.array([False, False, False, True])
+    xs = np.array([0.3, 1.3, 2.3, 1.3, 0.3])
+    ys = np.full(5, 0.4)
+    kind = np.array([FLOOR, FLOOR, FLOOR, CEILING, SOFFIT])
     texels = fc.surface_texels(
-        xs,
-        ys,
-        np.zeros(4),
-        ceiling,
-        np.zeros(4),
-        areas,
-        surfaces.floor,
-        surfaces.ceiling,
-        surfaces.mips,
+        xs, ys, np.zeros(5), kind, np.zeros(5), areas, surfaces.table, surfaces.mips
     )
     u, v = math.floor(0.3 * 64), math.floor(0.4 * 64)
     expected = [
-        surfaces.mips[surfaces.floor[OFFICE], 0, v, u],
-        surfaces.mips[surfaces.floor[LOBBY], 0, v, u],
-        surfaces.mips[surfaces.floor[EXECUTIVE], 0, v, u],
-        surfaces.mips[surfaces.ceiling[LOBBY], 0, v, u],
+        surfaces.mips[surfaces.table[OFFICE, FLOOR], 0, v, u],
+        surfaces.mips[surfaces.table[LOBBY, FLOOR], 0, v, u],
+        surfaces.mips[surfaces.table[EXECUTIVE, FLOOR], 0, v, u],
+        surfaces.mips[surfaces.table[LOBBY, CEILING], 0, v, u],
+        surfaces.mips[surfaces.table[OFFICE, SOFFIT], 0, v, u],
     ]
     assert list(texels) == expected
+    # Soffits aren't the room's ceiling tiles.
+    assert surfaces.table[OFFICE, SOFFIT] != surfaces.table[OFFICE, CEILING]
 
 
 def test_far_floor_uses_the_smallest_mip_level() -> None:
@@ -112,14 +115,29 @@ def test_far_floor_uses_the_smallest_mip_level() -> None:
         np.array([0.5]),
         np.array([0.5]),
         np.array([99.0]),
-        np.array([False]),
+        np.array([FLOOR]),
         np.zeros(1),
         areas,
-        surfaces.floor,
-        surfaces.ceiling,
+        surfaces.table,
         surfaces.mips,
     )
-    assert texel[0] == surfaces.mips[surfaces.floor[OFFICE], -1, 0, 0]
+    assert texel[0] == surfaces.mips[surfaces.table[OFFICE, FLOOR], -1, 0, 0]
+
+
+def test_a_balcony_top_is_carpeted_like_a_floor() -> None:
+    # A raised floor (e, height 4) across the room, seen from the floor below.
+    m = parse_map(
+        "[walls]\n########\n#..eee.#\n#..eee.#\n#..eee.#\n########\n"
+        "\n[floor]\n00000000\n00044400\n00044400\n00044400\n00000000\n"
+    )
+    r = Renderer(RenderConfig())  # unlit: shaded by distance only
+    frame = r.render_indices(m, Camera(1.5, 2.5, 0.0, z=0.9, pitch=-0.4))  # eye above it
+    # Along one screen row (one distance), a flat colour dithers between at
+    # most two shades; textured carpet has more. The nearest row of it: further
+    # off, the mipmaps rightly average its fine speckle away.
+    rows = [frame[:, y] for y in range(int(r.horizon) + 1, r.config.height)]
+    row = [r_ for r_ in rows if ((r_ >> 4) == BLUE).sum() > 100][-1]
+    assert len(set((row[(row >> 4) == BLUE] & 0x0F).tolist())) >= 3
 
 
 def test_rendered_floors_follow_the_areas() -> None:

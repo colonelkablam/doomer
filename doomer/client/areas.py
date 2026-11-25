@@ -28,7 +28,7 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 
-from doomer.client.palette import BLUE, CREAM, GREY, PALETTE, STEEL, WARM_GREY, U8Array
+from doomer.client.palette import BLUE, CREAM, GREY, PALETTE, STEEL, WARM_GREY, WOOD, U8Array
 from doomer.client.pixelart import grid, indices, noise
 from doomer.client.textures import (
     ALL_SIDES,
@@ -114,6 +114,25 @@ def studded_rubber(seed: int = 39) -> U8Array:
     return indices(GREY, np.where(lit, 6.0, np.where(stud, 4.0, shade)))
 
 
+def blue_carpet(seed: int = 41) -> U8Array:
+    """Fitted carpet (balconies, raised floors; the stairs' treads match it):
+    1980s corporate blue, a fine pile speckle, no tile seams."""
+    rng = np.random.default_rng(seed)
+    speckle = rng.random((TEX_SIZE, TEX_SIZE))
+    shade = (
+        6.0
+        + (noise(rng, 8) - 0.5) * 0.6
+        + np.where(speckle < 0.1, -1.0, 0.0)
+        + np.where(speckle > 0.93, 1.0, 0.0)
+    )
+    return indices(BLUE, shade)
+
+
+# Raised surfaces you walk on, by wall type: textured like floors (world-
+# mapped, mipmapped) instead of a flat colour. Desk tops stay flat colours.
+TOP_TEXTURES: dict[int, Callable[[], U8Array]] = {14: blue_carpet, 18: blue_carpet}
+
+
 # --- ceilings ----------------------------------------------------------------------
 
 
@@ -151,6 +170,51 @@ def car_ceiling(seed: int = 40) -> U8Array:
     return indices(GREY, np.where(joints, 6.0, np.where(holes, 7.5, shade)))
 
 
+# Soffits: the underside of a ceiling lower than a storey (the lintel over
+# a doorway, the tunnel through a thick wall). Not the room's ceiling tiles:
+# a lining, per area.
+
+
+def _border(width: int) -> npt.NDArray[np.bool_]:
+    """The texels within `width` of a tile's edge, split evenly between
+    opposite edges (the tiling rule), so neighbouring cells make one band."""
+    v, u = grid()
+    return (u < width) | (u >= TEX_SIZE - width) | (v < width) | (v >= TEX_SIZE - width)
+
+
+def soffit_plaster(seed: int = 42) -> U8Array:
+    """Offices: painted plaster framed by a timber lining where it meets the
+    walls (a door frame's head and casings carried round the opening), with
+    a shadow line inside it."""
+    rng = np.random.default_rng(seed)
+    shade = 11.4 + (noise(rng, 8) - 0.5) * 0.4
+    tex = indices(CREAM, np.where(_border(6), 9.5, shade))
+    wood = indices(WOOD, 8.0 + (noise(rng, 16) - 0.5) * 1.0)
+    return np.where(_border(4), wood, tex).astype(np.uint8)
+
+
+def soffit_wood(seed: int = 43) -> U8Array:
+    """The executive suite: timber boards, the grain running along them, in a
+    darker moulding where they meet the walls."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    grain = np.sin(v * 0.9 + noise(rng, 8) * 5) * 0.5
+    shade = 7.5 + grain + (noise(rng, 16) - 0.5) * 0.8
+    shade = np.where(u % 16 == 0, 5.0, shade)
+    return indices(WOOD, np.where(_border(4), 4.5, shade))
+
+
+def soffit_stone(seed: int = 44) -> U8Array:
+    """The lobby: pale stone slabs, faintly veined as the walls, in a brushed
+    steel edge where they meet the walls."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    veins = np.abs(noise(rng, 4) - noise(rng, 16) * 0.5 - 0.25) < 0.02
+    tex = indices(WARM_GREY, np.where(veins, 10.5, 12.5 + (noise(rng, 8) - 0.5) * 0.6))
+    tex = np.where((u == 31) | (v == 31), indices(WARM_GREY, 8.5), tex)  # slab joints
+    return np.where(_border(3), indices(GREY, 11.0), tex).astype(np.uint8)
+
+
 def concrete(seed: int = 38) -> U8Array:
     """Bare concrete soffit (service areas), with the marks of the formwork
     boards it was cast against."""
@@ -170,16 +234,21 @@ class AreaLook:
     ceiling: Callable[[], U8Array]
     wall: Callable[[], U8Array]  # plain walls facing into the area
     wall_upper: Callable[[], U8Array]  # ... above one storey
+    soffit: Callable[[], U8Array]  # ceilings lower than a storey (over doorways)
 
 
 AREA_LOOKS: dict[int, AreaLook] = {
-    OFFICE: AreaLook(carpet_tiles, ceiling_tiles, office_wall, office_wall_upper),
+    OFFICE: AreaLook(carpet_tiles, ceiling_tiles, office_wall, office_wall_upper, soffit_plaster),
     EXECUTIVE: AreaLook(
-        lambda: carpet_tiles(36, BLUE, 5.0), ceiling_tiles, wood_panelling, wood_panelling
+        lambda: carpet_tiles(36, BLUE, 5.0),
+        ceiling_tiles,
+        wood_panelling,
+        wood_panelling,
+        soffit_wood,
     ),
-    LOBBY: AreaLook(terrazzo, plaster, stone_cladding, stone_cladding_upper),
-    SERVICE: AreaLook(lino, concrete, painted_block, painted_block_upper),
-    LIFT_CAR: AreaLook(studded_rubber, car_ceiling, lift_car_side, lift_car_side),
+    LOBBY: AreaLook(terrazzo, plaster, stone_cladding, stone_cladding_upper, soffit_stone),
+    SERVICE: AreaLook(lino, concrete, painted_block, painted_block_upper, concrete),
+    LIFT_CAR: AreaLook(studded_rubber, car_ceiling, lift_car_side, lift_car_side, car_ceiling),
 }
 
 for _area, _look in AREA_LOOKS.items():
@@ -187,27 +256,44 @@ for _area, _look in AREA_LOOKS.items():
     register_wall_texture(AREA_WALL_TYPE + _area, _look.wall_upper(), sides=(UPPER,))
 
 
+# Kinds of horizontal surface: columns of Surfaces.table. Then one per
+# TOP_TEXTURES entry, from TOP_KIND.
+FLOOR, CEILING, SOFFIT = range(3)
+TOP_KIND = {wall_type: 3 + k for k, wall_type in enumerate(TOP_TEXTURES)}
+
+
 @dataclass(frozen=True, slots=True)
 class Surfaces:
-    """Every area's floor and ceiling texture, mipmapped, for the renderer."""
+    """Every horizontal surface texture, mipmapped, for the renderer: which
+    texture a surface shows is table[area, kind]."""
 
     mips: U8Array  # (texture, level, v, u): level k averages 2^k x 2^k texels. Read-only.
-    floor: npt.NDArray[np.int64]  # (area,) -> texture
-    ceiling: npt.NDArray[np.int64]
+    table: npt.NDArray[np.int64]  # (area, kind) -> texture
+
+    @property
+    def floor(self) -> npt.NDArray[np.int64]:
+        return np.ascontiguousarray(self.table[:, FLOOR])
+
+    @property
+    def ceiling(self) -> npt.NDArray[np.int64]:
+        return np.ascontiguousarray(self.table[:, CEILING])
 
 
 @functools.cache  # deterministic, ~0.1 s: built once, shared by every Renderer
 def build_surfaces() -> Surfaces:
     textures: list[U8Array] = []
-    floor, ceiling = [], []
+
+    def add(make: Callable[[], U8Array]) -> int:
+        textures.append(make())
+        return len(textures) - 1
+
+    tops = [add(make) for make in TOP_TEXTURES.values()]  # the same in every area
+    table = []
     for area in range(max(AREA_LOOKS) + 1):
         look = AREA_LOOKS.get(area, AREA_LOOKS[OFFICE])
-        floor.append(len(textures))
-        textures.append(look.floor())
-        ceiling.append(len(textures))
-        textures.append(look.ceiling())
+        table.append([add(look.floor), add(look.ceiling), add(look.soffit), *tops])
     mips = np.stack([mipmaps(t) for t in textures])
-    return Surfaces(mips, np.array(floor, dtype=np.int64), np.array(ceiling, dtype=np.int64))
+    return Surfaces(mips, np.array(table, dtype=np.int64))
 
 
 def mipmaps(texture: U8Array) -> U8Array:
