@@ -36,6 +36,7 @@ from doomer.client.palette import (
     MOSS,
     OCHRE,
     ORANGE,
+    PALETTE,
     PINK,
     PURPLE,
     SAND,
@@ -1365,6 +1366,86 @@ _READERS = {
 READER_HEIGHT = (0.38, 0.47)  # walls (~1.0-1.25 m): at hand height
 READER_ALONG = 0.65  # from the doorway's centre: on the wall just beside it
 
+# --- ID passes: a spinning card (pickups) ----------------------------------------------
+# A Boomer Industries ID card, ~4.5x real size (as Doom's keys were big)
+# and full-bright, hovering over whatever it lies on and slowly turning
+# (Renderer turns SPINNING models by the clock): motion says "pick me up".
+# Mostly the pass's colour, so it reads across a room; its name on it too.
+
+PASS_HALF_WIDTH, PASS_HEIGHT, PASS_HALF_THICK = 0.045, 0.125, 0.004
+PASS_HOVER = 0.04  # walls: its foot above the surface it lies on
+PASS_SPIN = 1.8  # radians a second
+PASS_BOB = 0.008  # walls: up and down as it turns
+
+
+def _card(c: Canvas, ramp: int) -> BoolArray:
+    """The card's shape: rounded corners (see-through), the clip slot."""
+    corners = (
+        c.rect(0, 2, 0, 2) | c.rect(0, 2, 62, 64) | c.rect(62, 64, 0, 2) | c.rect(62, 64, 62, 64)
+    )
+    card = ~corners
+    c.paint(card, ramp, 9.0)
+    c.paint(card & (c.rect(0, 2, 0, 64) | c.rect(0, 64, 0, 2)), ramp, 11.0)  # lit edges
+    return card
+
+
+def pass_front(colour: str, ramp: int) -> int:
+    """BOOMER on a white strip, a photo, name lines, the colour's name big."""
+    c = Canvas()
+    _card(c, ramp)
+    c.paint(c.rect(4, 7, 24, 40), GREY, 2.0)  # the clip slot
+    c.paint(c.rect(10, 18, 4, 60), CREAM, 15.0)
+    _centred(c, "BOOMER", 12, GREY, 2.0)
+    c.paint(c.rect(21, 41, 6, 28), CREAM, 13.0)  # the photo
+    c.paint(c.ellipse(30, 17, 6, 6), SAND, 12.0)
+    c.paint(c.ellipse(26, 17, 4, 7) & (c.v < 27), WOOD, 3.0)
+    c.paint(c.rect(37, 41, 9, 25), GREY, 3.0)  # shoulders
+    for v0, u1 in ((23, 58), (28, 52), (33, 56)):  # name, department, number
+        c.paint(c.rect(v0, v0 + 2, 32, u1), CREAM, 14.0)
+    _centred(c, colour.upper(), 47, CREAM, 15.0, scale=2)
+    return _texture(c)
+
+
+def pass_back(ramp: int) -> int:
+    """The magnetic stripe, a line of small print."""
+    c = Canvas()
+    _card(c, ramp)
+    c.paint(c.rect(10, 20, 0, 64), GREY, 1.0)
+    for v0 in (30, 34, 38):
+        c.paint(c.rect(v0, v0 + 1, 8, 56), ramp, 6.0)
+    return _texture(c)
+
+
+def pass_edge(ramp: int) -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), ramp, 6.0)
+    return _texture(c)
+
+
+def _pass(colour: str, ramp: int) -> tuple[Box, ...]:
+    edge = pass_edge(ramp)
+    faces = (pass_front(colour, ramp), edge, pass_back(ramp), edge, edge)
+    t, w = PASS_HALF_THICK, PASS_HALF_WIDTH
+    return (Box((-t, t), (-w, w), (PASS_HOVER, PASS_HOVER + PASS_HEIGHT), faces, glow=True),)
+
+
+# Box models the renderer turns by the clock: name -> (radians a second, bob).
+SPINNING: dict[str, tuple[float, float]] = {
+    f"pass_{colour}": (PASS_SPIN, PASS_BOB) for colour in _PASS_RAMPS
+}
+PASS_MODELS = {f"pass_{colour}": _pass(colour, ramp) for colour, ramp in _PASS_RAMPS.items()}
+
+
+def pass_card_rgba(colour: str) -> npt.NDArray[np.uint8]:
+    """A pass's front as RGBA, (u, v, 4) (pygame's surfarray order), for the
+    HUD to show the passes held as the same cards; alpha 0 at its corners."""
+    front = PASS_MODELS[f"pass_{colour}"][0].faces[0]
+    rgba = np.zeros((64, 64, 4), dtype=np.uint8)
+    rgba[..., :3] = PALETTE[_TEXTURES[front]]
+    rgba[..., 3] = np.where(_OPAQUE[front], 255, 0)
+    return rgba
+
+
 _LEAF_RIGHT, _LEAF_LEFT, _LEAF_EDGE = door_leaf(True), door_leaf(False), door_edge()
 _JAMB, _GLASS, _GLASS_EDGE = jamb(), glass_leaf(), glass_edge()
 _JAMB_HALF = 0.03  # jambs a little thicker than the leaf: a frame
@@ -2055,6 +2136,7 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "phone": _phone(),
     "pc": _pc(),
     "chair": _chair(),
+    **PASS_MODELS,
     **{f"poster:{k}": _poster(*v) for k, v in _POSTER_KINDS.items()},
     "filing_cabinet": _filing_cabinet(),
     "water_cooler": _water_cooler(),

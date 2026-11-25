@@ -230,8 +230,12 @@ buttons by the door (G lit).
 
 ## Pickups
 
-- **ID passes** [built]: lanyard passes in three colours, staff (blue),
-  facilities (red), executive (gold), for locked doors. Shared by the team:
+- **ID passes** [built]: Boomer Industries ID cards in three colours, staff
+  (blue), facilities (red), executive (gold), for locked doors. Mostly the
+  pass's colour, BOOMER on a white strip, a photo, the colour's name; a
+  magnetic stripe on the back. Oversized (~4.5x) and full-bright, hovering
+  over the desk and slowly turning, so they read as pickups across a dark
+  room; the HUD shows the ones held as the same cards. Shared by the team:
   one player picks it up, everyone can use it. A floor's loop: the staff
   pass gets you off the lobby, the facilities pass into the plant room,
   where the power comes on and the lifts wake up (see Game loop).

@@ -66,7 +66,13 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
 
             camera = session.camera(controls.angle, controls.pitch)
             renderer.render(
-                frame, session.game_map, camera, session.sprites(), session.boxes(), session.power()
+                frame,
+                session.game_map,
+                camera,
+                session.sprites(),
+                session.boxes(),
+                session.power(),
+                now,
             )
             # 8-bit frame -> window format, then nearest-neighbour scale into
             # the picture's place in the window (it may have been resized).

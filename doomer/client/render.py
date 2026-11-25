@@ -65,6 +65,7 @@ from doomer.client.areas import (
 )
 from doomer.client.boxes import (
     BOX_MODELS,
+    SPINNING,
     TOP,
     Box,
     PlacedBox,
@@ -191,6 +192,16 @@ def sprites_from_things(game_map: GameMap) -> list[SpriteInstance]:
         name = f"{t.type}:{kind}" if kind else t.type
         out.append(SpriteInstance(name, t.x, t.y, z, t.angle))
     return out
+
+
+def _placed(s: SpriteInstance, box: Box, now: float) -> PlacedBox:
+    """A model's box where its thing is; a SPINNING one turned (and bobbed)
+    by the clock."""
+    spin = SPINNING.get(s.name)
+    if spin is None:
+        return PlacedBox(s.x, s.y, s.z, s.angle, box)
+    rate, bob = spin
+    return PlacedBox(s.x, s.y, s.z + bob * math.sin(now * rate), s.angle + now * rate, box)
 
 
 def make_frame_surface(config: RenderConfig) -> pygame.Surface:
@@ -553,9 +564,10 @@ class Renderer:
         sprites: Iterable[SpriteInstance] = (),
         boxes: Iterable[PlacedBox] = (),
         power: bool = True,
+        now: float = 0.0,
     ) -> None:
         """Draw into an 8-bit surface from make_frame_surface()."""
-        frame = self.render_indices(game_map, camera, sprites, boxes, power)
+        frame = self.render_indices(game_map, camera, sprites, boxes, power, now)
         pygame.surfarray.blit_array(target, frame)
 
     def render_indices(
@@ -565,11 +577,13 @@ class Renderer:
         sprites: Iterable[SpriteInstance] = (),
         boxes: Iterable[PlacedBox] = (),
         power: bool = True,
+        now: float = 0.0,
     ) -> U8Array:
         """The frame as a (width, height) array of palette indices. `boxes`:
         moving geometry this frame (doors), drawn like box models. `power`:
         False lights the floor by its emergency panels only (and draws the
-        rest dark)."""
+        rest dark). `now`: seconds, for models that move by the clock (an ID
+        pass turning, boxes.SPINNING)."""
         self._power = power
         w = self.config.width
         pitch = max(-MAX_PITCH, min(MAX_PITCH, camera.pitch))
@@ -640,7 +654,7 @@ class Renderer:
             moving
             + self._map_boxes_for(game_map)
             + [
-                PlacedBox(s.x, s.y, s.z, s.angle, box)
+                _placed(s, box, now)
                 for s in sprites
                 for box in BOX_MODELS.get(s.name, ())
                 if (s.x - camera.x) ** 2 + (s.y - camera.y) ** 2 < MAX_BOX_DISTANCE**2

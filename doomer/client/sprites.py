@@ -20,12 +20,10 @@ import numpy as np
 
 from doomer.client.models import VoxelModel, bake, view_for
 from doomer.client.palette import (
-    BLUE,
     BRICK,
     CREAM,
     GREEN,
     GREY,
-    OCHRE,
     SAND,
     WARM_GREY,
     WOOD,
@@ -126,27 +124,6 @@ def terminal() -> Sprite:
     return Sprite(baked.index, baked.opaque, sink=baked.sink, reach=baked.reach)
 
 
-# The ramp each ID pass colour is drawn in (doomer/shared/things.py PASS_COLOURS).
-PASS_RAMPS = {"blue": BLUE, "red": BRICK, "gold": OCHRE}
-
-
-def id_pass(ramp: int) -> Sprite:
-    """An ID pass on a lanyard, standing on whatever it lies on: ~3x real
-    size (as Doom's keys were oversized) so it's easy to spot, and full-bright
-    so it shows up in a dark office."""
-    c = Canvas()
-    for v in range(47, 56):  # the lanyard: two strands meeting at the clip
-        spread = round((56 - v) * 0.35)
-        c.paint(c.rect(v, v + 1, 31 - spread, 32 - spread), ramp, 10.0)
-        c.paint(c.rect(v, v + 1, 32 + spread, 33 + spread), ramp, 10.0)
-    c.paint(c.rect(55, 57, 31, 33), GREY, 12.0)  # clip
-    c.paint(c.rect(57, 64, 27, 37), CREAM, 14.0)  # the card
-    c.paint(c.rect(57, 59, 27, 37), ramp, 12.0)  # colour band
-    c.paint(c.rect(60, 63, 28, 31), WARM_GREY, 8.0)  # photo
-    c.paint(c.rect(60, 61, 32, 36) | c.rect(62, 63, 32, 35), GREY, 5.0)  # name, number
-    return _finish(c, fullbright=True)
-
-
 def exit_sign() -> Sprite:
     c = Canvas()
     c.paint(c.rect(0, 8, 31, 33), GREY, 6.0)  # hanging rod
@@ -160,5 +137,4 @@ SPRITES: dict[str, Sprite] = {
     "desk": desk(),
     "terminal": terminal(),
     "exit": exit_sign(),
-    **{f"pass_{colour}": id_pass(ramp) for colour, ramp in PASS_RAMPS.items()},
 }

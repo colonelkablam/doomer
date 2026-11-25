@@ -195,3 +195,30 @@ def test_the_office_passes_can_be_reached() -> None:
             if office.is_low_block(cx, cy):  # within reach of the block's nearest edge
                 edge = min(t.x - cx, cx + 1 - t.x, t.y - cy, cy + 1 - t.y)
                 assert edge + 0.25 <= REACH, t
+
+
+def test_a_pass_is_a_card_that_turns_and_bobs_by_the_clock() -> None:
+    from doomer.client.boxes import BOX_MODELS, SPINNING
+    from doomer.client.render import SpriteInstance, _placed
+
+    (card,) = BOX_MODELS["pass_red"]
+    assert card.glow and card.z[0] > 0  # lit by itself, hovering
+    assert card.x[1] - card.x[0] < 0.2 * (card.y[1] - card.y[0])  # thin: a card
+    lying = SpriteInstance("pass_red", 1.5, 1.5, 0.27, 0.0)
+    a, b = _placed(lying, card, 0.0), _placed(lying, card, 0.5)
+    rate, _ = SPINNING["pass_red"]
+    assert b.angle - a.angle == pytest.approx(0.5 * rate) and b.z != a.z
+    desk = SpriteInstance("mac", 1.5, 1.5, 0.27, 1.0)
+    assert _placed(desk, BOX_MODELS["mac"][0], 9.0).angle == 1.0  # others stay put
+
+
+def test_the_hud_shows_passes_held_as_the_same_cards() -> None:
+    import pygame
+
+    from doomer.client.hud import CARD_SIZE, Hud
+
+    pygame.font.init()
+    window = pygame.Surface((320, 200))
+    Hud(pygame.font.Font(None, 16)).draw(window, {"red"}, 0.0)
+    corner = pygame.surfarray.array3d(window)[:60, 200 - CARD_SIZE[1] - 12 :]
+    assert (corner[..., 0] > 150).sum() > 200  # mostly red, like the card itself

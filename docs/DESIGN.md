@@ -431,6 +431,10 @@ dm_spawn      1.5   3.5   0
   bulkhead drawing; with lighting on, a ceiling lower than a storey (the
   lintel's soffit) takes the plain light times `soffit_shade` (0.85), not
   the square root other ceilings get, so it sits in shadow like the walls.
+- **Things that move by the clock** (`boxes.SPINNING`): the renderer takes
+  `now` (seconds) and turns those box models by it, with a small bob, as
+  an ID pass card does. Cosmetic, so not part of the simulation: each
+  client turns its own.
 - **Posters** (`poster` things, `kind=`): one thin box each against a
   wall, drawn as `type:kind` from BOX_MODELS. The fire plan (`kind=plan`)
   is drawn from the map with a dot where it hangs, so its texture is made

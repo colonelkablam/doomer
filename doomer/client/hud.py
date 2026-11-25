@@ -9,6 +9,7 @@ from collections.abc import Collection, Iterable
 
 import pygame
 
+from doomer.client.boxes import pass_card_rgba
 from doomer.shared.events import (
     DoorLocked,
     Event,
@@ -22,6 +23,21 @@ MESSAGE_SECONDS = 3.0
 PASS_COLOURS_RGB = {"blue": (90, 140, 240), "red": (230, 90, 70), "gold": (240, 210, 90)}
 TEXT = (255, 255, 255)
 SHADOW = (0, 0, 0)
+
+
+_CARDS: dict[str, pygame.Surface] = {}
+CARD_SIZE = (30, 48)  # pixels: the card's proportions in the world (it's taller than wide)
+
+
+def _card_image(colour: str) -> pygame.Surface:
+    """A held pass: the same card as the one you picked up (boxes.pass_card_rgba)."""
+    if colour not in _CARDS:
+        rgba = pass_card_rgba(colour)
+        image = pygame.Surface((64, 64), pygame.SRCALPHA)
+        pygame.surfarray.pixels3d(image)[...] = rgba[..., :3]
+        pygame.surfarray.pixels_alpha(image)[...] = rgba[..., 3]
+        _CARDS[colour] = pygame.transform.scale(image, CARD_SIZE)
+    return _CARDS[colour]
 
 
 def message_for(event: Event) -> str | None:
@@ -65,10 +81,8 @@ class Hud:
             self._text(window, self._message, (width // 2, height // 6), centre=True)
         # Passes held: a card in each colour, bottom left.
         for i, colour in enumerate(c for c in PASS_COLOURS_RGB if c in passes):
-            card = pygame.Rect(16 + i * 34, height - 46, 26, 34)
-            pygame.draw.rect(window, (235, 230, 215), card, border_radius=3)
-            pygame.draw.rect(window, PASS_COLOURS_RGB[colour], card.inflate(0, -24).move(0, -12))
-            pygame.draw.rect(window, SHADOW, card, width=1, border_radius=3)
+            card = _card_image(colour)
+            window.blit(card, (16 + i * (card.get_width() + 8), height - card.get_height() - 12))
 
     def _text(self, window: pygame.Surface, text: str, at: tuple[int, int], centre: bool) -> None:
         for offset, colour in (((2, 2), SHADOW), ((0, 0), TEXT)):
