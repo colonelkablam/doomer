@@ -96,11 +96,13 @@ sneaky, staple gun and letter opener (double damage from behind), and
 ## People
 
 How people look, everywhere a face shows (ID passes, the Employee of the
-Month, the founder's portrait; later the NPCs): early-90s VGA adventure-game
-portraits. Big heads, long faces, strong chins; a dark outline round the
-head; skin in three tones lit from the upper left, plus a highlight; eyes
-with whites, dark pupils and a lid line under heavy brows; a big shaded
-nose; hair one solid shape with a lighter streak and a dark edge. Flat
+Month, the founder's portrait; later the NPCs): early-90s LucasArts-style
+cartoon portraits. Big round heads on small shoulders and a short neck; a
+dark ink outline round everything; skin in three tones lit from the upper
+left; big round outlined eyes with dot pupils under arched brows; a
+bulbous nose with a shine; a wide mouth (toothy when grinning); hair one
+solid shape with a lighter streak. A shirt collar round the neck with a
+tie, its points either side of the knot; an open neck without. Flat
 colours, no noise. A face is built from stock parts that swap
 (`client/faces.py`, `Face`): skin (fair, tan, dark), hair (side parting,
 slicked back, perm, mullet, bob, bald) and its colour (brown, black, blond,

@@ -60,3 +60,14 @@ def test_a_portrait_stays_in_its_box_and_fills_it() -> None:
 def test_the_cast_are_all_different_people() -> None:
     pictures = [_portrait(face).tobytes() for face in CAST.values()]
     assert len(set(pictures)) == len(CAST)
+
+
+def test_a_tie_comes_with_a_collar_and_no_tie_with_an_open_neck() -> None:
+    from doomer.client.palette import CREAM
+
+    collar = (CREAM << 4) | 15
+    tied = _portrait(Face(tie="red"))  # 64 texels: the design grid x 2
+    open_ = _portrait(Face(tie="none"))
+    # The collar's left point: just below the neck, left of the knot.
+    assert tied[49, 26] == collar
+    assert open_[49, 26] != collar
