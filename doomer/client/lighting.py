@@ -50,6 +50,7 @@ class Panel:
     y: float
     height: float  # walls
     emergency: bool = False  # on the emergency circuit: lit without power
+    intensity: float = 1.0  # times LightingConfig.panel_intensity
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,14 +97,20 @@ class LightMap:
         return result
 
 
-def panels_in(game_map: GameMap) -> list[Panel]:
-    """One panel per `ceiling_light` thing, as the renderer draws them."""
+def panels_in(game_map: GameMap, config: LightingConfig | None = None) -> list[Panel]:
+    """The lights: one panel per `ceiling_light` thing, as the renderer draws
+    them; and a dim emergency light at each exit sign, over its door."""
+    config = config or LightingConfig()
     out = []
     for t in game_map.things:
         if t.type == "ceiling_light":
             cx, cy = math.floor(t.x), math.floor(t.y)
             emergency = t.prop("circuit") == "emergency"
             out.append(Panel(cx + 0.5, cy + 0.5, game_map.ceiling_height(cx, cy), emergency))
+        elif t.type == "exit_sign":
+            # A little out from the wall it hangs on, so walls don't hide it.
+            x, y = t.x + 0.1 * math.cos(t.angle), t.y + 0.1 * math.sin(t.angle)
+            out.append(Panel(x, y, 0.83, emergency=True, intensity=config.exit_sign_intensity))
     return out
 
 
@@ -126,7 +133,7 @@ def bake_light_map(game_map: GameMap, config: LightingConfig | None = None) -> L
     values = np.full((rows, cols), config.ambient)
     unpowered = np.full((rows, cols), config.unpowered_ambient)
     patches = []
-    for panel in panels_in(game_map):
+    for panel in panels_in(game_map, config):
         patch = _patch(panel, config, walls, floors, rows, cols, doors)
         if patch is not None:
             r, c = patch.row0, patch.col0
@@ -135,7 +142,10 @@ def bake_light_map(game_map: GameMap, config: LightingConfig | None = None) -> L
             if panel.emergency:
                 unpowered[r : r + h, c : c + w] += patch.values
             patches.append(patch)
-    return LightMap(s, config.ambient, values, tuple(patches), unpowered)
+    # The lift (LightingConfig.lift) bends the finished map, not the patches:
+    # they stay plain sums, to add or take away.
+    lifted, lifted_unpowered = np.power(values, config.lift), np.power(unpowered, config.lift)
+    return LightMap(s, config.ambient, lifted, tuple(patches), lifted_unpowered)
 
 
 def _patch(
@@ -167,7 +177,7 @@ def _patch(
     falloff = 1.0 / (1.0 + (distance / config.falloff_radius) ** 2)
     fade = np.clip(1.0 - (horizontal / reach) ** 2, 0.0, 1.0) ** 2
     visible = _visible(panel, gx, gy, walls) & ~_behind_doors(panel, gx, gy, doors)
-    light = config.panel_intensity * falloff * fade * visible
+    light = config.panel_intensity * panel.intensity * falloff * fade * visible
     return LightPatch(panel, r0, c0, light)
 
 

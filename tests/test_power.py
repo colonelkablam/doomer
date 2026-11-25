@@ -75,7 +75,7 @@ def test_the_breaker_cabinet_blocks_you() -> None:
 
 
 def test_without_power_only_emergency_panels_light_the_floor() -> None:
-    cfg = LightingConfig()
+    cfg = LightingConfig(lift=1.0)
     light = bake_light_map(parse_map(ROOM), cfg)
     dark = light.without_power()
 

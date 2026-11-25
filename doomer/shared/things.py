@@ -119,6 +119,10 @@ BREAKER = register_thing_type(
 WELCOME_SIGN = register_thing_type(
     ThingType("welcome_sign", "Lit brass letters: Boomer Industries")
 )
+# A lit green EXIT sign over a main door, on its own battery: the emergency
+# light in a power cut (a dim pool of light round it). Stand it at the face
+# of the wall over the doorway, on the side people leave from.
+EXIT_SIGN = register_thing_type(ThingType("exit_sign", "Emergency exit sign over a door"))
 
 # Doors (doomer/shared/doors.py): in a doorway cell; angle = the way it opens.
 # `lock=<colour>`: only opens for a team holding that pass.

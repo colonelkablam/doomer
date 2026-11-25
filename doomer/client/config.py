@@ -28,9 +28,15 @@ class LightingConfig:
     enabled: bool = True  # False: distance fade only (as before lighting; slow machines)
     ambient: float = 0.3  # light everywhere, with no panel in reach
     # With the power off (a floor whose breaker isn't thrown yet): the ambient,
-    # and only `circuit=emergency` panels lit.
-    unpowered_ambient: float = 0.15  # (0.1 was pitch black: unplayable)
+    # and only the emergency lights: exit signs and `circuit=emergency` panels.
+    unpowered_ambient: float = 0.1
     panel_intensity: float = 1.0  # one ceiling panel, at distance 0
+    exit_sign_intensity: float = 0.7  # an exit sign's glow, as a fraction of a panel's
+    # Light is raised to this power (1 = as baked): below 1 lifts the dim
+    # end, where the palette's 16 shades are far apart (shade 2 -> 3 is a
+    # third brighter), so dark rooms are less blotchy. Bright light hardly
+    # changes (0.9^0.8 = 0.92).
+    lift: float = 0.65
     falloff_radius: float = 1.2  # cells: a panel's light halves at this distance
     cutoff: float = 6.0  # cells: panels light nothing further away than this
     samples_per_cell: int = 4  # light map resolution

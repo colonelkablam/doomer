@@ -9,7 +9,7 @@ from doomer.client.config import LightingConfig
 from doomer.client.lighting import LightMap, bake_light_map
 from doomer.shared.mapfile import parse_map
 
-CONFIG = LightingConfig()
+CONFIG = LightingConfig(lift=1.0)  # the bake's sums, unbent (lift: its own test)
 
 # A long room, 14 x 3 open cells, one-storey ceiling; panels at x = 3.5 and 7.5.
 ROOM = """\
@@ -97,7 +97,8 @@ def test_office_bakes_quickly_enough_to_do_at_load() -> None:
     start = time.perf_counter()
     m = bake_light_map(office, CONFIG)
     assert time.perf_counter() - start < 2.0  # ~0.2 s here; generous for CI
-    assert len(m.patches) == sum(t.type == "ceiling_light" for t in office.things)
+    lights = sum(t.type in ("ceiling_light", "exit_sign") for t in office.things)
+    assert len(m.patches) == lights
 
 
 # --- applied by the renderer (phase 2: walls, faces, box models, sprites) ---
@@ -237,11 +238,37 @@ def test_shut_opaque_doors_stop_light_glass_ones_dont(door: str, blocks: bool) -
         "[walls]\n#########\n#...#...#\n#.......#\n#...#...#\n#########\n"
         f"\n[things]\nceiling_light 6.5 2.5 0\n{door} 4.5 2.5 0\n"
     )
-    light = bake_light_map(two_rooms, LightingConfig())
+    light = bake_light_map(two_rooms, CONFIG)
     west = float(light.at(np.array([3.0]), np.array([2.5]))[0])
     beside = float(light.at(np.array([4.7]), np.array([2.5]))[0])  # its own side of the door
     if blocks:
-        assert west == pytest.approx(LightingConfig().ambient)
+        assert west == pytest.approx(CONFIG.ambient)
     else:  # 3.5 cells from the panel: dim, but lit
-        assert west > LightingConfig().ambient + 0.02
-    assert beside > LightingConfig().ambient + 0.1  # the doorway on the lit side is lit
+        assert west > CONFIG.ambient + 0.02
+    assert beside > CONFIG.ambient + 0.1  # the doorway on the lit side is lit
+
+
+def test_lift_raises_dim_light_most() -> None:
+    m = parse_map("[walls]\n#######\n#.....#\n#######\n\n[things]\nceiling_light 1.5 1.5 0\n")
+    plain = bake_light_map(m, CONFIG)
+    lifted = bake_light_map(m, LightingConfig(lift=0.65))
+    xs, ys = np.array([1.5, 5.5]), np.array([1.5, 1.5])  # under the panel, far from it
+    assert np.allclose(lifted.values, np.power(plain.values, 0.65))  # sample by sample
+    before, after = plain.at(xs, ys), lifted.at(xs, ys)
+    assert after[1] / before[1] > after[0] / before[0]  # the dim end gains most
+
+
+def test_exit_signs_are_dim_emergency_lights() -> None:
+    m = parse_map(
+        "[walls]\n#########\n#.......#\n#.......#\n#########\n"
+        "\n[things]\nexit_sign 1.02 1.5 0\nceiling_light 6.5 1.5 0\n"
+    )
+    light = bake_light_map(m, CONFIG)
+    dark = light.without_power()
+
+    def at(lm: LightMap, x: float) -> float:
+        return float(lm.at(np.array([x]), np.array([1.5]))[0])
+
+    assert at(dark, 1.5) > CONFIG.unpowered_ambient + 0.2  # the sign's pool, power off
+    assert at(dark, 6.5) < CONFIG.unpowered_ambient + 0.05  # the panel's dead
+    assert at(light, 6.5) > at(light, 1.5)  # dimmer than a panel

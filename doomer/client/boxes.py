@@ -44,7 +44,7 @@ from doomer.client.palette import (
     WOOD,
     U8Array,
 )
-from doomer.client.pixelart import BoolArray, Canvas, noise
+from doomer.client.pixelart import FONT_3X5, BoolArray, Canvas, noise
 from doomer.shared.doors import (
     DOOR_HALF,
     DOOR_HEIGHT,
@@ -1245,6 +1245,47 @@ def _welcome_sign() -> tuple[Box, ...]:
     return (backing, *letters)
 
 
+# --- Exit signs: the emergency lights ---------------------------------------------
+# A green box over a main door, "EXIT" in white, lit from inside: on its own
+# battery, so lit with or without power. It's also what lights the floor in
+# a power cut (doomer/client/lighting.py: a dim emergency light at the sign).
+# Model x points out of the wall; the thing stands at the wall's face.
+
+EXIT_SIGN_Z = (0.79, 0.88)  # walls: just over a door's head (DOOR_HEIGHT 0.75)
+EXIT_SIGN_HALF_WIDTH = 0.09  # cells (~49 cm wide, ~24 cm high)
+
+
+def exit_sign_face() -> int:
+    """White EXIT on green, a white border. Stretched over a box face about
+    twice as wide as it is high, so texels are ~2:1 and the letters read
+    wide (as real exit signs' do)."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREEN, 11.0)
+    edge = c.rect(0, 64, 0, 64) & ~c.rect(4, 60, 2, 62)
+    c.paint(edge, GREY, 15.0)
+    # The tiny font, each of its pixels 3 texels across and 8 down: with the
+    # face's stretch that's bold letters ~15 cm tall, like a real sign's.
+    for i, ch in enumerate("EXIT"):
+        for gy, row in enumerate(FONT_3X5[ch]):
+            for gx, bit in enumerate(row):
+                if bit == "#":
+                    u0, v0 = 8 + i * 13 + gx * 3, 12 + gy * 8
+                    c.paint(c.rect(v0, v0 + 8, u0, u0 + 3), GREY, 15.0)
+    return _texture(c)
+
+
+def exit_sign_side() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 12.0)
+    return _texture(c)
+
+
+def _exit_sign() -> tuple[Box, ...]:
+    face, side = exit_sign_face(), exit_sign_side()
+    w = EXIT_SIGN_HALF_WIDTH
+    return (Box((0.0, 0.03), (-w, w), EXIT_SIGN_Z, (face, side, side, side, side), glow=True),)
+
+
 # --- The plant room's breaker (doomer/shared/switches.py has its state) ---------
 # A steel switchgear cabinet against the wall: louvres, a hazard band, a big
 # lever (down: off; thrown up: on) and a status lamp (red, then green, lit).
@@ -1336,6 +1377,7 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "ficus": _ficus(),
     "reception_desk": _reception_desk(),
     "welcome_sign": _welcome_sign(),
+    "exit_sign": _exit_sign(),
 }
 BOX_TEXTURES: U8Array = np.stack(_TEXTURES)  # [texture][u][v]
 BOX_OPAQUE: BoolArray = np.stack(_OPAQUE)  # [texture][u][v]: False = see-through

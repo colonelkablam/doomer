@@ -427,14 +427,30 @@ dm_spawn      1.5   3.5   0
   indicator over it (G and arrows, lit with power); inside the car, a
   button panel by the door. Co-op needs a lift or an `exit`. Riding to the next floor comes
   with the tower of floors.
+- **Dark rooms and the palette**: each ramp's 16 shades are evenly spaced
+  (shade s is (s + 1)/16 of full), so dim surfaces sit where steps are big:
+  shade 2 -> 3 is +33% (12 -> 13 is +8%). Texture detail there either
+  vanishes or jumps a whole step, and dithering between two far-apart
+  shades shows as a checkerboard: dark rooms looked blotchy. Measured
+  options: spacing the shades on a curve only helps the very darkest
+  (step at 10% brightness 62% -> ~45%; at 20% no better) and coarsens the
+  bright end (6% -> 10-13%), so the palette stays linear. Instead, the
+  baked light is bent by `LightingConfig.lift` (0.65): light^0.65 raises
+  dim light most (0.1 -> 0.22, 0.3 -> 0.46; 0.9 -> 0.93), putting dark
+  surfaces where shade steps are smaller. A power cut stays dark; what
+  disappears is the murky middle. Truecolour lighting (multiplying RGB,
+  not palette shades) would remove the steps entirely, at the cost of the
+  banded 8-bit look; not done.
 - **Power** (`shared/switches.py`): level flags in `World.flags`, set by
   switches. The breaker sets `power`; a map with a breaker starts without it
   (a map without one is powered). Use (E) near the breaker, facing it,
   throws it (`SwitchThrown`); it's one-way. The client draws the breaker from
   its state (lever down/up, lamp red/green). Without power, the light map
   is recomposed from the panels' patches: a lower ambient
-  (`unpowered_ambient`) plus only `circuit=emergency` panels; main panels
-  draw dark; ceilings take the plain light instead of its square root (with
+  (`unpowered_ambient`, 0.1) plus only the emergency lights: exit signs
+  (`exit_sign`, a dim light at each, `exit_sign_intensity` 0.7 of a panel,
+  so pools of light mark the doors on the way out) and any
+  `circuit=emergency` panels; main panels draw dark; ceilings take the plain light instead of its square root (with
   little light there's little to bounce); and glowing boxes marked `mains`
   (the lobby sign) are lit like anything else until the power's back.
 - **ID passes and locks** (`shared/pickups.py`, `door lock=`): passes are

@@ -39,8 +39,10 @@ power, so in co-op anyone can do each step.
 
 The ground floor, as built [built]:
 
-1. Start in the lobby on emergency lighting: only `circuit=emergency` panels
-   are lit, the "Boomer Industries" sign is dark, the lifts are dead.
+1. Start in the lobby on emergency lighting: the ceiling panels are dead,
+   only the green EXIT signs over the main doors glow, each with a dim pool
+   of light round it (they mark the way through); the "Boomer Industries"
+   sign is dark, the lifts are dead.
 2. The **staff (blue) pass** lies on the reception desk. It opens the sliding
    glass doors into the open-plan office.
 3. The **facilities (red) pass** is on the boss's desk. It opens the plant
@@ -127,7 +129,8 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Reception desk (box model): a cream laminate transaction ledge with a chrome edge over a slatted wood front with "WELCOME" in brass letters, on a recessed plinth; behind, a grey work surface at desk height over a drawer pedestal, the switchboard phone; returns at both ends; the visitors' book on the ledge | yes | [built] |
 | "Boomer Industries" sign: lit brass letters on a dark panel, high on the lobby wall behind reception above the glass doors | no | [built] |
 | Main breaker: steel switchgear cabinet with louvres, a hazard band, a red-handled lever and a status lamp (red, then green) | yes | [built] |
-| Emergency lighting: until the breaker is thrown, only emergency panels are lit and the lobby sign is dark | no | [built] |
+| Emergency lighting: until the breaker is thrown, the ceiling panels are dead and the lobby sign is dark; only the exit signs light the way | no | [built] |
+| Exit sign: a green box over a main door, EXIT in bold white, lit from inside on its own battery; the emergency light in a power cut | no | [built] |
 | Lifts: brushed steel doors, a call button (lit amber when called) and a floor indicator (lit with power); a steel car with a handrail behind | no | [built] |
 | Card readers by locked doors: stripe in the pass colour, red/green lamp | no | [built] |
 | Water cooler (box model: cream cabinet, hot and cold taps, an upturned 19-litre bottle nearly as wide as the cabinet, ~1.45 m to its top; faces its map angle) | yes | [built] |

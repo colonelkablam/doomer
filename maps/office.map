@@ -100,7 +100,7 @@ eeeeeeee.ssss
 eeeeeeee
 
 [things]
-# The floor starts on emergency lighting (circuit=emergency panels) until the
+# The floor starts on emergency lighting (the exit signs' glow) until the
 # plant room's breaker is thrown.
 # type          x     y     angle
 # Entrance lobby: two storeys, glazed, entrance doors on the west, the
@@ -190,7 +190,7 @@ dm_spawn        17.5  11.5  180
 dm_spawn        10.5  13.5  0
 # Ceiling lights: panels set into the ceiling, roughly every 2 cells
 ceiling_light   2.5   3.5   0
-ceiling_light   5.5   3.5   0 circuit=emergency
+ceiling_light   5.5   3.5   0
 ceiling_light   2.5   5.5   0
 ceiling_light   5.5   5.5   0
 # Open plan: a panel over each pod, and four over the aisles between
@@ -198,16 +198,23 @@ ceiling_light   11.5  2.5   0
 ceiling_light   17.5  2.5   0
 ceiling_light   11.5  6.5   0
 ceiling_light   17.5  6.5   0
-ceiling_light   14.5  4.5   0 circuit=emergency
+ceiling_light   14.5  4.5   0
 ceiling_light   20.5  4.5   0
 ceiling_light   14.5  8.5   0
 ceiling_light   20.5  8.5   0
 ceiling_light   9.5   11.5  0
 ceiling_light   12.5  11.5  0
-ceiling_light   15.5  11.5  0 circuit=emergency
+ceiling_light   15.5  11.5  0
 ceiling_light   18.5  11.5  0
 ceiling_light   21.5  11.5  0
 ceiling_light   2.5   10.5  0
-ceiling_light   5.5   12.5  0 circuit=emergency
-ceiling_light   10.5  13.5  0 circuit=emergency
+ceiling_light   5.5   12.5  0
+ceiling_light   10.5  13.5  0
 ceiling_light   20.5  13.5  0
+# Exit signs over the main doors: on their own batteries, the only light in a
+# power cut, so they mark the way out (office -> lobby -> street) and the way
+# through to the plant room. Each at the face of the wall over its doorway.
+exit_sign       1.02  4.0   0
+exit_sign       9.02  4.5   0
+exit_sign       12.5  11.02 90
+exit_sign       11.5  13.02 90
