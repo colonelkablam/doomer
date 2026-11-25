@@ -570,7 +570,7 @@ def leaves(seed: int, flat: bool = False) -> int:
     a, b = rng.uniform(0, 2 * math.pi, 2)
     reach = 30.0 * (1.0 + 0.12 * np.sin(3 * angle + a) + 0.08 * np.sin(5 * angle + b))
     inside = np.hypot(v - cv, u - cu) < reach
-    count = 70 if flat else 150
+    count = 90 if flat else 230
     placed = 0
     while placed < count:
         lv, lu = rng.uniform(0, 64, 2)
