@@ -88,11 +88,21 @@ def test_pixels_are_solid_blocks() -> None:
     assert (blocks == blocks[:, :1, :, :1]).all()
 
 
-def test_big_glasses_are_closed_rims_round_each_eye() -> None:
+def test_glasses_are_closed_rims_round_each_eye_and_nothing_below() -> None:
     from doomer.client.faces import EYEWEAR_TEMPLATES, FEATURES
 
-    glasses = EYEWEAR_TEMPLATES["big_glasses"]
-    for eye in (7, 12):
-        assert FEATURES[6][eye] == "E" and glasses[6][eye] == "."  # the eye shows through
-        for r, col in ((5, eye - 1), (5, eye), (5, eye + 1), (7, eye - 1), (7, eye), (7, eye + 1)):
-            assert glasses[r][col] == "R", (r, col)  # no gaps top or bottom
+    for name, rim in (("big_glasses", "R"), ("aviators", "F")):
+        glasses = EYEWEAR_TEMPLATES[name]
+        for eye in (7, 12):
+            assert FEATURES[6][eye] == "E"
+            for r, col in (
+                (5, eye - 1),
+                (5, eye),
+                (5, eye + 1),
+                (7, eye - 1),
+                (7, eye),
+                (7, eye + 1),
+            ):
+                assert glasses[r][col] == rim, (name, r, col)  # no gaps top or bottom
+        assert all(set(row) == {"."} for row in glasses[8:]), name  # nothing hanging below
+    assert EYEWEAR_TEMPLATES["big_glasses"][6][7] == "."  # the eye shows through clear glass

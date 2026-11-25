@@ -189,7 +189,8 @@ FACIAL_HAIR_TEMPLATES = {
     ),
 }
 # Glasses: closed square rims (R) round each eye, a bridge between, pale
-# lenses (P) either side of the eye; aviators: dark
+# lenses (P) either side of the eye; aviators the same shape in gold
+# (F, a bridge between), dark
 # lenses (A), a gold bar (F), a glint (G).
 EYEWEAR_TEMPLATES = {
     "big_glasses": _below(
@@ -201,9 +202,8 @@ EYEWEAR_TEMPLATES = {
     "aviators": _below(
         5,
         "......FFFFFFFF......",
-        "......GAA..GAA......",
-        "......AAA..AAA......",
-        ".......A....A.......",
+        "......GAAFFGAA......",
+        "......FFF..FFF......",
     ),
 }
 GLASSES_COLOURS = {
