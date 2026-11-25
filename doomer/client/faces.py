@@ -236,7 +236,7 @@ def draw_portrait(
         rims = at(
             [*((5, u) for u in range(7, 13)), (7, 7), (7, 8), (7, 11), (7, 12), (6, 9), (6, 10)]
         )
-        paint(rims, (GREY, 1.0))
+        paint(rims, (WOOD, 4.5))  # tortoiseshell: the black eyes stay distinct
         paint(at([(6, 7), (6, 12)]), (STEEL, 13.0))
     elif face.eyewear == "aviators":
         paint(at([(6, 7), (6, 8), (6, 11), (6, 12), (7, 8), (7, 11)]), (GREY, 2.0))
