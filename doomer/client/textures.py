@@ -595,19 +595,20 @@ def _car_panels(rng: np.random.Generator) -> U8Array:
 
 def lift_car_wall(seed: int = 20) -> U8Array:
     """Inside a lift car, the back wall (facing the doors): the panels, with a
-    tinted mirror above the handrail."""
+    tinted mirror above the handrail in a polished steel frame. A car's
+    ceiling is 6/8 of a storey, so only v >= 16 of this (floor-anchored)
+    texture shows: the mirror sits below that, its frame whole all round,
+    a band of panel above it."""
     rng = np.random.default_rng(seed)
     v, u = grid()
     tex = _car_panels(rng)
-    glass = (v >= 6) & (v < 36) & (u >= 3) & (u < 61)
-    shade = (8.5 + (v - 6) * 0.04 + np.where((u + v) % 23 < 3, 2.0, 0.0)).astype(
-        np.float64
-    )  # glints
-    tex = np.where(glass, indices(STEEL, shade), tex)
-    frame = ((v == 5) | (v == 36)) & (u >= 2) & (u < 62) | ((u == 2) | (u == 61)) & (v >= 5) & (
-        v <= 36
-    )
-    return np.where(frame, indices(GREY, 13.0), tex).astype(np.uint8)
+    outer = (v >= 20) & (v < 38) & (u >= 4) & (u < 60)
+    glass = (v >= 22) & (v < 36) & (u >= 6) & (u < 58)
+    tex = np.where(outer, indices(GREY, 13.0), tex)  # the frame
+    tex = np.where(outer & ((v == 37) | (u == 59)), indices(GREY, 8.0), tex)  # its shadowed edges
+    glints = (u + v) % 23 < 3
+    tex = np.where(glass, indices(STEEL, np.where(glints, 10.0, 8.0)), tex)
+    return tex.astype(np.uint8)
 
 
 def lift_car_side(seed: int = 23) -> U8Array:

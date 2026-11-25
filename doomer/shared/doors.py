@@ -71,10 +71,9 @@ SLIDING_SENSE = 1.6  # cells: sliding doors open for anyone this near
 PASSABLE = 0.95  # open beyond this, a hinged door no longer blocks
 DOOR_SET = 0.45  # cells from the doorway's middle to the door, towards its facing
 # How far each leaf of a parting door slides when fully open (cells; each
-# leaf is half the doorway, 0.5). Glass doors stop with ~32 cm of each leaf
-# still showing, as real ones do (they park behind fixed side panels), a 2 m
-# opening; lift doors vanish into the frame.
-SLIDE = {SLIDING: 0.38, LIFT: 0.5}
+# leaf is half the doorway, 0.5): they stop with ~32 cm of each leaf still
+# showing, as real ones park behind fixed side panels; a 2 m opening.
+SLIDE = {SLIDING: 0.38, LIFT: 0.38}
 
 
 @dataclass(slots=True)
