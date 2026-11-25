@@ -48,6 +48,7 @@ from doomer.client.pixelart import FONT_3X5, BoolArray, Canvas, noise
 from doomer.shared.doors import (
     DOOR_HALF,
     DOOR_HEIGHT,
+    DOOR_SET,
     DOUBLE,
     DOUBLE_JAMB,
     DOUBLE_LEAF,
@@ -824,11 +825,11 @@ def door_boxes(
             jt = (-_JAMB_HALF, _JAMB_HALF)
             sides = (_JAMB, _JAMB, _JAMB, _JAMB, _JAMB)
             for y in ((-0.5, -0.5 + JAMB), (0.5 - JAMB, 0.5)):
-                out.append(PlacedBox(door.x, door.y, 0.0, f, Box(jt, y, h, sides)))
+                out.append(PlacedBox(*door.centre, 0.0, f, Box(jt, y, h, sides)))
             # The leaf: model x along it from the hinge, closed along the
             # doorway; opening swings its free end towards the facing.
-            hinge_x = door.x + along[0] * (-0.5 + JAMB)
-            hinge_y = door.y + along[1] * (-0.5 + JAMB)
+            hinge_x = door.centre[0] + along[0] * (-0.5 + JAMB)
+            hinge_y = door.centre[1] + along[1] * (-0.5 + JAMB)
             angle = f + math.pi / 2 - door.open * SWING
             faces = (_LEAF_EDGE, _LEAF_RIGHT, _LEAF_EDGE, _LEAF_LEFT, _LEAF_EDGE)
             out.append(
@@ -838,14 +839,14 @@ def door_boxes(
             jt = (-_JAMB_HALF, _JAMB_HALF)
             sides = (_JAMB, _JAMB, _JAMB, _JAMB, _JAMB)
             for y in ((-0.5, -0.5 + DOUBLE_JAMB), (0.5 - DOUBLE_JAMB, 0.5)):
-                out.append(PlacedBox(door.x, door.y, 0.0, f, Box(jt, y, h, sides)))
+                out.append(PlacedBox(*door.centre, 0.0, f, Box(jt, y, h, sides)))
             faces = (_LEAF_EDGE, _LEAF_RIGHT, _LEAF_EDGE, _LEAF_LEFT, _LEAF_EDGE)
             leaf = Box((0.0, DOUBLE_LEAF), t, h, faces)
             # Each leaf's model x runs from its hinge towards the middle; both
             # free ends swing towards the facing.
             for side, closed, turn in ((-1, f + math.pi / 2, -1), (1, f - math.pi / 2, 1)):
                 offset = side * (0.5 - DOUBLE_JAMB)
-                hx, hy = door.x + along[0] * offset, door.y + along[1] * offset
+                hx, hy = door.centre[0] + along[0] * offset, door.centre[1] + along[1] * offset
                 angle = closed + turn * door.open * SWING
                 out.append(PlacedBox(hx, hy, 0.0, angle, leaf))
         else:
@@ -856,7 +857,7 @@ def door_boxes(
             else:
                 faces = (_GLASS, _GLASS_EDGE, _GLASS, _GLASS_EDGE, _GLASS_EDGE)
             for y in ((-0.5 - slide, -slide), (slide, 0.5 + slide)):
-                out.append(PlacedBox(door.x, door.y, 0.0, f, Box(t, y, h, faces)))
+                out.append(PlacedBox(*door.centre, 0.0, f, Box(t, y, h, faces)))
     return out
 
 
@@ -993,7 +994,9 @@ def _lift_fittings(door: Door, power: bool) -> list[PlacedBox]:
         lo, hi = sorted((side * 0.5, side * 0.56))
         at(Box((0.5, 0.515), (lo, hi), (0.0, top + 0.04), steel))  # architrave
     at(Box((0.5, 0.515), (-0.56, 0.56), (top, top + 0.04), steel))  # its head
-    at(Box((-0.05, 0.05), (-0.5, 0.5), (0.0, 0.006), (_SILL,) * 5))
+    at(
+        Box((DOOR_SET - 0.05, DOOR_SET + 0.05), (-0.5, 0.5), (0.0, 0.006), (_SILL,) * 5)
+    )  # under the doors
     indicator = (_INDICATOR[power],) * 5
     at(Box((0.5, 0.52), (-0.15, 0.15), (top + 0.07, top + 0.17), indicator, glow=power))
     # The call plate, on the wall beside the doorway; its up button.

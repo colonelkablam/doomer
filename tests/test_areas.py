@@ -22,6 +22,7 @@ from doomer.shared.mapfile import (
     EAST,
     EXECUTIVE,
     LOBBY,
+    NORTH,
     OFFICE,
     SERVICE,
     SOUTH,
@@ -246,3 +247,13 @@ def test_one_desk_variant_has_a_square_pink_note() -> None:
         rows, cols = np.nonzero(pink)
         # A clean 5 x 5 square on the texel grid: every texel in its box is pink.
         assert np.ptp(rows) == 4 and np.ptp(cols) == 4 and pink.sum() == 25
+
+
+def test_a_doorways_side_walls_are_lined() -> None:
+    from doomer.client.areas import REVEAL_WALL_TYPE
+
+    m = parse_map(ROOMS + "\n[things]\ndoor_hinged 4.5 2.5 0\n")
+    r = Renderer(RenderConfig())
+    assert r._face_type(m, 4, 1, SOUTH) == REVEAL_WALL_TYPE  # the wall north of the doorway
+    assert r._face_type(m, 4, 3, NORTH) == REVEAL_WALL_TYPE  # ... and south of it
+    assert r._face_type(m, 4, 1, WEST) == AREA_WALL_TYPE + LOBBY  # its room faces: as before

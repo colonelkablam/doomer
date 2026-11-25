@@ -1,10 +1,14 @@
 """Doors: panels in the middle of a doorway cell that open and close.
 
 A door is a map thing in a doorway: an open cell between two wall cells. Its
-angle says which way it faces: across the doorway, the way a hinged door
-swings open (sliding doors don't care which way round). The door stands in
-the plane through the cell's middle, across that direction; walls either side
-hold it, and a lowered ceiling over the doorway (6/8) makes a lintel.
+angle says which way it faces: across the doorway, the way it opens (into the
+room it serves). The door stands at the end of its doorway on that side, 0.05
+cells in from the edge (DOOR_SET from the cell's middle): flush with that
+room's wall, a frame's depth back, so sliding and lift leaves slide inside
+the walls either side rather than over the room's wall face. Walls either
+side hold it, and a lowered ceiling over the doorway (6/8) makes a lintel:
+its face over the door is in the door's plane. The rest of the doorway is a
+recess on the other side.
 
 Kinds:
 - hinged: one leaf, `HINGED_LEAF` wide, on a hinge at one side of the
@@ -56,6 +60,7 @@ USE_REACH = 1.3  # cells from the door's centre
 USE_CONE = math.cos(math.radians(50))  # must be roughly facing it
 SLIDING_SENSE = 1.6  # cells: sliding doors open for anyone this near
 PASSABLE = 0.95  # open beyond this, a hinged door no longer blocks
+DOOR_SET = 0.45  # cells from the doorway's middle to the door, towards its facing
 
 
 @dataclass(slots=True)
@@ -72,6 +77,19 @@ class Door:
 
     def unlocked_by(self, passes: Collection[str]) -> bool:
         return self.lock is None or self.lock in passes
+
+    @property
+    def plane(self) -> float:
+        """Where the door stands across its doorway: x (if across_x) or y of
+        its plane, DOOR_SET from the doorway's middle towards its facing."""
+        if self.across_x:
+            return self.x + DOOR_SET * round(math.cos(self.facing))
+        return self.y + DOOR_SET * round(math.sin(self.facing))
+
+    @property
+    def centre(self) -> tuple[float, float]:
+        """The middle of the door itself (on its plane)."""
+        return (self.plane, self.y) if self.across_x else (self.x, self.plane)
 
     @property
     def car(self) -> tuple[int, int]:
@@ -104,7 +122,7 @@ def doors_from_map(game_map: GameMap) -> list[Door]:
 def door_walls(door: Door) -> list[ThinWall]:
     """What of the doorway is closed, as thin walls for collision."""
     axis = 0 if door.across_x else 1  # ThinWall axis: the plane x = at (0) or y = at (1)
-    at = door.x if door.across_x else door.y
+    at = door.plane
     lo = (door.y if door.across_x else door.x) - 0.5  # the doorway's extent along the plane
     hi = lo + 1.0
 

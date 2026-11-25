@@ -5,7 +5,15 @@ import math
 import pytest
 
 from doomer.shared.config import MovementConfig
-from doomer.shared.doors import DOOR_HALF, HINGED, OPEN_SECONDS, SLIDING, doors_from_map
+from doomer.shared.doors import (
+    DOOR_HALF,
+    DOOR_SET,
+    HINGED,
+    OPEN_SECONDS,
+    SLIDING,
+    door_walls,
+    doors_from_map,
+)
 from doomer.shared.events import DoorToggled
 from doomer.shared.mapfile import parse_map
 from doomer.shared.player import PlayerInput, PlayerState
@@ -72,7 +80,8 @@ def test_doors_come_from_the_map_shut() -> None:
 def test_a_shut_hinged_door_stops_you() -> None:
     world, p = world_at(3.5, 6.0)
     run(world, 90, forward=1.0, angle=NORTH)
-    assert p.y == pytest.approx(4.5 + DOOR_HALF + MOVE.radius)
+    # The door stands at the north end of its doorway (it opens north).
+    assert p.y == pytest.approx(4.5 - DOOR_SET + DOOR_HALF + MOVE.radius)
 
 
 def test_use_opens_a_hinged_door_and_you_can_walk_through() -> None:
@@ -156,7 +165,7 @@ def test_double_doors_block_open_on_use_and_let_you_through() -> None:
     assert world.doors[0].kind == DOUBLE
     p.x, p.y = 3.5, 6.0
     run(world, 90, forward=1.0, angle=NORTH)
-    assert p.y == pytest.approx(4.5 + DOOR_HALF + MOVE.radius)  # shut: stopped
+    assert p.y == pytest.approx(4.5 - DOOR_SET + DOOR_HALF + MOVE.radius)  # shut: stopped
     p.y = 5.4
     run(world, 1, use=True, angle=NORTH)
     run(world, ticks_for(DOUBLE), angle=NORTH)
@@ -178,6 +187,18 @@ def test_double_door_leaves_swing_from_their_hinges_towards_the_facing() -> None
             end_x = leaf.x + math.cos(leaf.angle) * leaf.box.x[1]
             end_y = leaf.y + math.sin(leaf.angle) * leaf.box.x[1]
             if fraction == 0.0:  # shut: the free ends meet in the middle
-                assert end_x == pytest.approx(3.5, abs=0.01) and end_y == pytest.approx(4.5)
+                assert end_x == pytest.approx(3.5, abs=0.01)
+                assert end_y == pytest.approx(4.5 - DOOR_SET)  # at the doorway's north end
             else:  # open: swung north (the facing), out of the doorway
-                assert end_y < 4.5 - 0.4
+                assert end_y < 4.5 - DOOR_SET - 0.4
+
+
+@pytest.mark.parametrize("degrees, plane", [(0, 3.95), (90, 4.95), (180, 3.05), (270, 4.05)])
+def test_a_door_stands_at_the_end_of_its_doorway_it_opens_towards(
+    degrees: int, plane: float
+) -> None:
+    m = parse_map(ROOMS.replace("door_hinged 3.5 4.5 270", f"door_hinged 3.5 4.5 {degrees}"))
+    door = doors_from_map(m)[0]
+    assert door.plane == pytest.approx(plane)
+    walls = door_walls(door)
+    assert all(w.at == pytest.approx(plane) for w in walls)

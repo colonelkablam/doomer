@@ -54,6 +54,7 @@ from doomer.client.areas import (
     AREA_FACES,
     AREA_WALL_TYPE,
     CEILING,
+    REVEAL_WALL_TYPE,
     SOFFIT,
     TOP_KIND,
     Surfaces,
@@ -92,6 +93,7 @@ from doomer.client.textures import (
     build_opacity,
     railing,
 )
+from doomer.shared.doors import DOOR_THING_KINDS
 from doomer.shared.furniture import resting_height
 from doomer.shared.mapfile import (
     AREA_CHARS,
@@ -251,6 +253,8 @@ class Renderer:
         self._map_boxes: list[PlacedBox] = []
         self._map_arrays: fc.MapArrays | None = None
         self._cell_tops_map: GameMap | None = None
+        self._door_cells_map: GameMap | None = None
+        self._door_cells: frozenset[tuple[int, int]] = frozenset()
         self._cell_tops = np.zeros((0, 0), dtype=np.int64)
         self._light_list: list[tuple[float, float, float, bool]] = []
         # Last frame's per-pixel perpendicular distances, and its horizon row.
@@ -481,19 +485,25 @@ class Renderer:
         return self._light_map
 
     def _ray_light(
-        self, cols: IntArray, along: FloatArray, backoff: float = FACE_LIGHT_BACKOFF
+        self,
+        cols: IntArray,
+        along: FloatArray,
+        backoff: float = FACE_LIGHT_BACKOFF,
+        high: bool = False,
     ) -> FloatArray:
         """Light (0..1) at a distance `along` each column's ray (moved back
         `backoff` towards the camera), from this frame's light map; 1 without
         one. Light over 1 (overlapping pools) is clamped: the colormap can
-        darken, not brighten."""
+        darken, not brighten. `high`: for a face above head height (over a
+        doorway), lit only by light that doesn't pass under a lintel."""
         if self._light is None:
             return np.ones(np.shape(cols))
         t = np.clip(np.nan_to_num(along - backoff, posinf=64.0), 0.0, 64.0)
         camera = self._frame_camera
         x = camera.x + self._ray_dx[cols] * t
         y = camera.y + self._ray_dy[cols] * t
-        result: FloatArray = np.minimum(self._light.at(x, y), 1.0)
+        light = self._light.high() if high else self._light
+        result: FloatArray = np.minimum(light.at(x, y), 1.0)
         return result
 
     def _brightness(self, distance: FloatArray) -> FloatArray:
@@ -646,7 +656,20 @@ class Renderer:
         if side not in AREA_FACES.get(wall_type, ()):
             return wall_type
         dx, dy = _FACE_STEP[face]
+        if (x + dx, y + dy) in self._door_cells_in(game_map):
+            return REVEAL_WALL_TYPE  # a doorway's side wall: its lining
         return AREA_WALL_TYPE + game_map.area_at(x + dx, y + dy)
+
+    def _door_cells_in(self, game_map: GameMap) -> frozenset[tuple[int, int]]:
+        """The cells with a door in them (doorways)."""
+        if self._door_cells_map is not game_map:
+            self._door_cells = frozenset(
+                (math.floor(t.x), math.floor(t.y))
+                for t in game_map.things
+                if t.type in DOOR_THING_KINDS
+            )
+            self._door_cells_map = game_map
+        return self._door_cells
 
     def _slot_for(self, game_map: GameMap, x: int, y: int, face: int) -> int:
         wall_type = self._face_type(game_map, x, y, face)
@@ -800,6 +823,11 @@ class Renderer:
                 self._brightness(near)
                 * np.where(i[fc.Y_SIDE] != 0, Y_SIDE_SHADE, 1.0)
                 * self._ray_light(cols, distance)
+            ),
+            level_high=light_level(
+                self._brightness(near)
+                * np.where(i[fc.Y_SIDE] != 0, Y_SIDE_SHADE, 1.0)
+                * self._ray_light(cols, distance, high=True)
             ),
             wall_type=wall_type,
             exit_distance=f[fc.EXIT_DISTANCE],
@@ -1149,7 +1177,7 @@ class Renderer:
         if bulk.any():
             which, vi = self._face_texels(py, near, s.upper, s.upper, horizon, eye)
             texel = self.atlas[which, s.u[:, None], vi]
-            sub_frame = np.where(bulk, COLORMAP[s.level_near[:, None], texel], sub_frame)
+            sub_frame = np.where(bulk, COLORMAP[s.level_high[:, None], texel], sub_frame)
             sub_z = np.where(bulk, near[:, None], sub_z)
 
         # Ceiling surface at this span's height, if it isn't the default.
@@ -1603,6 +1631,7 @@ class _Span:
     upper: IntArray
     u: IntArray
     level_near: IntArray
+    level_high: IntArray  # for faces above head height (bulkheads): lintels stop light
     wall_type: Int64Array
     exit_distance: FloatArray
     exit_u: FloatArray

@@ -167,7 +167,10 @@ room behind it.
 Windows (`4`, ribbon windows with blinds, in offices; `f`, the curtain wall,
 in the lobby), lift doors and furniture keep their own textures wherever
 they are. Where a ceiling steps down (over a doorway), the face above
-looks like the area you see it from.
+looks like the area you see it from. A doorway's side walls are a door
+lining (painted plaster, timber architraves), whichever rooms it joins.
+Doors stand flush with the room they open into, the doorway a recess on the
+corridor side.
 
 Soffits, the underside of a doorway's lintel, are lined rather than tiled:
 painted plaster framed in timber (office), timber boards in a moulding

@@ -240,7 +240,8 @@ def test_shut_opaque_doors_stop_light_glass_ones_dont(door: str, blocks: bool) -
     )
     light = bake_light_map(two_rooms, CONFIG)
     west = float(light.at(np.array([3.0]), np.array([2.5]))[0])
-    beside = float(light.at(np.array([4.7]), np.array([2.5]))[0])  # its own side of the door
+    # On the panel's side of the door (it stands at the east end of its doorway).
+    beside = float(light.at(np.array([5.3]), np.array([2.5]))[0])
     if blocks:
         assert west == pytest.approx(CONFIG.ambient)
     else:  # 3.5 cells from the panel: dim, but lit
@@ -272,3 +273,18 @@ def test_exit_signs_are_dim_emergency_lights() -> None:
     assert at(dark, 1.5) > CONFIG.unpowered_ambient + 0.2  # the sign's pool, power off
     assert at(dark, 6.5) < CONFIG.unpowered_ambient + 0.05  # the panel's dead
     assert at(light, 6.5) > at(light, 1.5)  # dimmer than a panel
+
+
+def test_light_through_a_doorway_lights_the_floor_not_the_wall_over_it() -> None:
+    # A glass door under a lintel (ceiling 6) between two rooms; a panel in
+    # the east one. The west room's floor by the door gets some; the face
+    # over the doorway, on the west side, doesn't (the light came under it).
+    two_rooms = parse_map(
+        "[walls]\n#########\n#...#...#\n#.......#\n#...#...#\n#########\n"
+        "\n[ceiling]\n888888888\n888888888\n888868888\n888888888\n888888888\n"
+        "\n[things]\nceiling_light 6.5 2.5 0\ndoor_sliding 4.5 2.5 0\n"
+    )
+    light = bake_light_map(two_rooms, CONFIG)
+    west = (np.array([3.7]), np.array([2.5]))
+    assert float(light.at(*west)[0]) > CONFIG.ambient + 0.05
+    assert float(light.high().at(*west)[0]) == pytest.approx(CONFIG.ambient)

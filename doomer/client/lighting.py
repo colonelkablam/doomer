@@ -35,7 +35,7 @@ import numpy.typing as npt
 
 from doomer.client.config import LightingConfig
 from doomer.shared.doors import SLIDING, doors_from_map
-from doomer.shared.mapfile import GameMap
+from doomer.shared.mapfile import WALL_UNITS, GameMap
 
 FloatArray = npt.NDArray[np.float64]
 
@@ -72,13 +72,25 @@ class LightMap:
     patches: tuple[LightPatch, ...]
     # The same with the power off: a lower ambient, emergency panels only.
     unpowered: FloatArray | None = None
+    # Light for faces above head height (the face over a doorway): baked with
+    # lowered ceilings (lintels) and door panels stopping light, as light
+    # through a doorway passes under its lintel and lights the floor beyond,
+    # not the wall above it on that side.
+    upper: "LightMap | None" = None
 
     def without_power(self) -> "LightMap":
         """This map as it is with the power off (itself, if it has no
         unpowered version)."""
         if self.unpowered is None:
             return self
-        return LightMap(self.samples_per_cell, self.ambient, self.unpowered, self.patches)
+        upper = self.upper.without_power() if self.upper is not None else None
+        return LightMap(
+            self.samples_per_cell, self.ambient, self.unpowered, self.patches, None, upper
+        )
+
+    def high(self) -> "LightMap":
+        """The light for faces above head height (itself, if it has none)."""
+        return self.upper if self.upper is not None else self
 
     def at(self, x: FloatArray, y: FloatArray) -> FloatArray:
         """Light at points (cells), interpolated bilinearly between samples;
@@ -123,17 +135,50 @@ def bake_light_map(game_map: GameMap, config: LightingConfig | None = None) -> L
     floors = np.array(
         [[0.0 if walls[y, x] else game_map.floor_height(x, y) for x in xs] for y in ys]
     )
-    # Shut opaque doors: (axis, at, lo, hi), a plane x = at (axis 0) or
-    # y = at (1), from lo to hi along it.
-    doors = [
-        (0, d.x, d.y - 0.5, d.y + 0.5) if d.across_x else (1, d.y, d.x - 0.5, d.x + 0.5)
+    # Doors: (axis, at, lo, hi), a plane x = at (axis 0) or y = at (1), from
+    # lo to hi along it. Shut opaque ones stop light; for faces above head
+    # height, glass ones too (above the door is the lintel, not glass).
+    planes = [
+        (
+            (0, d.plane, d.y - 0.5, d.y + 0.5)
+            if d.across_x
+            else (1, d.plane, d.x - 0.5, d.x + 0.5),
+            d,
+        )
         for d in doors_from_map(game_map)
-        if d.kind != SLIDING
     ]
+    doors = [p for p, d in planes if d.kind != SLIDING]
+    # Lowered ceilings (a doorway's lintel) stop light for faces above them.
+    low = np.array(
+        [[not walls[y, x] and game_map.ceiling[y][x] < WALL_UNITS for x in xs] for y in ys],
+        dtype=np.bool_,
+    )
+    lights = panels_in(game_map, config)
+    floor_light = _compose(lights, config, walls, floors, doors, rows, cols, keep=True)
+    face_light = _compose(lights, config, walls | low, floors, [p for p, _ in planes], rows, cols)
+    values, unpowered, patches = floor_light
+    upper = LightMap(s, config.ambient, face_light[0], (), face_light[1])
+    return LightMap(s, config.ambient, values, patches, unpowered, upper)
+
+
+def _compose(
+    lights: list[Panel],
+    config: LightingConfig,
+    walls: npt.NDArray[np.bool_],
+    floors: FloatArray,
+    doors: list[tuple[int, float, float, float]],
+    rows: int,
+    cols: int,
+    keep: bool = False,
+) -> tuple[FloatArray, FloatArray, tuple[LightPatch, ...]]:
+    """(lit, unpowered, patches if `keep`): the ambient plus every light's
+    patch, with the power on and off, lifted (LightingConfig.lift). The
+    lift bends the finished map, not the patches: they stay plain sums, to
+    add or take away."""
     values = np.full((rows, cols), config.ambient)
     unpowered = np.full((rows, cols), config.unpowered_ambient)
     patches = []
-    for panel in panels_in(game_map, config):
+    for panel in lights:
         patch = _patch(panel, config, walls, floors, rows, cols, doors)
         if patch is not None:
             r, c = patch.row0, patch.col0
@@ -141,11 +186,9 @@ def bake_light_map(game_map: GameMap, config: LightingConfig | None = None) -> L
             values[r : r + h, c : c + w] += patch.values
             if panel.emergency:
                 unpowered[r : r + h, c : c + w] += patch.values
-            patches.append(patch)
-    # The lift (LightingConfig.lift) bends the finished map, not the patches:
-    # they stay plain sums, to add or take away.
-    lifted, lifted_unpowered = np.power(values, config.lift), np.power(unpowered, config.lift)
-    return LightMap(s, config.ambient, lifted, tuple(patches), lifted_unpowered)
+            if keep:
+                patches.append(patch)
+    return np.power(values, config.lift), np.power(unpowered, config.lift), tuple(patches)
 
 
 def _patch(

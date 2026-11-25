@@ -390,7 +390,17 @@ dm_spawn      1.5   3.5   0
   furniture stays as map cells.
 - **Doors** (prototype; `shared/doors.py`, drawn by `boxes.door_boxes`): a
   door is a thing in a doorway cell (open floor between two wall cells),
-  standing in the plane through the cell's middle. State (how far open,
+  standing at the end of the doorway on the side it opens into (its facing),
+  `DOOR_SET` (0.45) from the cell's middle: 0.05 cells (~13 cm, a frame's
+  depth) in from that edge. So it's flush with the room it serves and the
+  rest of the doorway is a recess on the other side (a corridor's); sliding
+  and lift leaves slide inside the walls either side, not over the room's
+  wall face (on the edge itself they'd poke out and flicker against it).
+  `Door.plane` is that plane (collision, light); fittings (card readers, a
+  lift's surround) keep the doorway's centre. The doorway's side walls
+  (plain wall faces facing into a door's cell) take a door lining
+  (`areas.REVEAL_WALL_TYPE`: plaster, timber architraves at each end), as
+  a doorway belongs to neither room. State (how far open,
   opening or closing) lives in the simulation's `World.doors`, so the server
   will own it; the client draws boxes from it each frame (passed to the
   renderer as `boxes`). Hinged: two fixed jambs and a leaf whose model
@@ -405,6 +415,15 @@ dm_spawn      1.5   3.5   0
   bulkhead drawing; with lighting on, a ceiling lower than a storey (the
   lintel's soffit) takes the plain light times `soffit_shade` (0.85), not
   the square root other ceilings get, so it sits in shadow like the walls.
+- **Light through doorways lights floors, not walls above**: the light map
+  is a floor plan, and faces take their light from the floor just in front
+  of them; so a pool of lobby light through the glass doors lit the face
+  over the doors on the office side, which that light passes under and
+  can't reach. A second map (`LightMap.upper`, `high()`) is baked with
+  lowered ceilings (lintels) and every door plane stopping light; faces
+  above head height (bulkheads, the face over a doorway) take their light
+  from it. Floors and ordinary walls use the first. (~2x the bake time,
+  ~0.3 s for the office; nothing per frame but a second lookup.)
 - **Furniture footprints** (`things.Footprint`, `shared/furniture.py`): a
   blocking thing type can give its floor plan as rectangles in its own frame,
   each with a top height, instead of the square `radius`. Placed at the

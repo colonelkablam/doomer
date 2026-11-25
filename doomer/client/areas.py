@@ -66,6 +66,9 @@ MIP_LEVELS = 7  # 64, 32, 16, 8, 4, 2, 1 texels across
 # Internal wall types (not in map files, which stop at 35) for the plain-wall
 # look of each area: AREA_WALL_TYPE + area.
 AREA_WALL_TYPE = 40
+# The side walls of a doorway (its reveals: plain wall faces facing into a
+# cell with a door) are lined, whichever areas it joins: REVEAL_WALL_TYPE.
+REVEAL_WALL_TYPE = 60
 # Which sides of which wall types are plain walls, taking the look of the
 # area they face: all of `#` (1), a balcony's front (i, 18: it carries on
 # the room's walls below it), and the outside of a lift car (k, 20).
@@ -269,6 +272,24 @@ AREA_LOOKS: dict[int, AreaLook] = {
 for _area, _look in AREA_LOOKS.items():
     register_wall_texture(AREA_WALL_TYPE + _area, _look.wall())
     register_wall_texture(AREA_WALL_TYPE + _area, _look.wall_upper(), sides=(UPPER,))
+
+
+def door_lining(seed: int = 45) -> U8Array:
+    """A doorway's side walls: a door lining. Painted plaster, a timber
+    architrave at each end (where it meets the rooms' walls, and the door's
+    frame), skirting along the foot: neutral, as a doorway belongs to
+    neither room. u runs the doorway's depth, so the ends are its ends."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    tex = indices(CREAM, 11.0 + (noise(rng, 8) - 0.5) * 0.4)
+    trim = (u < 5) | (u >= 59)
+    tex = np.where(trim, indices(WOOD, 8.0), tex)
+    tex = np.where((u == 0) | (u == 59), indices(WOOD, 10.0), tex)  # their lit edges
+    tex = np.where((u == 4) | (u == 63), indices(WOOD, 5.0), tex)
+    return np.where(v >= 58, indices(WOOD, np.where(v == 58, 7.0, 5.0)), tex).astype(np.uint8)
+
+
+register_wall_texture(REVEAL_WALL_TYPE, door_lining())
 
 
 # --- desk tops --------------------------------------------------------------------
