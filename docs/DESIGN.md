@@ -431,6 +431,14 @@ dm_spawn      1.5   3.5   0
   bulkhead drawing; with lighting on, a ceiling lower than a storey (the
   lintel's soffit) takes the plain light times `soffit_shade` (0.85), not
   the square root other ceilings get, so it sits in shadow like the walls.
+- **Indicator lamps** (`Box.indicator`, `blink`, `blink_phase`;
+  `boxes.lit_now`): a small lit box on a panel, drawn only while lit, the
+  dark socket painted on the panel behind showing otherwise. Unlit when it's
+  on the mains (`mains`) and there's no power, or in the off half of its
+  blink (seconds per cycle; things of a model offset by where they stand,
+  so a row doesn't blink in step). The breaker's lamps (battery: red
+  blinking, then green) and the servers' (mains) use it; the renderer
+  filters lamps by `now` and `power` before drawing boxes.
 - **Things that move by the clock** (`boxes.SPINNING`): the renderer takes
   `now` (seconds) and turns those box models by it, with a small bob, as
   an ID pass card does. Cosmetic, so not part of the simulation: each
@@ -730,12 +738,6 @@ Rules that have come out of it (details in the sections above):
 
 Noted at the end of a session, to pick up next:
 
-- **Server cabinets in the plant room.** A row of late-80s minicomputer
-  cabinets (tall, steel, a smoked glass door, tape reels or drive bays),
-  with blinking lights: a few lamps on the front that flicker on their own
-  timers (lit with `glow`; the box's texture swapped per frame by time, as
-  door boxes are drawn from their state). Few boxes each (one cabinet box,
-  a front panel); a thing type `server`, blocking.
 - **A face generator, when something needs many faces** (a wall of staff
   photos, a photo frame on each desk, NPC portraits): a seeded
   `random_face(rng)` in `client/faces.py` picking each part of a `Face`

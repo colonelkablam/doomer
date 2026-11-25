@@ -115,8 +115,13 @@ door_double     12.5  10.5  90
 # The plant room (for now, the small room south of the corridor): facilities
 # pass (red), which is on the boss's desk
 door_hinged     11.5  12.5  270   lock=red
-# The plant room's main breaker, against its south wall: restores the power
-breaker         10.5  14.99 270
+# The plant room's main breaker, on its solid west wall facing the room:
+# restores the power. The servers along the east wall, opposite.
+breaker         9.01  14.1  0
+server          12.99 13.4  180   kind=tape
+server          12.99 13.78 180   kind=disk
+server          12.99 14.16 180   kind=tape
+server          12.99 14.54 180   kind=disk
 pass_blue       4.37  4.4   0
 pass_red        3.3   12.0  0
 reception_desk  4.6   4.0   180
@@ -262,8 +267,8 @@ poster          15.8  9.99  270   kind=employee_mar
 poster          7.99  5.5   180   kind=founder
 poster          7.99  6.6   180   kind=plan
 poster          10.5  11.99 270   kind=high_voltage
-poster          9.5   14.99 270   kind=high_voltage
-poster          12.99 13.8  180   kind=accident
+poster          9.01  13.45 0     kind=high_voltage
+poster          9.8   13.01 90    kind=accident
 exit_sign       1.02  4.0   0
 exit_sign       9.02  4.5   0
 exit_sign       12.5  11.02 90

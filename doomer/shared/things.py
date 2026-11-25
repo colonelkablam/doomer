@@ -144,15 +144,31 @@ CEILING_LIGHT = register_thing_type(
 
 # The plant room's breaker: use it to restore power (doomer/shared/switches.py).
 # Stand it just in front of a wall's face, angle out of the wall.
-# Blocks like furniture: a switchgear cabinet 0.12 deep, 0.6 wide (it's drawn
-# by doomer/client/boxes.py, whose sizes match).
+# Blocks like furniture: a switchgear cabinet 0.14 deep, 0.5 wide, 0.72 tall
+# (it's drawn by doomer/client/boxes.py, whose sizes match). Put it on a
+# solid wall, not a window.
 BREAKER = register_thing_type(
     ThingType(
         "breaker",
         "Main breaker: restores the power",
         blocking=True,
-        radius=0.3,
-        footprints=(Footprint((0.0, 0.16), (-0.3, 0.3), 0.62),),
+        radius=0.25,
+        footprints=(Footprint((0.0, 0.18), (-0.25, 0.25), 0.72),),
+    )
+)
+
+# A late-80s minicomputer cabinet (drawn by doomer/client/boxes.py, sizes
+# matching): kind=tape (reels behind glass) or disk (drive drawers); its
+# lamps blink while there's power. Stand it at a wall's face, angle out of
+# the wall; a row of them side by side 0.38 apart. Blocks.
+SERVER = register_thing_type(
+    ThingType(
+        "server",
+        "Minicomputer cabinet, its lamps blinking with power",
+        blocking=True,
+        radius=0.19,
+        properties={"kind": ("tape", "disk")},
+        footprints=(Footprint((0.0, 0.36), (-0.19, 0.19), 0.74),),
     )
 )
 

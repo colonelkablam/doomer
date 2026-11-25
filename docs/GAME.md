@@ -47,7 +47,8 @@ The ground floor, as built [built]:
    glass doors into the open-plan office.
 3. The **facilities (red) pass** is on the boss's desk. It opens the plant
    room's door.
-4. Throw the **main breaker** in the plant room (use, E): the power comes
+4. Throw the **main breaker** in the plant room (use, E; its red lamp
+   blinks until you do, then shows green): the power comes
    back. The lights come on, the sign lights up, the lifts get power.
 5. **Call a lift** (E at its doors), step into the car. When every player is
    in a lift car the doors close: "GROUND FLOOR COMPLETE".
@@ -154,7 +155,8 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Sliding glass doors: aluminium frame, frosted band, push bar; open by themselves | yes, until open | [built] (prototype) |
 | Reception desk (box model): a cream laminate transaction ledge with a chrome edge over a slatted wood front with "WELCOME" in brass letters, on a recessed plinth; behind, a grey work surface at desk height over a drawer pedestal, a desk phone (`phone`); returns at both ends; the visitors' book on the ledge | yes | [built] |
 | "Boomer Industries" sign: lit brass letters on a dark panel, high on the lobby wall behind reception above the glass doors | no | [built] |
-| Main breaker: steel switchgear cabinet with louvres, a hazard band, a red-handled lever and a status lamp (red, then green) | yes | [built] |
+| Main breaker: a tall steel switchgear cabinet on a solid wall, louvres, MAIN stencilled, a warning label, a hazard band, a red-handled lever (down off, thrown up on) and two lamps: red blinking until it's thrown, then steady green | yes | [built] |
+| Server cabinets (box model, `server`, `kind=tape` or `disk`): late-80s minicomputers, cream steel with a blue band, tape reels behind smoked glass or three drive drawers; a row of lamps on each blinking on their own timers, dark until the power's back | yes | [built] |
 | Emergency lighting: until the breaker is thrown, the ceiling panels are dead and the lobby sign is dark; only the exit signs light the way | no | [built] |
 | Exit sign: a green box over a main door, EXIT in bold white, lit from inside on its own battery; the emergency light in a power cut | no | [built] |
 | Lifts: brushed steel doors, a call button (lit amber when called) and a floor indicator (lit with power); a steel car with a handrail behind | no | [built] |

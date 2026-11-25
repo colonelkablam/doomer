@@ -94,6 +94,24 @@ class Box:
     # runs off a battery, so it doesn't need this). Without power it's lit
     # like anything else.
     mains: bool = False
+    # A lamp on a panel: drawn only while it's lit, the dark socket painted
+    # behind it showing otherwise. Unlit when it's on the mains (`mains`)
+    # and there's no power, or in the off half of its blink.
+    indicator: bool = False
+    # Blinking (an indicator): seconds per on-off cycle (0: steady), and
+    # where in the cycle it starts (0..1); things of a model are offset by
+    # where they stand, so a row of them doesn't blink in step.
+    blink: float = 0.0
+    blink_phase: float = 0.0
+
+
+def lit_now(box: Box, x: float, y: float, now: float, power: bool) -> bool:
+    """Whether an indicator lamp (a box at (x, y)) is lit at time `now`."""
+    if box.mains and not power:
+        return False
+    if box.blink <= 0.0:
+        return True
+    return (now / box.blink + box.blink_phase + 0.37 * x + 0.61 * y) % 1.0 < 0.5
 
 
 class PlacedBox(NamedTuple):
@@ -2034,26 +2052,50 @@ def _exit_sign() -> tuple[Box, ...]:
 
 
 # --- The plant room's breaker (doomer/shared/switches.py has its state) ---------
-# A steel switchgear cabinet against the wall: louvres, a hazard band, a big
-# lever (down: off; thrown up: on) and a status lamp (red, then green, lit).
-# Drawn from the switch's state each frame, like doors. Model x points out of
-# the wall; the thing stands at the wall's face.
+# A tall steel switchgear cabinet against a solid wall: louvres at the top,
+# MAIN stencilled on, a warning label, a hazard band at the foot, a big red
+# lever (down: off; thrown up: on) and two lamps over it: red, blinking,
+# while it's off; green, steady, once it's on (they run off its battery).
+# Drawn from the switch's state each frame, like doors. Model x points out
+# of the wall; the thing stands at the wall's face. Sizes match its
+# footprint in doomer/shared/things.py.
 
-BREAKER_DEPTH, BREAKER_HALF_WIDTH, BREAKER_TOP = 0.12, 0.3, 0.62
-_PIVOT, _LEVER = 0.36, 0.11  # walls: the lever's pivot height and length
+BREAKER_DEPTH, BREAKER_HALF_WIDTH, BREAKER_TOP = 0.14, 0.25, 0.72
+_PIVOT, _LEVER = 0.38, 0.12  # walls: the lever's pivot height and length
+_LAMP_Y = {"red": -0.06, "green": 0.06}  # across the front, over the lever
+_LAMP_Z = (0.56, 0.6)
+
+
+def _front_v(z: float, top: float) -> int:
+    """The texel row (v) of height z on a front face from 0 to `top`."""
+    return round((top - z) / top * 64)
+
+
+def _front_u(y: float, half: float) -> int:
+    """The texel column (u) of y across a front face (model -y at u 0... as
+    drawn on the box's front: mirrored, so use symmetric layouts)."""
+    return round((y + half) / (2 * half) * 64)
 
 
 def switchgear_front() -> int:
     c = Canvas()
     c.paint(c.rect(0, 64, 0, 64), GREY, 8.0)
-    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64), GREY, 5.0)
-    for v0 in range(6, 22, 3):  # louvres
-        c.paint(c.rect(v0, v0 + 1, 8, 40), GREY, 3.0)
-    stripes = c.rect(54, 60, 2, 62)
+    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64) | c.rect(0, 2, 0, 64), GREY, 5.0)
+    for v0 in range(5, 15, 3):  # louvres
+        c.paint(c.rect(v0, v0 + 1, 10, 54), GREY, 3.0)
+    c.text("MAIN", 28, 6, GREY, 2.0)  # stencilled, left of the lever
+    c.paint(c.rect(40, 50, 8, 20), OCHRE, 12.0)  # a warning label
+    c.paint(c.rect(42, 48, 13, 15), GREY, 1.0)
+    for y in _LAMP_Y.values():  # the lamps' dark sockets (lamps, lit, sit proud of them)
+        u, v0, v1 = (
+            _front_u(y, BREAKER_HALF_WIDTH),
+            _front_v(_LAMP_Z[1], BREAKER_TOP),
+            _front_v(_LAMP_Z[0], BREAKER_TOP),
+        )
+        c.paint(c.rect(v0, v1, u - 3, u + 3), GREY, 1.0)
+    stripes = c.rect(56, 62, 2, 62)
     c.paint(stripes, OCHRE, 12.0)  # hazard band
     c.paint(stripes & ((c.u + c.v) % 8 < 4), GREY, 1.0)
-    c.paint(c.rect(28, 40, 10, 22), OCHRE, 12.0)  # a warning label
-    c.paint(c.rect(30, 38, 15, 17), GREY, 1.0)
     return _texture(c)
 
 
@@ -2085,6 +2127,7 @@ def lamp(ramp: int) -> int:
 _GEAR_FRONT, _GEAR_SIDE = switchgear_front(), switchgear_side()
 _ARM, _HANDLE = lever_arm(), lever_handle()
 _LAMP_OFF, _LAMP_ON = lamp(BRICK), lamp(GREEN)
+BREAKER_BLINK = 1.0  # seconds per blink of its red lamp
 
 
 def switch_boxes(switches: Iterable[Switch]) -> list[PlacedBox]:
@@ -2097,23 +2140,117 @@ def switch_boxes(switches: Iterable[Switch]) -> list[PlacedBox]:
             (0.02, BREAKER_TOP),
             (_GEAR_FRONT, _GEAR_SIDE, _GEAR_SIDE, _GEAR_SIDE, _GEAR_SIDE),
         )
-        # The lever on the right of the front: hangs down when off, up when on.
+        # The lever in the middle of the front: hangs down when off, up when on.
         z = (_PIVOT, _PIVOT + _LEVER) if sw.on else (_PIVOT - _LEVER, _PIVOT)
         knob = (z[1] - 0.03, z[1]) if sw.on else (z[0], z[0] + 0.03)
-        lever_x = (BREAKER_DEPTH, BREAKER_DEPTH + 0.03)
-        arm = Box(lever_x, (0.17, 0.2), z, (_ARM,) * 5)
-        handle = Box((BREAKER_DEPTH, BREAKER_DEPTH + 0.05), (0.15, 0.22), knob, (_HANDLE,) * 5)
-        lit = _LAMP_ON if sw.on else _LAMP_OFF
+        arm = Box((BREAKER_DEPTH, BREAKER_DEPTH + 0.03), (-0.015, 0.015), z, (_ARM,) * 5)
+        handle = Box((BREAKER_DEPTH, BREAKER_DEPTH + 0.05), (-0.05, 0.05), knob, (_HANDLE,) * 5)
+        # One lamp lit: red, blinking, until it's thrown; then green, steady.
+        y = _LAMP_Y["green" if sw.on else "red"]
         light = Box(
             (BREAKER_DEPTH, BREAKER_DEPTH + 0.008),
-            (-0.2, -0.14),
-            (0.5, 0.54),
-            (lit,) * 5,
+            (y - 0.025, y + 0.025),
+            _LAMP_Z,
+            ((_LAMP_ON if sw.on else _LAMP_OFF),) * 5,
             glow=True,
+            indicator=True,
+            blink=0.0 if sw.on else BREAKER_BLINK,
         )
         for box in (cabinet, arm, handle, light):
             out.append(PlacedBox(sw.x, sw.y, 0.0, sw.facing, box))
     return out
+
+
+# --- Server cabinets (the plant room) ------------------------------------------------
+# Late-80s minicomputer cabinets: tall, cream steel, a blue band at the top;
+# a tape drive (two reels behind a smoked glass door) or a disk cabinet
+# (three drive drawers). A row of lamps on a panel blinks away, each on its
+# own timer, while there's power; dark without (indicators on the mains).
+# Five boxes each: the cabinet and four lamps. Model x out of the wall, the
+# thing at the wall's face; sizes match its footprint (shared/things.py).
+
+SERVER_DEPTH, SERVER_HALF_WIDTH, SERVER_TOP = 0.36, 0.19, 0.74
+_SERVER_LAMPS = (  # (y across, blink seconds, phase, colour ramp): symmetric in y
+    (-0.11, 0.7, 0.0, GREEN),
+    (-0.04, 1.3, 0.4, ORANGE),
+    (0.04, 0.45, 0.2, GREEN),
+    (0.11, 2.1, 0.7, BRICK),
+)
+_SERVER_LAMP_Z = {"tape": (0.36, 0.38), "disk": (0.62, 0.64)}
+
+
+def server_front(kind: str) -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), CREAM, 12.0)
+    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64), CREAM, 9.0)  # its edges
+    c.paint(c.rect(0, 6, 0, 64), BLUE, 7.0)  # the band at the top
+    lamp_z = _SERVER_LAMP_Z[kind]
+    v0, v1 = _front_v(lamp_z[1], SERVER_TOP), _front_v(lamp_z[0], SERVER_TOP)
+    c.paint(c.rect(v0 - 2, v1 + 2, 6, 58), GREY, 3.0)  # the lamp panel
+    for y, _, _, _ in _SERVER_LAMPS:
+        u = _front_u(y, SERVER_HALF_WIDTH)
+        c.paint(c.rect(v0, v1, u - 2, u + 2), GREY, 1.0)  # dark sockets
+    if kind == "tape":
+        glass = c.rect(8, 26, 6, 58)
+        c.paint(glass, GREY, 2.5)  # smoked glass
+        for cu in (20, 44):  # two reels (texels are tall here: ellipses wide)
+            c.paint(c.ellipse(17, cu, 7, 11), WOOD, 3.0)  # tape on them
+            c.paint(c.ellipse(17, cu, 3.5, 5), GREY, 9.0)  # the hubs
+            c.paint(c.ellipse(17, cu, 1.2, 1.8), GREY, 2.0)
+        c.paint(c.rect(8, 9, 6, 58), GREY, 6.0)  # a glint along the top
+        for v in range(40, 60, 3):  # vents below
+            c.paint(c.rect(v, v + 1, 10, 54), CREAM, 8.0)
+    else:
+        for top in (26, 38, 50):  # three drive drawers, each with a handle
+            c.paint(c.rect(top, top + 10, 6, 58), CREAM, 10.5)
+            c.paint(c.rect(top, top + 1, 6, 58), CREAM, 14.0)
+            c.paint(c.rect(top + 4, top + 6, 26, 38), GREY, 4.0)
+    c.paint(c.rect(61, 64, 2, 62), GREY, 2.0)  # the plinth
+    return _texture(c)
+
+
+def server_side() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), CREAM, 10.5)
+    c.paint(c.rect(0, 6, 0, 64), BLUE, 6.0)
+    for v in range(14, 50, 4):  # vents
+        c.paint(c.rect(v, v + 1, 12, 52), CREAM, 7.0)
+    return _texture(c)
+
+
+def server_top() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), CREAM, 11.0)
+    return _texture(c)
+
+
+def _server(kind: str) -> tuple[Box, ...]:
+    side, top = server_side(), server_top()
+    cabinet = Box(
+        (0.0, SERVER_DEPTH),
+        (-SERVER_HALF_WIDTH, SERVER_HALF_WIDTH),
+        (0.0, SERVER_TOP),
+        (server_front(kind), side, side, side, top),
+    )
+    lamps = tuple(
+        Box(
+            (SERVER_DEPTH, SERVER_DEPTH + 0.005),
+            (y - 0.012, y + 0.012),
+            _SERVER_LAMP_Z[kind],
+            (_SERVER_LAMP_TEXTURES[ramp],) * 5,
+            glow=True,
+            mains=True,
+            indicator=True,
+            blink=period,
+            blink_phase=phase,
+        )
+        for y, period, phase, ramp in _SERVER_LAMPS
+    )
+    return (cabinet, *lamps)
+
+
+_SERVER_LAMP_TEXTURES = {ramp: lamp(ramp) for ramp in (GREEN, ORANGE, BRICK)}
+SERVER_MODELS = {f"server:{kind}": _server(kind) for kind in _SERVER_LAMP_Z}
 
 
 # Keyed by thing type name, like SPRITES.
@@ -2122,6 +2259,7 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "phone": _phone(),
     "pc": _pc(),
     "chair": _chair(),
+    **SERVER_MODELS,
     **PASS_MODELS,
     **{f"poster:{k}": _poster(*v) for k, v in _POSTER_KINDS.items()},
     "filing_cabinet": _filing_cabinet(),

@@ -71,6 +71,7 @@ from doomer.client.boxes import (
     PlacedBox,
     box_textures,
     desk_screens,
+    lit_now,
     poster_plans,
     stair_boxes,
 )
@@ -660,6 +661,8 @@ class Renderer:
                 if (s.x - camera.x) ** 2 + (s.y - camera.y) ** 2 < MAX_BOX_DISTANCE**2
             ]
         )
+        # Indicator lamps: only while lit (a blink's off half, no mains power).
+        boxes = [p for p in boxes if not p.box.indicator or lit_now(p.box, p.x, p.y, now, power)]
         self._draw_boxes(frame, zbuffer, camera, boxes, horizon, eye)
         self._draw_sprites(frame, zbuffer, camera, sprites, horizon, eye)
         self.zbuffer = zbuffer

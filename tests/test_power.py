@@ -71,7 +71,7 @@ def test_the_breaker_cabinet_blocks_you() -> None:
     p.x, p.y = 2.5, 2.0
     for _ in range(90):
         step(world, {1: PlayerInput(forward=1.0, angle=SOUTH)})
-    assert p.y == pytest.approx(3.99 - 0.16 - world.config.movement.radius)
+    assert p.y == pytest.approx(3.99 - 0.18 - world.config.movement.radius)  # its footprint
 
 
 def test_without_power_only_emergency_panels_light_the_floor() -> None:
@@ -109,3 +109,47 @@ def test_hud_says_the_power_is_back() -> None:
     from doomer.client.hud import message_for
 
     assert message_for(SwitchThrown(0, 0, 1, POWER)) == "The power is back on"
+
+
+def test_indicator_lamps_blink_and_go_dark_without_mains() -> None:
+    from doomer.client.boxes import Box, lit_now
+
+    lamp = Box((0, 0.01), (0, 0.01), (0, 0.01), (0,) * 5, indicator=True, blink=1.0)
+    seen = {lit_now(lamp, 0.0, 0.0, t / 10, power=True) for t in range(10)}
+    assert seen == {True, False}  # on half the time
+    mains = Box((0, 0.01), (0, 0.01), (0, 0.01), (0,) * 5, indicator=True, mains=True)
+    assert lit_now(mains, 0, 0, 0.0, power=True) and not lit_now(mains, 0, 0, 0.0, power=False)
+
+
+def test_the_breaker_blinks_red_until_thrown_then_shows_steady_green() -> None:
+    import dataclasses
+
+    from doomer.client.boxes import switch_boxes
+    from doomer.shared.switches import switches_from_map
+
+    (off,) = switches_from_map(parse_map(ROOM))
+    on = dataclasses.replace(off, on=True)
+    (red,) = [p.box for p in switch_boxes([off]) if p.box.indicator]
+    (green,) = [p.box for p in switch_boxes([on]) if p.box.indicator]
+    assert red.blink > 0 and green.blink == 0 and not red.mains  # on its own battery
+    assert red.y != green.y  # two lamps side by side
+
+
+def test_server_lamps_blink_out_of_step_and_only_with_power() -> None:
+    from doomer.client.boxes import BOX_MODELS
+
+    for kind in ("tape", "disk"):
+        cabinet, *lamps = BOX_MODELS[f"server:{kind}"]
+        assert len(lamps) == 4 and all(lp.indicator and lp.mains for lp in lamps)
+        assert len({(lp.blink, lp.blink_phase) for lp in lamps}) == 4  # each its own timer
+        assert all(lp.x[0] >= cabinet.x[1] for lp in lamps)  # on its front
+
+
+def test_the_plant_room_breaker_and_servers_stand_on_solid_walls() -> None:
+    from doomer.shared.mapfile import load_map
+
+    office = load_map("maps/office.map")
+    for t in office.things_of_type("breaker") + office.things_of_type("server"):
+        bx, by = t.x - 0.05 * math.cos(t.angle), t.y - 0.05 * math.sin(t.angle)
+        cell = (math.floor(bx), math.floor(by))
+        assert office.is_full_wall(*cell) and office.walls[cell[1]][cell[0]] != 4  # not a window
