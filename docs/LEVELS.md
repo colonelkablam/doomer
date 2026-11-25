@@ -144,7 +144,7 @@ floors:
    doorway: the room gets a clean, flush wall with the door in it; the
    corridor gets a one-cell recess. Hinged and double doors face the
    corridor (they swing out, into the recess, never into the corridor
-   itself; anyone standing there is nudged back as it opens); glass sliding
+   itself); glass sliding
    doors face the room. Between two rooms, the door belongs to the more
    private one (the boss's office off his secretary's).
 2. **Lift doors are the exception**: flush with the lobby (they face out of

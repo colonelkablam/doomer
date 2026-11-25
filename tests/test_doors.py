@@ -9,7 +9,6 @@ from doomer.shared.doors import (
     DOOR_HALF,
     DOOR_SET,
     HINGED,
-    HINGED_LEAF,
     OPEN_SECONDS,
     SLIDING,
     door_walls,
@@ -214,16 +213,14 @@ def test_where_a_door_stands_in_its_doorway(kind: str, degrees: int, plane: floa
     assert all(w.at == pytest.approx(plane) for w in door_walls(door))
 
 
-def test_a_door_swinging_open_nudges_you_out_of_its_way() -> None:
+@pytest.mark.parametrize("start, angle", [(5.6, NORTH), (2.5, SOUTH)])
+def test_an_open_door_lets_you_walk_through_either_way(start: float, angle: float) -> None:
     world, p = world_at(3.5, 5.6)
-    run(world, 1, use=True, angle=NORTH)  # open it, from the south (it swings north)
-    p.y = 4.75  # then step into the doorway, right behind the door
-    run(world, ticks_for(HINGED) + 2, angle=NORTH)
-    door = world.doors[0]
-    assert door.open == 1.0  # it didn't stop for you
-    # Pushed north, just clear of the open leaf (it sweeps HINGED_LEAF deep).
-    assert p.y == pytest.approx(door.plane - HINGED_LEAF - MOVE.radius)
-    assert p.y > 4.0  # still in the doorway: nudged, not thrown into the next room
+    run(world, 1, use=True, angle=NORTH)
+    run(world, ticks_for(HINGED), angle=NORTH)  # open
+    p.y = start
+    run(world, 120, forward=1.0, angle=angle)
+    assert (p.y < 3.0) if angle == NORTH else (p.y > 6.0)  # right through, into the other room
 
 
 @pytest.mark.parametrize(

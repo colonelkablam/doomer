@@ -8,8 +8,9 @@ is a recess on the other side (a corridor's):
 - hinged and double doors stand at the end away from their swing, and swing
   out into their own recess (a leaf, 0.6, is shorter than the recess, 0.95),
   so the swing never reaches the corridor itself or the room's furniture.
-  Face them towards the corridor. Someone standing in the swing as it opens
-  is nudged back out of it (clear_swing), as you step back pulling a door.
+  Face them towards the corridor. A leaf swings through anyone standing in
+  its way (it doesn't push them: that made doors one-way); it just won't
+  shut on them.
 - sliding and lift doors stand at the end they face, flush with that room
   (the office, the lift lobby); their leaves slide inside the walls either
   side rather than over the room's wall face.
@@ -174,23 +175,6 @@ def in_doorway(door: Door, x: float, y: float, radius: float) -> bool:
     swing: from its plane out into its recess, across the doorway?"""
     into, along, _ = _swing_frame(door, x, y)
     return -radius - 0.05 < into < SWING_REACH + radius and abs(along) < 0.5 + radius
-
-
-def clear_swing(door: Door, x: float, y: float, radius: float) -> tuple[float, float]:
-    """Where a player at (x, y) must be to be clear of a hinged or double
-    door's leaves as they are now: nudged straight back out of their sweep,
-    or where they are. The sweep is as deep as a leaf has turned (leaf x
-    sin(angle)), across the whole doorway; the recess is deeper than a
-    leaf plus a player, so it never pushes anyone into a wall."""
-    if door.kind not in (HINGED, DOUBLE) or door.open <= 0.0:
-        return x, y
-    into, along, side = _swing_frame(door, x, y)
-    leaf = HINGED_LEAF if door.kind == HINGED else DOUBLE_LEAF
-    depth = leaf * math.sin(door.open * SWING)
-    if not (0.0 <= into < depth + radius) or abs(along) >= 0.5 + radius:
-        return x, y
-    push = (depth + radius - into) * side
-    return (x + push, y) if door.across_x else (x, y + push)
 
 
 def try_use(

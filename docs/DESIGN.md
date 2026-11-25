@@ -402,9 +402,11 @@ dm_spawn      1.5   3.5   0
   corridor's). Hinged and double doors stand at the end away from their
   swing (facing) and swing out into that recess: a leaf (0.6) is shorter
   than the recess (0.95), so the swing never reaches the corridor itself or
-  the room's furniture; someone in the swing as it opens is nudged back out
-  of it (`doors.clear_swing`, applied by the simulation each tick), and it
-  still won't shut on anyone. Sliding and lift doors stand at the end they
+  the room's furniture. A leaf swings through anyone in its way (collision
+  is only the doorway's closed part); it just won't shut on them. (Pushing
+  people out of the swing was tried: walking in from the corridor, through
+  the swing, you were pushed back every tick, so doors only worked one
+  way.) Sliding and lift doors stand at the end they
   face, flush with that room; their leaves slide inside the walls either
   side, not over the room's wall face (on the edge itself they'd poke out
   and flicker against it).
