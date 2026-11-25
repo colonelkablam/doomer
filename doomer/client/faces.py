@@ -3,7 +3,7 @@ Employee of the Month, the founder's oil painting; later the NPCs).
 
 The style (docs/GAME.md, "People"): early LucasArts adventure-game sprites
 (think Monkey Island). Few, chunky pixels: a portrait is a 20 x 20 grid of
-them, the head about 9 wide and 11 tall, each grid pixel a solid block on
+them, the head 10 wide and 12 tall, each grid pixel a solid block on
 the texture. No outlines: shapes stand against the background by colour,
 their edges just a darker shade. Single-pixel features: dark pixels for
 eyes (no whites), a lighter strip for the nose, a short dark line for the
@@ -103,8 +103,6 @@ CAST = {
     "pass_gold": Face("fair", "slicked", "blond", "aviators", "none", "grin", "navy", "gold"),
 }
 
-_MOUTH = [(10, 8), (10, 9), (10, 10), (10, 11)]
-
 
 def draw_portrait(
     c: Canvas, v0: int, u0: int, size: int, face: Face, background: Colour | None
@@ -145,35 +143,36 @@ def draw_portrait(
 
     # Long hair hangs behind: a bob beside the face, a mullet at the back.
     if face.hair == "bob":
-        long_ = oval(7, 10, 6.5, 6.5) | rows(6, 14, 3, 17)
+        long_ = oval(7, 10, 6.5, 7.5) | rows(6, 14, 2, 18)
         paint(long_, hair.base)
-        paint(long_ & (gu < 6), hair.light)
+        paint(long_ & (gu < 5), hair.light)
         paint(long_ & (gu > 15), hair.shadow)
     elif face.hair == "mullet":
-        long_ = rows(9, 16, 4, 16)
+        long_ = rows(9, 16, 3, 17)
         paint(long_, hair.base)
-        paint(long_ & ((gu < 5) | (gu > 15)), hair.shadow)
+        paint(long_ & ((gu < 4) | (gu > 16)), hair.shadow)
 
     # Shoulders: a jacket in blocks of shade, lapels down to the shirt.
-    body = (gv > 14) & (d < 4 + (gv - 14) * 1.6) & box
+    body = (gv > 14) & (d < 4.5 + (gv - 14) * 1.6) & box
     paint(body, jacket.base)
     paint(body & (gu < 4), jacket.light)
-    paint(body & (gu > 15), jacket.shadow)
+    paint(body & (gu > 16), jacket.shadow)
     shirt = body & (d < (gv - 13.5) * 0.65)
     paint(shirt, (CREAM, 14.0))
     paint(shirt & (gu > 10), (GREY, 11.0))  # its shaded side
     paint(body & ~shirt & (d < (gv - 13.5) * 0.65 + 1), jacket.deep)  # the lapels' edges
 
-    # Neck and head: a long face, the jaw narrowing; lit from the left.
-    neck = rows(12, 15, 7, 13)
+    # Neck and head: ten pixels wide (columns 5-14), the jaw narrowing to
+    # the chin; lit from the left.
+    neck = rows(11, 15, 8, 12)
     paint(neck, skin.shadow)
-    head = (oval(7.5, 10, 6, 4.6) & (gv < 13.5)) | rows(10, 13, 7, 13)
-    ears = at([(7, 5), (8, 5), (7, 14), (8, 14)])
+    head = (oval(7, 10, 5.8, 5.5) & (gv < 12)) | rows(10, 12, 6, 14) | rows(12, 13, 7, 13)
+    ears = at([(6, 4), (7, 4), (6, 15), (7, 15)])
     paint(ears, skin.shadow)
     paint(head, skin.base)
     paint(head & (gu < 9) & (gv < 10), skin.light)
-    paint(head & (gu > 12), skin.shadow)
-    paint(at([(12, 8), (12, 9), (12, 10), (12, 11)]), skin.shadow)  # under the chin
+    paint(head & (gu > 13), skin.shadow)
+    paint(at([(12, 7), (12, 12)]), skin.shadow)  # the jaw's corners
 
     # Collar and tie, or an open neck.
     tie_colour = TIES[face.tie]
@@ -184,61 +183,62 @@ def draw_portrait(
     else:
         paint(shirt & (d < (gv - 13.5) * 0.4) & (gv < 17), skin.shadow)
 
-    # Features: single pixels. Brows, eyes, a nose strip, a mouth.
-    paint(at([(5, 7), (5, 8), (5, 11), (5, 12)]), hair.shadow)
-    paint(at([(6, 8), (6, 11)]), (GREY, 0.0))  # the eyes
+    # Features, each a pixel or two, well apart: eyes in columns 7 and 12
+    # (two pixels of skin outside each), the nose between them, a mouth
+    # in the middle that never reaches the cheeks.
+    paint(at([(5, 6), (5, 7), (5, 12), (5, 13)]), hair.shadow)  # brows
+    paint(at([(6, 7), (6, 12)]), (GREY, 0.0))  # the eyes
     paint(at([(6, 9), (7, 9), (8, 9)]), skin.light)  # the nose's ridge
-    paint(at([(8, 10), (6, 12), (7, 12)]), skin.shadow)  # its side, under the brow
+    paint(at([(7, 10), (8, 10)]), skin.shadow)  # its shaded side
+    paint(at([(9, 9), (9, 10)]), skin.shadow)  # under it
     if face.mouth == "grin":
-        paint(at([*_MOUTH, (9, 7), (9, 12)]), skin.deep)  # turned up
+        paint(at([(11, 9), (11, 10), (10, 8), (10, 11)]), skin.deep)  # corners up
     elif face.mouth == "flat":
-        paint(at(_MOUTH), skin.deep)
-    else:  # stern: turned down
-        paint(at([*_MOUTH, (11, 7), (11, 12)]), skin.deep)
+        paint(at([(11, 8), (11, 9), (11, 10), (11, 11)]), skin.deep)
+    else:  # stern: corners down
+        paint(at([(10, 9), (10, 10), (11, 8), (11, 11)]), skin.deep)
 
     if face.facial_hair == "moustache":
-        paint(at([(9, 8), (9, 9), (9, 10), (9, 11)]), hair.base)
-        paint(at([(9, 7), (9, 12)]), hair.shadow)
+        paint(at([(10, 8), (10, 9), (10, 10), (10, 11)]), hair.base)
+        paint(at([(10, 11)]), hair.shadow)
     elif face.facial_hair == "beard":
-        beard = head & (gv > 8.6) & ~at(_MOUTH)
+        beard = head & (gv > 9) & ~at([(11, 9), (11, 10), (10, 8), (10, 11), (11, 8), (11, 11)])
         paint(beard, hair.base)
-        paint(beard & (gu > 12), hair.shadow)
+        paint(beard & (gu > 13), hair.shadow)
+        paint(at([(11, 9), (11, 10)]), skin.deep)  # the mouth, in the beard
 
     # Hair on top: a messy silhouette, clumps of shade, a stray lock.
     top = np.zeros_like(box)
     if face.hair in ("side_part", "mullet"):
-        top = rows(0, 4, 5, 15)
-        top |= at([(1, 4), (2, 4), (3, 4), (2, 15), (3, 15), (4, 6), (4, 13), (4, 14)])
-        top |= at([(4, 5), (5, 5), (5, 14), (6, 14)])  # sideburns
-        top |= at([(4, 3), (5, 3), (6, 2)] if face.hair == "side_part" else [(3, 3), (5, 16)])
+        top = rows(0, 4, 4, 16) | at([(1, 3), (2, 3), (3, 3), (2, 16), (3, 16)])
+        top |= at([(4, 5), (4, 6), (4, 13), (4, 14), (5, 5), (5, 14)])  # sideburns
+        top |= at([(4, 2), (5, 2), (6, 1)] if face.hair == "side_part" else [(3, 2), (5, 17)])
     elif face.hair == "slicked":
-        top = rows(1, 4, 5, 15) | at([(2, 4), (3, 4), (2, 15), (3, 15), (4, 5), (4, 14)])
+        top = rows(0, 4, 4, 16) | at([(2, 3), (3, 3), (2, 16), (3, 16), (4, 5), (4, 14)])
     elif face.hair == "perm":
-        top = oval(4, 10, 4.6, 7) | at([(0, 7), (0, 12), (2, 2), (3, 17), (7, 3), (7, 16)])
-        top &= ~(head & (gv > 4.6) & (gu > 6) & (gu < 14))
-        top |= rows(4, 9, 3, 6) | rows(4, 9, 14, 17)
+        top = oval(3.5, 10, 4.6, 8) | at([(0, 6), (0, 13), (2, 1), (3, 18)])
+        top &= ~(head & (gv > 4) & (gu > 5) & (gu < 15))
+        top |= rows(3, 9, 2, 5) | rows(3, 9, 15, 18)
     elif face.hair == "bob":
-        top = rows(1, 5, 4, 16) | at([(1, 3), (5, 4), (5, 15)])
+        top = rows(0, 5, 3, 17) | at([(1, 2), (5, 3), (5, 16)])
     elif face.hair == "bald":
-        top = rows(4, 8, 4, 6) | rows(4, 8, 14, 16) | at([(3, 5), (3, 14)])
+        top = rows(3, 8, 3, 5) | rows(3, 8, 15, 17) | at([(2, 4), (2, 15)])
         paint(at([(2, 8), (2, 9)]), skin.light)  # shine
     top &= ~ears
     paint(top, hair.base)
     paint(top & (gu < 9) & (gv < 3), hair.light)
     paint(top & (gv < 3) & (((gu * 2 + gv * 3).astype(int) % 5) == 0), hair.shadow)  # clumps
-    paint(top & (gv > 3) & (gu > 12), hair.shadow)
+    paint(top & (gv > 3) & (gu > 13), hair.shadow)
     if face.hair == "side_part":
         paint(at([(1, 7), (2, 7)]), hair.deep)  # the parting
     if face.hair == "slicked":
-        paint(at([(2, 6), (2, 7), (2, 8), (2, 9), (2, 10)]), hair.light)
+        paint(at([(2, u) for u in range(6, 12)]), hair.light)
 
-    if face.eyewear == "big_glasses":  # dark rims, a pale lens beside each eye
-        rims = at(
-            [*((5, u) for u in range(7, 13)), (7, 7), (7, 8), (7, 11), (7, 12), (6, 9), (6, 10)]
-        )
-        paint(rims, (WOOD, 4.5))  # tortoiseshell: the black eyes stay distinct
-        paint(at([(6, 7), (6, 12)]), (STEEL, 13.0))
+    if face.eyewear == "big_glasses":  # rims round each eye, a pale lens beside it
+        rims = [(5, 6), (5, 7), (5, 8), (5, 11), (5, 12), (5, 13), (7, 6), (7, 8), (7, 11), (7, 13)]
+        paint(at([*rims, (6, 9), (6, 10)]), (WOOD, 4.5))  # tortoiseshell, a bridge
+        paint(at([(6, 6), (6, 8), (6, 11), (6, 13)]), (STEEL, 13.0))
     elif face.eyewear == "aviators":
-        paint(at([(6, 7), (6, 8), (6, 11), (6, 12), (7, 8), (7, 11)]), (GREY, 2.0))
-        paint(at([(5, u) for u in range(7, 13)]), (OCHRE, 12.0))
-        paint(at([(6, 7), (6, 11)]), (CREAM, 11.0))  # glints
+        paint(at([(r, u) for r in (6, 7) for u in (6, 7, 8, 11, 12, 13)]), (GREY, 2.0))
+        paint(at([(5, u) for u in range(6, 14)]), (OCHRE, 12.0))
+        paint(at([(6, 6), (6, 11)]), (CREAM, 11.0))  # glints

@@ -98,11 +98,13 @@ sneaky, staple gun and letter opener (double damage from behind), and
 How people look, everywhere a face shows (ID passes, the Employee of the
 Month, the founder's portrait; later the NPCs): early LucasArts adventure
 sprites, as in Monkey Island. Few, chunky pixels: a portrait is a 20 x 20
-grid, the head about 9 pixels wide and 11 tall, each pixel a solid block
+grid, the head 10 pixels wide and 12 tall, each pixel a solid block
 (crisp when drawn at a multiple of 20 texels). No outlines: shapes stand
-out by colour, their edges a darker shade. Single-pixel features: a dark
-pixel for each eye (no whites), a lighter strip down the nose, a short dark
-mouth (turned up in a grin, down when stern), a brown bar of moustache.
+out by colour, their edges a darker shade. Single-pixel features, well apart: a dark
+pixel for each eye (no whites), five pixels apart with two of skin outside
+each; a lighter strip down the nose between them; a small dark mouth in
+the middle (corners up in a grin, down when stern), never reaching the
+cheeks; a brown bar of moustache.
 Warm two- or three-tone shading in blocks, lit from the left; hair a messy
 silhouette with a stray lock. A shirt collar round the neck with a tie, an
 open neck without. Flat
