@@ -542,7 +542,7 @@ def _water_cooler() -> tuple[Box, ...]:
 
 
 # --- Potted ficus ---------------------------------------------------------------
-# ~1.95 m: a terracotta pot (octagonal, flaring to a rim), two braided stems,
+# ~1.95 m: a terracotta pot (octagonal, flaring to a rim), a single trunk,
 # and a crown of crossed leaf cards: thin panels with see-through leaf
 # textures, four upright at 45 degrees to each other through the crown's
 # axis and two flat ones across it, so it reads as a bush from any side and
@@ -623,10 +623,7 @@ def _ficus() -> tuple[Box, ...]:
         *_octagon(0.12, (0.12, 0.2), (side, earth)),  # flaring
         *_octagon(0.13, (0.2, 0.22), (side, earth)),  # rim; its top is the soil
     )
-    stems = tuple(
-        Box((x - 0.012, x + 0.012), (y - 0.012, y + 0.012), (0.22, 0.5), (stem,) * 5)
-        for x, y in ((0.02, -0.015), (-0.02, 0.02))
-    )
+    trunk = Box((-0.016, 0.016), (-0.016, 0.016), (0.22, 0.5), (stem,) * 5)
     r = (-_CROWN_R, _CROWN_R)
     card = (-0.003, 0.003)
     # A card shows leaves on its two broad faces only. Its edges are a few mm
@@ -655,7 +652,7 @@ def _ficus() -> tuple[Box, ...]:
             (0.69, 0.6, 1.1, leaves(76, flat=True)),
         )
     )
-    return (*pot, *stems, *upright, *flat)
+    return (*pot, trunk, *upright, *flat)
 
 
 # --- Doors (doomer/shared/doors.py has their state and collision) -------------------

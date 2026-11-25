@@ -169,7 +169,7 @@ def test_ficus_leaf_cards_show_leaves_only_on_their_broad_faces() -> None:
     for box in BOX_MODELS["ficus"]:
         sizes = (box.x[1] - box.x[0], box.y[1] - box.y[0], box.z[1] - box.z[0])
         if min(sizes) > 0.01:
-            continue  # the pot and stems, not a card
+            continue  # the pot and trunk, not a card
         thin = sizes.index(min(sizes))
         broad = {0: (FRONT, FRONT + 2), 1: (FRONT + 1, FRONT + 3), 2: (TOP,)}[thin]
         for face, tex in enumerate(box.faces):

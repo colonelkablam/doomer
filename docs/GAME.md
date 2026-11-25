@@ -132,7 +132,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Card readers by locked doors: stripe in the pass colour, red/green lamp | no | [built] |
 | Water cooler (box model: cream cabinet, hot and cold taps, an upturned 19-litre bottle nearly as wide as the cabinet, ~1.45 m to its top; faces its map angle) | yes | [built] |
 | Filing cabinet (box model: five steel drawers with pulls and label cards; faces its map angle) | yes | [built] |
-| Potted ficus (box model: octagonal terracotta pot, two stems, a crown of crossed see-through leaf cards drawn as individual drooping leaves in a ragged outline) | yes | [built] |
+| Potted ficus (box model: octagonal terracotta pot, a single trunk, a crown of crossed see-through leaf cards drawn as individual drooping leaves in a ragged outline) | yes | [built] |
 | Fluorescent ceiling light (a panel set into the ceiling) | no | [built] |
 | Exit sign (marks the exit) | no | [built] |
 | Swivel chair (inert) | no | planned |
