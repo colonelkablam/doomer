@@ -287,6 +287,7 @@ for _area, _look in AREA_LOOKS.items():
 DESK_PAIR_TYPES = (13, 19)
 DESK_VARIANTS = 4
 PENCIL_VARIANT = 1  # the one desk-top variant with a pencil on it
+NOTE_VARIANT = 3  # ... and the one with a pink sticky note
 _DESK_ZONES = ((3, 3, 31, 28), (33, 36, 61, 61))  # (u0, v0, u1, v1) per half
 
 
@@ -306,9 +307,12 @@ def _pen_mask(cv: float, cu: float, angle: float) -> npt.NDArray[np.bool_]:
     return result
 
 
-def _slip_mask(cv: float, cu: float, angle: float) -> npt.NDArray[np.bool_]:
-    down, across = _frame(cv, cu, angle)
-    result: npt.NDArray[np.bool_] = (np.abs(down) <= 3.4) & (np.abs(across) <= 2.6)
+def _note_mask(cv: float, cu: float, angle: float = 0.0) -> npt.NDArray[np.bool_]:
+    """A 5 x 5 texel square on the texel grid (never turned: `angle` is
+    ignored), so its edges are clean straight lines."""
+    v, u = grid()
+    top, left = round(cv) - 2, round(cu) - 2
+    result: npt.NDArray[np.bool_] = (v >= top) & (v < top + 5) & (u >= left) & (u < left + 5)
     return result
 
 
@@ -408,18 +412,15 @@ class _Desk:
             self.tex = np.where(far, indices(ramp, 5.0), self.tex).astype(np.uint8)
             self.tex = np.where(tip, indices(CREAM, 14.0), self.tex).astype(np.uint8)
 
-    def slip(self, cv: float, cu: float, angle: float) -> None:
-        """A "While You Were Out" phone message slip: pink, a darker printed
-        heading, two short lines of handwriting. (At 7 x 5 texels, little
-        detail reads: more just looks busy.)"""
-        down, across = _frame(cv, cu, angle)
-        paper = _slip_mask(cv, cu, angle)
-        self.lay(paper, PINK, 14.0)
-        heading = paper & (down < -1.9)
-        self.tex = np.where(heading, indices(PINK, 10.0), self.tex).astype(np.uint8)
-        lines = paper & ((np.abs(down - 0.2) < 0.5) | (np.abs(down - 2.0) < 0.5))
-        lines &= (across > -1.8) & (across < 1.0)
-        self.tex = np.where(lines, indices(PINK, 8.0), self.tex).astype(np.uint8)
+    def note(self, cv: float, cu: float, angle: float = 0.0) -> None:
+        """A pink sticky note, square on to the desk: a plain square with a
+        darker band across its top. (Anything more at this size, or turned,
+        breaks into ragged pixels.)"""
+        note = _note_mask(cv, cu)
+        self.lay(note, PINK, 14.0)
+        v, _ = grid()
+        band = note & (v == int(np.min(v[note])))
+        self.tex = np.where(band, indices(PINK, 11.0), self.tex).astype(np.uint8)
 
     def open_folder(self, cv: float, cu: float, angle: float) -> None:
         """A manila file opened flat: two panels either side of the crease,
@@ -464,22 +465,22 @@ _LAYOUTS = (_splayed_files, _stack, _loose_sheets, _open_file)
 def desk_top(variant: int) -> U8Array:
     """A desk pair's top (for a pod facing north or south): mahogany
     laminate, and in the free end of each half, some paperwork: manila files
-    and A4, in one of four layouts per half, and message slips.
-    One variant (PENCIL_VARIANT) has a pencil too: at this size a pencil is
-    a short yellow stripe, best kept rare."""
+    and A4, in one of four layouts per half. One variant (PENCIL_VARIANT)
+    has a pencil too, another (NOTE_VARIANT) a pink sticky note: small things
+    are a few ragged pixels at this size, best kept rare."""
     rng = np.random.default_rng(50 + variant)
     desk = _Desk(rng)
     for half, (u0, v0, u1, v1) in enumerate(_DESK_ZONES):
         layout = _LAYOUTS[(variant + 2 * half) % len(_LAYOUTS)]  # halves differ
         cu, cv = (u0 + u1) / 2 + rng.uniform(-2, 2), (v0 + v1) / 2 + rng.uniform(-1.5, 1.5)
         layout(desk, cv, cu, rng)
-        # On bare desk in the same free end: a message slip or two, and
-        # maybe a pencil (never on the paper, where it'd be lost).
+        # On bare desk in the same free end (never on the paper, where it'd
+        # be lost): the one pencil, or the one note.
         zone = (u0, v0, u1, v1)
-        for _ in range(rng.integers(1, 3)):
-            at = desk.place(zone, rng, _slip_mask)
+        if variant == NOTE_VARIANT and half == 1:
+            at = desk.place(zone, rng, _note_mask, (0.0, 0.0))
             if at is not None:
-                desk.slip(*at)
+                desk.note(*at)
         if variant == PENCIL_VARIANT and half == 0:
             # Roughly along or across the desk: a thin line reads best near the axes.
             square = float(rng.choice([0.0, math.pi / 2]))

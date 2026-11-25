@@ -230,3 +230,19 @@ def test_one_desk_variant_has_a_pencil() -> None:
     for variant in range(DESK_VARIANTS):
         has = bool((desk_top(variant) == eraser).any())
         assert has == (variant == PENCIL_VARIANT)
+
+
+def test_one_desk_variant_has_a_square_pink_note() -> None:
+    from doomer.client.areas import DESK_VARIANTS, NOTE_VARIANT, desk_top
+    from doomer.client.palette import PINK
+
+    for variant in range(DESK_VARIANTS):
+        pink = ((desk_top(variant) >> 4) == PINK) & (
+            (desk_top(variant) & 15) != 12
+        )  # not the eraser
+        if variant != NOTE_VARIANT:
+            assert not pink.any()
+            continue
+        rows, cols = np.nonzero(pink)
+        # A clean 5 x 5 square on the texel grid: every texel in its box is pink.
+        assert np.ptp(rows) == 4 and np.ptp(cols) == 4 and pink.sum() == 25
