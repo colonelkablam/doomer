@@ -79,6 +79,25 @@ for _name, _description, _blocking, _radius in (
 ):
     register_thing_type(ThingType(_name, _description, _blocking, _radius))
 
+# A poster or picture on a wall (drawn as a box by doomer/client/boxes.py),
+# `kind=` which; plan: the floor's fire plan, drawn from the map, a red dot
+# where it hangs. Put it at the wall's face, its angle out of the wall.
+POSTER_KINDS = (
+    "synergy",
+    "teamwork",
+    "excellence",
+    "employee_mar",
+    "employee_apr",
+    "employee_may",
+    "founder",
+    "accident",
+    "high_voltage",
+    "plan",
+)
+POSTER = register_thing_type(
+    ThingType("poster", "A poster or picture on a wall", properties={"kind": POSTER_KINDS})
+)
+
 # The reception desk (drawn by doomer/client/boxes.py; its dimensions match):
 # angle = the way its front faces (the visitors' side). A transaction ledge
 # along the front, and the work surface behind it, at their own heights:

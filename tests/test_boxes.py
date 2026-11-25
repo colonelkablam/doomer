@@ -29,7 +29,11 @@ def row_for(height: float, depth: float) -> int:
 
 
 def test_every_box_model_is_a_registered_thing() -> None:
-    assert set(BOX_MODELS) <= set(THING_TYPES)
+    # "type" or "type:kind" (a poster), the kind one the type allows.
+    for name in BOX_MODELS:
+        type_name, _, kind = name.partition(":")
+        assert type_name in THING_TYPES
+        assert not kind or kind in THING_TYPES[type_name].properties["kind"]
 
 
 def test_front_face_and_top_are_drawn_at_their_depths() -> None:
@@ -198,3 +202,25 @@ def test_glowing_boxes_ignore_lighting_and_others_dont() -> None:
     # The letters (glowing) look the same in the dark; the panel behind them doesn't.
     assert (drawn & same).sum() > 20
     assert (drawn & ~same).sum() > 20  # (a near-black panel: few shades to lose)
+
+
+def test_posters_hang_on_wall_faces_and_the_fire_plan_marks_where_it_hangs() -> None:
+    from doomer.client.boxes import BOX_TEXTURES, box_textures, plan_texture
+    from doomer.client.palette import BRICK
+    from doomer.shared.mapfile import load_map
+
+    office = load_map("maps/office.map")
+    posters = office.things_of_type("poster")
+    assert {p.prop("kind") for p in posters} >= {"plan", "founder", "high_voltage", "accident"}
+    for p in posters:  # a wall just behind it, open floor in front
+        bx, by = p.x - 0.05 * math.cos(p.angle), p.y - 0.05 * math.sin(p.angle)
+        fx, fy = p.x + 0.3 * math.cos(p.angle), p.y + 0.3 * math.sin(p.angle)
+        assert office.is_full_wall(math.floor(bx), math.floor(by)), (p.x, p.y)
+        assert not office.is_solid(math.floor(fx), math.floor(fy)), (p.x, p.y)
+    # A plan's own texture, made when the map's boxes are: a red dot on it.
+    before = len(BOX_TEXTURES)
+    plan = next(p for p in posters if p.prop("kind") == "plan")
+    tex = plan_texture(office, plan.x, plan.y, plan.angle)
+    textures, _ = box_textures()
+    assert tex >= before and len(textures) > tex
+    assert (textures[tex] == (BRICK << 4) | 13).any()

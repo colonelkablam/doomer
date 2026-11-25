@@ -251,6 +251,19 @@ ceiling_light   20.5  13.5  0
 # Exit signs over the main doors: on their own batteries, the only light in a
 # power cut, so they mark the way out (office -> lobby -> street) and the way
 # through to the plant room. Each at the face of the wall over its doorway.
+# Posters and pictures, on wall faces, angle out of the wall (see LEVELS.md)
+poster          9.01  2.5   0     kind=synergy
+poster          9.01  3.6   0     kind=plan
+poster          9.01  6.0   0     kind=teamwork
+poster          9.01  8.3   0     kind=excellence
+poster          15.2  9.99  270   kind=employee_may
+poster          15.5  9.99  270   kind=employee_apr
+poster          15.8  9.99  270   kind=employee_mar
+poster          7.99  5.5   180   kind=founder
+poster          7.99  6.6   180   kind=plan
+poster          10.5  11.99 270   kind=high_voltage
+poster          9.5   14.99 270   kind=high_voltage
+poster          12.99 13.8  180   kind=accident
 exit_sign       1.02  4.0   0
 exit_sign       9.02  4.5   0
 exit_sign       12.5  11.02 90

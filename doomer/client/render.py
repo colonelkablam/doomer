@@ -65,12 +65,12 @@ from doomer.client.areas import (
 )
 from doomer.client.boxes import (
     BOX_MODELS,
-    BOX_OPAQUE,
-    BOX_TEXTURES,
     TOP,
     Box,
     PlacedBox,
+    box_textures,
     desk_screens,
+    poster_plans,
     stair_boxes,
 )
 from doomer.client.config import LightingConfig, RenderConfig
@@ -186,7 +186,10 @@ def sprites_from_things(game_map: GameMap) -> list[SpriteInstance]:
             z = game_map.ceiling_height(cx, cy) - 1.0  # the image's top at the ceiling
         else:
             z = resting_height(game_map, t)  # a block's top, furniture's, or the floor
-        out.append(SpriteInstance(t.type, t.x, t.y, z, t.angle))
+        # A thing with a kind (a poster) draws as "type:kind" (BOX_MODELS).
+        kind = t.prop("kind")
+        name = f"{t.type}:{kind}" if kind else t.type
+        out.append(SpriteInstance(name, t.x, t.y, z, t.angle))
     return out
 
 
@@ -1374,10 +1377,12 @@ class Renderer:
             region[diffuser] = dead[diffuser]
 
     def _map_boxes_for(self, game_map: GameMap) -> list[PlacedBox]:
-        """Boxes that are part of the map (stairs' steps, desk screens), built
-        once per map."""
+        """Boxes that are part of the map (stairs' steps, desk screens, fire
+        plans), built once per map."""
         if self._map_boxes_map is not game_map:
-            self._map_boxes = stair_boxes(game_map) + desk_screens(game_map)
+            self._map_boxes = (
+                stair_boxes(game_map) + desk_screens(game_map) + poster_plans(game_map)
+            )
             self._map_boxes_map = game_map
         return self._map_boxes
 
@@ -1399,6 +1404,7 @@ class Renderer:
         depths, cast back onto its plane (like a floor). Pixels from all boxes
         are then z-tested together, nearest wins. Used for box-model things
         and for the steps of stairs."""
+        box_tex, box_opaque = box_textures()
         boxes, c0, c1 = self._in_view(boxes, camera)
         if not boxes:
             return
@@ -1509,8 +1515,8 @@ class Renderer:
             cols.append(ci[k])
             rows.append(r)
             depths.append(depth)
-            texels.append(BOX_TEXTURES[tex, tu, tv])
-            solid.append(BOX_OPAQUE[tex, tu, tv])
+            texels.append(box_tex[tex, tu, tv])
+            solid.append(box_opaque[tex, tu, tv])
             lights.append(side_light[k])
             glows.append(glow_b[bi[k]])
 
@@ -1537,8 +1543,8 @@ class Renderer:
             rows.append(r)
             depths.append(depth)
             top_tex, tu, tv = faces[bi[k], TOP], _texel_clamped(u), _texel_clamped(v)
-            texels.append(BOX_TEXTURES[top_tex, tu, tv])
-            solid.append(BOX_OPAQUE[top_tex, tu, tv])
+            texels.append(box_tex[top_tex, tu, tv])
+            solid.append(box_opaque[top_tex, tu, tv])
             lights.append(np.full(k.size, 1.0 if above else Y_SIDE_SHADE))
             glows.append(glow_b[bi[k]])
 

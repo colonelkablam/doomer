@@ -19,7 +19,7 @@ from above with the front at the bottom of the image (v = 63).
 """
 
 import math
-from collections.abc import Collection, Iterable
+from collections.abc import Callable, Collection, Iterable
 from dataclasses import dataclass
 from typing import NamedTuple
 
@@ -63,6 +63,7 @@ from doomer.shared.mapfile import STAIR_RISE, STAIRS_WALL_TYPE, WALL_UNITS, Game
 from doomer.shared.screens import SCREEN_HALF, SCREEN_HEIGHT
 from doomer.shared.screens import desk_screens as shared_desk_screens
 from doomer.shared.switches import Switch
+from doomer.shared.things import POSTER_KINDS
 
 FRONT, RIGHT, BACK, LEFT, TOP = range(5)  # face order in Box.faces
 
@@ -262,6 +263,243 @@ def _mac_se30() -> tuple[Box, ...]:
         (case, case, case, case, mouse_top()),
     )
     return mac, keyboard, mouse
+
+
+# --- Posters and pictures ---------------------------------------------------------------
+# Flat things on walls: one thin box each (the thing at the wall's face,
+# model +x out of it), its picture on the front. `poster` things pick one
+# by `kind=`; the fire plan (kind=plan) is drawn from the map itself, with
+# a red dot where it hangs (see poster_plans). Text in the 3x5 font, big
+# enough to read from a cell or two.
+
+_POSTER_DEPTH = 0.012  # cells out from the wall
+
+
+def _centred(c: Canvas, text: str, v0: int, ramp: int, shade: float, scale: int = 1) -> None:
+    su = scale if c.text_width(text, scale) <= 58 else max(1, scale - 1)
+    c.text(text, v0, (64 - c.text_width(text, su)) // 2, ramp, shade, scale=scale, scale_u=su)
+
+
+def _motivational(word: str, caption: str, picture: Callable[[Canvas], None]) -> int:
+    """The classic: a black border, a moody photo, one big word, a caption."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 1.0)
+    c.paint(c.rect(3, 41, 5, 59), GREY, 12.0)  # a fine keyline round the photo
+    picture(c)
+    _centred(c, word, 45, CREAM, 15.0, scale=2)
+    _centred(c, caption, 57, CREAM, 10.0)
+    return _texture(c)
+
+
+def _photo(c: Canvas) -> BoolArray:
+    return c.rect(4, 40, 6, 58)
+
+
+def _sunset_eagle(c: Canvas) -> None:
+    photo = _photo(c)
+    for v0, ramp, shade in (
+        (4, PURPLE, 4.0),
+        (12, ORANGE, 7.0),
+        (20, ORANGE, 10.0),
+        (26, OCHRE, 13.0),
+    ):
+        c.paint(photo & (c.v >= v0), ramp, shade)
+    c.paint(photo & c.ellipse(31, 32, 7, 8) & (c.v < 31), OCHRE, 15.0)  # the sun, setting
+    c.paint(photo & (c.v >= 31), BLUE, 3.0)  # the sea
+    c.paint(photo & (c.v >= 31) & (c.v % 3 == 0) & (np.abs(c.u - 32) < 8), OCHRE, 11.0)
+    for k in range(11):  # an eagle, wings up
+        lift = k // 3
+        c.paint(
+            c.rect(13 - lift, 15 - lift, 31 - k, 32 - k)
+            | c.rect(13 - lift, 15 - lift, 32 + k, 33 + k),
+            GREY,
+            0.0,
+        )
+    c.paint(c.rect(13, 17, 31, 33), GREY, 0.0)
+
+
+def _rowing_crew(c: Canvas) -> None:
+    photo = _photo(c)
+    c.paint(photo, STEEL, 11.0)  # a pale dawn sky
+    c.paint(photo & (c.v >= 22), BLUE, 6.0)
+    c.paint(photo & (c.v >= 22) & (c.v % 4 == 0), BLUE, 8.0)  # ripples
+    c.paint(c.rect(28, 30, 12, 52), GREY, 1.0)  # the hull
+    for u0 in (18, 26, 34, 42):  # four rowers, oars in the water
+        c.paint(c.rect(23, 28, u0, u0 + 2), GREY, 1.0)
+        for k in range(6):
+            c.paint(c.rect(28 + k, 29 + k, u0 - k, u0 - k + 1), GREY, 2.0)
+
+
+def _mountain(c: Canvas) -> None:
+    photo = _photo(c)
+    c.paint(photo, BLUE, 10.0)
+    c.paint(photo & (c.v >= 26), BLUE, 11.0)
+    behind = photo & (c.v >= 18 + np.abs(c.u - 18) * 0.9)
+    c.paint(behind, GREY, 4.0)
+    peak = photo & (c.v >= 9 + np.abs(c.u - 34) * 0.9)
+    c.paint(peak, GREY, 6.0)
+    c.paint(peak & (c.v < 17), CREAM, 15.0)  # snow
+    c.paint(peak & (c.u > 34) & (c.v >= 17), GREY, 5.0)  # its shadowed side
+
+
+def employee_of_the_month(month: str) -> int:
+    """A framed photo (the same chap every month: big glasses, moustache,
+    brown suit) over a brass plate with the month on it."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 5.0)  # the frame
+    c.paint(c.rect(3, 61, 3, 61), CREAM, 13.0)  # the mount
+    photo = c.rect(7, 45, 9, 55)
+    c.paint(photo, BLUE, 8.0)  # studio backdrop
+    c.paint(photo & c.ellipse(50, 32, 14, 22), WOOD, 4.0)  # his suit
+    c.paint(photo & c.ellipse(50, 32, 14, 6), CREAM, 14.0)  # shirt
+    c.paint(photo & c.rect(38, 45, 31, 33), BRICK, 9.0)  # tie
+    c.paint(c.ellipse(24, 32, 11, 9), SAND, 12.0)  # face
+    c.paint(c.ellipse(19, 32, 7, 10) & (c.v < 18), WOOD, 3.0)  # hair
+    for u0 in (24, 33):  # big glasses
+        ring = c.rect(21, 27, u0, u0 + 7) & ~c.rect(22, 26, u0 + 1, u0 + 6)
+        c.paint(ring, GREY, 1.0)
+    c.paint(c.rect(22, 23, 31, 33), GREY, 1.0)
+    c.paint(c.rect(29, 31, 27, 37), WOOD, 3.0)  # moustache
+    c.paint(c.rect(32, 33, 29, 35), BRICK, 7.0)  # a grin
+    c.paint(c.rect(47, 60, 7, 57), OCHRE, 11.0)  # the brass plate
+    _centred(c, "EMPLOYEE", 48, WOOD, 2.0)
+    _centred(c, month, 54, WOOD, 2.0)
+    return _texture(c)
+
+
+def founder_portrait() -> int:
+    """Oils in a gilt frame: the founder, white-haired, in a dark suit."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), OCHRE, 10.0)  # gilt
+    c.paint(c.rect(0, 1, 0, 64) | c.rect(0, 64, 0, 1), OCHRE, 13.0)
+    c.paint(c.rect(4, 60, 4, 60), OCHRE, 7.0)
+    canvas = c.rect(6, 58, 6, 58)
+    c.paint(canvas, WOOD, 2.0)  # a dark, varnished background
+    c.paint(canvas & c.ellipse(60, 32, 20, 26), GREY, 2.0)  # suit
+    c.paint(canvas & c.ellipse(60, 32, 20, 7), CREAM, 13.0)  # shirt
+    c.paint(canvas & c.rect(42, 58, 31, 34), BRICK, 8.0)  # tie
+    c.paint(c.ellipse(26, 32, 12, 9), SAND, 11.0)  # face
+    c.paint(c.ellipse(24, 32, 13, 11) & ~c.ellipse(27, 32, 12, 8) & (c.v < 30), CREAM, 14.0)  # hair
+    for u0 in (27, 35):
+        c.paint(c.rect(25, 27, u0, u0 + 3), GREY, 2.0)  # eyes, stern
+    c.paint(c.rect(33, 34, 29, 36), WOOD, 4.0)  # mouth, unsmiling
+    c.paint(c.rect(49, 57, 8, 56), OCHRE, 13.0)  # the plaque
+    _centred(c, "FOUNDER", 51, GREY, 2.0)
+    return _texture(c)
+
+
+def accident_board() -> int:
+    """The plant room's safety board: days since the last accident: 0."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREEN, 7.0)
+    c.paint(c.rect(3, 61, 3, 61), CREAM, 15.0)
+    _centred(c, "DAYS SINCE", 6, GREEN, 5.0)
+    _centred(c, "LAST ACCIDENT", 13, GREEN, 5.0)
+    c.paint(c.rect(21, 49, 22, 42), GREY, 1.0)  # the flip card
+    c.paint(c.rect(34, 35, 22, 42), GREY, 4.0)  # its fold
+    c.text("0", 25, 26, BRICK, 13.0, scale=4)
+    _centred(c, "THINK SAFE", 53, GREEN, 5.0)
+    return _texture(c)
+
+
+def high_voltage_sign() -> int:
+    """A yellow warning triangle with a lightning bolt, DANGER HIGH VOLTAGE."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 1.0)
+    c.paint(c.rect(1, 63, 1, 63), CREAM, 15.0)
+    outer = (c.v >= 4 + np.abs(c.u - 32) * 1.1) & (c.v < 31)
+    inner = (c.v >= 9 + np.abs(c.u - 32) * 1.1) & (c.v < 28)
+    c.paint(outer, GREY, 1.0)
+    c.paint(inner, OCHRE, 13.0)
+    for v0, u0 in ((12, 33), (15, 31), (18, 29), (20, 31), (23, 29)):  # the bolt
+        c.paint(c.rect(v0, v0 + 3, u0, u0 + 3), GREY, 1.0)
+    _centred(c, "DANGER", 35, BRICK, 11.0, scale=2)
+    _centred(c, "HIGH VOLTAGE", 50, GREY, 1.0)
+    return _texture(c)
+
+
+# kind: (texture, half-width (cells), z (walls))
+_POSTER_KINDS: dict[str, tuple[int, float, tuple[float, float]]] = {
+    "synergy": (_motivational("SYNERGY", "1 + 1 = 3", _sunset_eagle), 0.15, (0.33, 0.73)),
+    "teamwork": (_motivational("TEAMWORK", "ROW AS ONE", _rowing_crew), 0.15, (0.33, 0.73)),
+    "excellence": (_motivational("EXCELLENCE", "AIM HIGHER", _mountain), 0.15, (0.33, 0.73)),
+    "employee_mar": (employee_of_the_month("MAR 1987"), 0.12, (0.4, 0.72)),
+    "employee_apr": (employee_of_the_month("APR 1987"), 0.12, (0.4, 0.72)),
+    "employee_may": (employee_of_the_month("MAY 1987"), 0.12, (0.4, 0.72)),
+    "founder": (founder_portrait(), 0.25, (0.38, 1.0)),
+    "accident": (accident_board(), 0.18, (0.45, 0.75)),
+    "high_voltage": (high_voltage_sign(), 0.1, (0.45, 0.73)),
+}
+assert set(_POSTER_KINDS) | {"plan"} == set(POSTER_KINDS), "posters: shared/things.py"
+
+
+def _poster(texture: int, half: float, z: tuple[float, float]) -> tuple[Box, ...]:
+    edge = (_POSTER_EDGE,) * 4
+    return (Box((0.0, _POSTER_DEPTH), (-half, half), z, (texture, *edge)),)
+
+
+def _poster_edge() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 3.0)
+    return _texture(c)
+
+
+_POSTER_EDGE = _poster_edge()
+_PLAN_HALF, _PLAN_Z = 0.2, (0.42, 0.72)
+_PLANS: dict[tuple[str, float, float], int] = {}
+
+
+def plan_texture(game_map: GameMap, x: float, y: float, angle: float) -> int:
+    """A fire evacuation plan of `game_map`: walls dark, floor pale, desks
+    and counters grey, exits green (exit signs and lifts), a red dot where
+    the plan hangs (a little out from its wall at (x, y), facing `angle`).
+    Cells drawn about square on the (wider than tall) plan."""
+    key = (game_map.name, round(x, 3), round(y, 3))
+    if key in _PLANS:
+        return _PLANS[key]
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), CREAM, 15.0)
+    c.paint(c.rect(0, 9, 0, 64), BRICK, 9.0)
+    _centred(c, "FIRE PLAN", 2, CREAM, 15.0)
+    w, h = game_map.width, game_map.height
+    aspect = (2 * _PLAN_HALF) / (_PLAN_Z[1] - _PLAN_Z[0])  # texel height / width, in the world
+    cw = max(1, min(60 // w, int(52 / (h * aspect))))
+    ch = max(1, round(cw * aspect))
+    u0, v0 = (64 - cw * w) // 2, 10 + (54 - ch * h) // 2
+
+    def cell(cx: float, cy: float) -> BoolArray:
+        u, v = u0 + math.floor(cx) * cw, v0 + math.floor(cy) * ch
+        return c.rect(v, v + ch, u, u + cw)
+
+    for cy in range(h):
+        for cx in range(w):
+            if game_map.is_full_wall(cx, cy):
+                c.paint(cell(cx, cy), GREY, 3.0)
+            elif game_map.is_solid(cx, cy):
+                c.paint(cell(cx, cy), GREY, 10.0)
+    for t in game_map.things:
+        if t.type in ("exit_sign", "door_lift"):
+            ex, ey = (
+                (t.x, t.y)
+                if t.type == "door_lift"
+                else (t.x - 0.5 * math.cos(t.angle), t.y - 0.5 * math.sin(t.angle))
+            )
+            c.paint(cell(ex, ey), GREEN, 9.0)
+    here = cell(x + 0.3 * math.cos(angle), y + 0.3 * math.sin(angle))
+    c.paint(here, BRICK, 13.0)
+    _PLANS[key] = _texture(c)
+    return _PLANS[key]
+
+
+def poster_plans(game_map: GameMap) -> list[PlacedBox]:
+    """The map's fire plans (posters, kind=plan): each its own texture."""
+    out = []
+    for t in game_map.things:
+        if t.type == "poster" and t.prop("kind") == "plan":
+            tex = plan_texture(game_map, t.x, t.y, t.angle)
+            for box in _poster(tex, _PLAN_HALF, _PLAN_Z):
+                out.append(PlacedBox(t.x, t.y, 0.0, t.angle, box))
+    return out
 
 
 # --- Office swivel chair ---------------------------------------------------------------
@@ -1817,6 +2055,7 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "phone": _phone(),
     "pc": _pc(),
     "chair": _chair(),
+    **{f"poster:{k}": _poster(*v) for k, v in _POSTER_KINDS.items()},
     "filing_cabinet": _filing_cabinet(),
     "water_cooler": _water_cooler(),
     "ficus": _ficus(),
@@ -1827,3 +2066,12 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
 }
 BOX_TEXTURES: U8Array = np.stack(_TEXTURES)  # [texture][u][v]
 BOX_OPAQUE: BoolArray = np.stack(_OPAQUE)  # [texture][u][v]: False = see-through
+_STACKED: list[tuple[U8Array, BoolArray]] = [(BOX_TEXTURES, BOX_OPAQUE)]
+
+
+def box_textures() -> tuple[U8Array, BoolArray]:
+    """(BOX_TEXTURES, BOX_OPAQUE), with any textures made since (a map's fire
+    plans): restacked only when there are new ones."""
+    if len(_STACKED[0][0]) != len(_TEXTURES):
+        _STACKED[0] = (np.stack(_TEXTURES), np.stack(_OPAQUE))
+    return _STACKED[0]

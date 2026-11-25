@@ -431,6 +431,12 @@ dm_spawn      1.5   3.5   0
   bulkhead drawing; with lighting on, a ceiling lower than a storey (the
   lintel's soffit) takes the plain light times `soffit_shade` (0.85), not
   the square root other ceilings get, so it sits in shadow like the walls.
+- **Posters** (`poster` things, `kind=`): one thin box each against a
+  wall, drawn as `type:kind` from BOX_MODELS. The fire plan (`kind=plan`)
+  is drawn from the map with a dot where it hangs, so its texture is made
+  when a map's boxes are (`Renderer._map_boxes_for`, `boxes.poster_plans`):
+  box textures can grow after import (`boxes.box_textures()` restacks them
+  when they do).
 - **The view through glass** (`textures.panorama`, `Renderer._outside`):
   glass in wall textures (windows `4`, curtain wall `f`, entrance doors
   `g`) is a reserved palette index, `GLASS`; when walls are drawn, those
@@ -720,6 +726,12 @@ Rules that have come out of it (details in the sections above):
 
 Noted at the end of a session, to pick up next:
 
+- **Server cabinets in the plant room.** A row of late-80s minicomputer
+  cabinets (tall, steel, a smoked glass door, tape reels or drive bays),
+  with blinking lights: a few lamps on the front that flicker on their own
+  timers (lit with `glow`; the box's texture swapped per frame by time, as
+  door boxes are drawn from their state). Few boxes each (one cabinet box,
+  a front panel); a thing type `server`, blocking.
 - Also outstanding: the `corner=` property for things (LEVELS.md);
   `shared/validate.py` (a floor is completable); the automap; the lift
   ride to the next floor; networking (milestone 3).

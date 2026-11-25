@@ -142,6 +142,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Fluorescent ceiling light (a panel set into the ceiling) | no | [built] |
 | Exit sign (marks the exit) | no | [built] |
 | Office swivel chair (box model, `chair`): a black five-star base on casters (one flat box, the star painted on its top), a gas column, a charcoal fabric seat and backrest on a black shell; four boxes; one at each sitter's Mac and reception's, each nudged and turned a little | yes (small) | [built] |
+| Posters and pictures (box model, `poster`, one thin box on a wall, `kind=`): motivational posters (SYNERGY over an eagle at sunset, "1 + 1 = 3"; TEAMWORK, a rowing crew; EXCELLENCE, a snowy peak); Employee of the Month, three frames, the same moustached chap in big glasses every month; the founder's portrait in oils in a gilt frame (lobby); a DAYS SINCE LAST ACCIDENT: 0 board (plant room); DANGER HIGH VOLTAGE signs (by the plant room door and the breaker: they point the way to the power); a fire plan of the floor itself, a red dot where it hangs | no | [built] |
 | Photocopier (inert) | yes | planned |
 | Fax machine on stand | yes | planned |
 | Vending machine | yes | planned |

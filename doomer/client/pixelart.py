@@ -68,16 +68,31 @@ class Canvas:
         mask: BoolArray = ((self.v + 0.5 - cv) / rv) ** 2 + ((self.u + 0.5 - cu) / ru) ** 2 <= 1
         return mask
 
-    def text(self, message: str, v0: int, u0: int, ramp: int, shade: float, scale: int = 1) -> None:
-        """Draw text in a tiny 3x5 pixel font (only the glyphs we need)."""
+    def text(
+        self,
+        message: str,
+        v0: int,
+        u0: int,
+        ramp: int,
+        shade: float,
+        scale: int = 1,
+        scale_u: int | None = None,
+    ) -> None:
+        """Draw text in a tiny 3x5 pixel font. `scale_u`: a different scale
+        across (for a face stretched wider than it's tall)."""
+        su = scale if scale_u is None else scale_u
         for i, ch in enumerate(message):
             rows = FONT_3X5[ch]
             for gy, row in enumerate(rows):
                 for gx, bit in enumerate(row):
                     if bit == "#":
                         top = v0 + gy * scale
-                        left = u0 + (i * 4 + gx) * scale
-                        self.paint(self.rect(top, top + scale, left, left + scale), ramp, shade)
+                        left = u0 + (i * 4 + gx) * su
+                        self.paint(self.rect(top, top + scale, left, left + su), ramp, shade)
+
+    def text_width(self, message: str, scale_u: int = 1) -> int:
+        """Texels across `message` takes (4 a glyph, less the last gap)."""
+        return (len(message) * 4 - 1) * scale_u
 
 
 FONT_3X5: dict[str, tuple[str, ...]] = {
@@ -96,4 +111,32 @@ FONT_3X5: dict[str, tuple[str, ...]] = {
     "3": ("##.", "..#", ".#.", "..#", "##."),
     "4": ("#.#", "#.#", "###", "..#", "..#"),
     "5": ("###", "#..", "##.", "..#", "##."),
+    # The rest, for posters and signs.
+    " ": ("...", "...", "...", "...", "..."),
+    "A": (".#.", "#.#", "###", "#.#", "#.#"),
+    "C": (".##", "#..", "#..", "#..", ".##"),
+    "D": ("##.", "#.#", "#.#", "#.#", "##."),
+    "F": ("###", "#..", "##.", "#..", "#.."),
+    "H": ("#.#", "#.#", "###", "#.#", "#.#"),
+    "J": ("..#", "..#", "..#", "#.#", ".#."),
+    "K": ("#.#", "#.#", "##.", "#.#", "#.#"),
+    "L": ("#..", "#..", "#..", "#..", "###"),
+    "M": ("#.#", "###", "###", "#.#", "#.#"),
+    "N": ("##.", "#.#", "#.#", "#.#", "#.#"),
+    "Q": (".#.", "#.#", "#.#", "##.", ".##"),
+    "R": ("##.", "#.#", "##.", "#.#", "#.#"),
+    "U": ("#.#", "#.#", "#.#", "#.#", "###"),
+    "V": ("#.#", "#.#", "#.#", "#.#", ".#."),
+    "W": ("#.#", "#.#", "###", "###", "#.#"),
+    "Y": ("#.#", "#.#", ".#.", ".#.", ".#."),
+    "Z": ("###", "..#", ".#.", "#..", "###"),
+    "0": ("###", "#.#", "#.#", "#.#", "###"),
+    "6": (".##", "#..", "###", "#.#", "###"),
+    "7": ("###", "..#", ".#.", ".#.", ".#."),
+    "8": ("###", "#.#", "###", "#.#", "###"),
+    "9": ("###", "#.#", "###", "..#", "##."),
+    ".": ("...", "...", "...", "...", ".#."),
+    "!": (".#.", ".#.", ".#.", "...", ".#."),
+    "+": ("...", ".#.", "###", ".#.", "..."),
+    "=": ("...", "###", "...", "###", "..."),
 }
