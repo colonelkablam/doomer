@@ -409,7 +409,9 @@ dm_spawn      1.5   3.5   0
   Double: two leaves hinged at either side of the doorway, meeting in the
   middle and swinging the same way, between narrow jambs; used the same way.
   Sliding: two glass leaves (a dithered, see-through texture) that part
-  into the walls either side, opening by themselves for anyone within 1.6
+  towards the walls either side, stopping with ~32 cm of each still in the
+  doorway (`SLIDE`, as real ones park behind fixed side panels; lift doors
+  vanish into the frame), opening by themselves for anyone within 1.6
   cells. Collision: the closed part of the doorway as thin walls. A lowered
   ceiling over the doorway (6/8) gives a lintel through the existing
   bulkhead drawing; with lighting on, a ceiling lower than a storey (the

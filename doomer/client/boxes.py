@@ -56,6 +56,7 @@ from doomer.shared.doors import (
     HINGED_LEAF,
     JAMB,
     LIFT,
+    SLIDE,
     SWING,
     Door,
 )
@@ -850,7 +851,7 @@ def door_boxes(
                 angle = closed + turn * door.open * SWING
                 out.append(PlacedBox(hx, hy, 0.0, angle, leaf))
         else:
-            slide = 0.5 * door.open  # each leaf slides into the wall beside it
+            slide = SLIDE[door.kind] * door.open  # each leaf slides towards the wall beside it
             if door.kind == LIFT:
                 faces = (_STEEL_LEAF, _STEEL_EDGE, _STEEL_LEAF, _STEEL_EDGE, _STEEL_EDGE)
                 out += _lift_fittings(door, power)

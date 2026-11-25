@@ -202,3 +202,15 @@ def test_a_door_stands_at_the_end_of_its_doorway_it_opens_towards(
     assert door.plane == pytest.approx(plane)
     walls = door_walls(door)
     assert all(w.at == pytest.approx(plane) for w in walls)
+
+
+def test_open_glass_doors_leave_a_strip_of_each_leaf_in_the_doorway() -> None:
+    from doomer.shared.doors import SLIDE
+
+    door = doors_from_map(parse_map(ROOMS.replace("door_hinged", "door_sliding")))[0]
+    door.open = 1.0
+    walls = door_walls(door)
+    assert len(walls) == 2  # a leaf each side still blocks its strip
+    for w in walls:
+        assert w.hi - w.lo == pytest.approx(0.5 - SLIDE[SLIDING])
+    assert 1.0 - 2 * (0.5 - SLIDE[SLIDING]) >= 0.7  # still a wide way through

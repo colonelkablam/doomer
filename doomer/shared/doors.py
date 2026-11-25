@@ -22,8 +22,9 @@ Kinds:
   lift car (the cell behind the doorway, against the door's facing). Use
   calls the lift, only with power; then the doors open for anyone near.
   When every player is in a lift car, the doors close and the floor is done.
-- sliding: two glass leaves, each half the cell, that part into the walls
-  either side. Automatic: they open while any player is near.
+- sliding: two glass leaves, each half the cell, that part towards the
+  walls either side, stopping with a strip of each still showing (SLIDE).
+  Automatic: they open while any player is near.
 
 State is here, in the simulation, so the server owns it and every client
 agrees; the client draws doors from it (doomer/client/boxes.py). Collision:
@@ -61,6 +62,11 @@ USE_CONE = math.cos(math.radians(50))  # must be roughly facing it
 SLIDING_SENSE = 1.6  # cells: sliding doors open for anyone this near
 PASSABLE = 0.95  # open beyond this, a hinged door no longer blocks
 DOOR_SET = 0.45  # cells from the doorway's middle to the door, towards its facing
+# How far each leaf of a parting door slides when fully open (cells; each
+# leaf is half the doorway, 0.5). Glass doors stop with ~32 cm of each leaf
+# still showing, as real ones do (they park behind fixed side panels), a 2 m
+# opening; lift doors vanish into the frame.
+SLIDE = {SLIDING: 0.38, LIFT: 0.5}
 
 
 @dataclass(slots=True)
@@ -136,7 +142,7 @@ def door_walls(door: Door) -> list[ThinWall]:
             walls.append(wall(lo + jamb, hi - jamb))
         return walls
     # Sliding and lift doors: each leaf covers its half, less how far it has slid.
-    closed = 0.5 * (1.0 - door.open)
+    closed = 0.5 - SLIDE[door.kind] * door.open
     if closed <= 1e-6:
         return []
     return [wall(lo, lo + closed), wall(hi - closed, hi)]
