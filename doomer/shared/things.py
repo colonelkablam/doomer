@@ -69,6 +69,8 @@ for _name, _description, _blocking, _radius in (
     ("terminal", "Beige PC and CRT, for standing on a desk pod", False, 0.0),
     # Drawn as solid boxes (client/boxes.py); faces its map angle, like terminal.
     ("mac", "Apple Macintosh SE/30 with keyboard and mouse, for a desk", False, 0.0),
+    # The same: a brown 1980s desk phone (boxes), facing whoever uses it.
+    ("phone", "1980s desk phone, for a desk", False, 0.0),
 ):
     register_thing_type(ThingType(_name, _description, _blocking, _radius))
 

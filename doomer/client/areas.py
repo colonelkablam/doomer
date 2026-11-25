@@ -431,15 +431,15 @@ class _Desk:
             self.tex = np.where(far, indices(ramp, 5.0), self.tex).astype(np.uint8)
             self.tex = np.where(tip, indices(CREAM, 14.0), self.tex).astype(np.uint8)
 
-    def note(self, cv: float, cu: float, angle: float = 0.0) -> None:
-        """A pink sticky note, square on to the desk: a plain square with a
-        darker band across its top. (Anything more at this size, or turned,
-        breaks into ragged pixels.)"""
+    def note(self, cv: float, cu: float, angle: float = 0.0, ramp: int = PINK) -> None:
+        """A sticky note, square on to the desk: a plain square with a darker
+        band across its top (pink, or yellow). (Anything more at this size,
+        or turned, breaks into ragged pixels.)"""
         note = _note_mask(cv, cu)
-        self.lay(note, PINK, 14.0)
+        self.lay(note, ramp, 14.0)
         v, _ = grid()
         band = note & (v == int(np.min(v[note])))
-        self.tex = np.where(band, indices(PINK, 11.0), self.tex).astype(np.uint8)
+        self.tex = np.where(band, indices(ramp, 11.0), self.tex).astype(np.uint8)
 
     def open_folder(self, cv: float, cu: float, angle: float) -> None:
         """A manila file opened flat: two panels either side of the crease,
@@ -461,11 +461,11 @@ def _splayed_files(d: _Desk, cv: float, cu: float, rng: np.random.Generator) -> 
         d.folder(cv + dv, cu + du, rng.uniform(-0.25, 0.25))
 
 
-def _stack(d: _Desk, cv: float, cu: float, rng: np.random.Generator) -> None:
-    """A file with two sheets left on it, half off."""
+def _stack(d: _Desk, cv: float, cu: float, rng: np.random.Generator, sheets: int = 2) -> None:
+    """A file with sheets left on it, half off."""
     angle = rng.uniform(-0.2, 0.2)
     d.folder(cv + 1.5, cu - 3.5, angle, papers=False)
-    for k in range(2):
+    for k in range(sheets):
         d.sheet(cv - 2 + k * 1.5, cu + 2.5 + k * 2.5, angle + rng.uniform(-0.3, 0.3))
 
 
@@ -492,14 +492,19 @@ def desk_top(variant: int) -> U8Array:
     for half, (u0, v0, u1, v1) in enumerate(_DESK_ZONES):
         layout = _LAYOUTS[(variant + 2 * half) % len(_LAYOUTS)]  # halves differ
         cu, cv = (u0 + u1) / 2 + rng.uniform(-2, 2), (v0 + v1) / 2 + rng.uniform(-1.5, 1.5)
-        layout(desk, cv, cu, rng)
+        notes = variant == NOTE_VARIANT and half == 1
+        if notes:  # a file with one sheet, leaving room for two notes beside it
+            _stack(desk, cv, cu, rng, sheets=1)
+        else:
+            layout(desk, cv, cu, rng)
         # On bare desk in the same free end (never on the paper, where it'd
-        # be lost): the one pencil, or the one note.
+        # be lost): the one pencil, or the two notes (pink and yellow).
         zone = (u0, v0, u1, v1)
-        if variant == NOTE_VARIANT and half == 1:
-            at = desk.place(zone, rng, _note_mask, (0.0, 0.0))
-            if at is not None:
-                desk.note(*at)
+        if notes:
+            for ramp in (PINK, OCHRE):
+                at = desk.place(zone, rng, _note_mask, (0.0, 0.0))
+                if at is not None:
+                    desk.note(*at, ramp=ramp)
         if variant == PENCIL_VARIANT and half == 0:
             # Roughly along or across the desk: a thin line reads best near the axes.
             square = float(rng.choice([0.0, math.pi / 2]))

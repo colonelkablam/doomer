@@ -119,3 +119,19 @@ def test_the_red_pass_on_the_boss_desk_can_be_reached_from_the_front() -> None:
         step(world, {1: PlayerInput(forward=1.0, angle=math.pi)})
     assert p.x == pytest.approx(3.0 + 0.46 + world.config.movement.radius)  # stopped at it
     assert red.taken
+
+
+def test_phones_sit_on_the_desks_and_face_their_user() -> None:
+    from doomer.client.boxes import BOX_MODELS
+    from doomer.shared.mapfile import load_map
+
+    office = load_map("maps/office.map")
+    phones = office.things_of_type("phone")
+    assert len(phones) >= 5
+    for t in phones:
+        assert resting_height(office, t) > 0.2  # on a desk, not the floor
+    boxes = BOX_MODELS["phone"]
+    assert len(boxes) <= 3  # cheap: there are several in view at once
+    keypad, cradle, _ = boxes
+    assert keypad.x[1] > cradle.x[1]  # the keypad at the front (+x, the user's side)
+    assert cradle.z[1] > keypad.z[1]  # the cradle raised behind it

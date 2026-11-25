@@ -695,21 +695,14 @@ Rules that have come out of it (details in the sections above):
 - Doors: flush with the room they serve, the doorway a recess on the
   corridor side; hinged ones swing out into the recess (never into the
   corridor); glass and lift doors face their room and park leaving a strip
-  of each leaf. Lifts are one cell off the lobby. Corridors 2 cells wide;
+  of each leaf. Lifts are one cell off the lobby, their doors ~3 cm behind
+  the lobby wall's face (`LIFT_SET`), flush in a steel architrave. Corridors 2 cells wide;
   recesses are cover. See LEVELS.md, "Doors and corridors".
 
 ## Open work
 
 Noted at the end of a session, to pick up next:
 
-- **Lift doors and their recess.** The doors stand 0.05 in from the lobby
-  wall's face; the 13 cm reveal between them and the architrave reads
-  oddly. Either bring lift doors flush (DOOR_SET nearer 0.5 for lifts,
-  with the leaves parking inside the car walls, not over the lobby face),
-  or line the reveal properly (steel, matching the architrave).
-- **Desk paperwork.** On the variant with the pink note, remove the sheet
-  of paper next to it and put a second square note (as the first: on the
-  texel grid, a band across its top) in its place.
 - **Light leaking up the wall round the lobby's glass doors.** Lobby light
   passing through the glass doorway lights the office floor just inside,
   and the full walls either side of the doors take their light from that
@@ -718,9 +711,6 @@ Noted at the end of a session, to pick up next:
   door height from the upper map too (per pixel by height, or by a blend),
   or bake light through doorways onto the floor only (`_compose` with
   doorway cells blocking for every face lookup but floors).
-- **An 1980s desk phone** on the desks (a box model: beige or brown,
-  curly-corded handset on its cradle, push buttons; it has height, so a
-  box, not texture), a few about the office and one on the boss's desk.
 - **Better office windows.** The blinds (`4`) look bad: the slats and the
   sky between them alias into noisy stripes. Redesign: fewer, wider slats
   (or blinds half up, so there's clean glass below), flat colours, no noise.

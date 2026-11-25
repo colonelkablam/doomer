@@ -70,6 +70,10 @@ USE_CONE = math.cos(math.radians(50))  # must be roughly facing it
 SLIDING_SENSE = 1.6  # cells: sliding doors open for anyone this near
 PASSABLE = 0.95  # open beyond this, a hinged door no longer blocks
 DOOR_SET = 0.45  # cells from the doorway's middle to the door, towards its facing
+# Lift doors sit nearer the edge: ~3 cm behind the lobby wall's face, so
+# they read as flush with it (a steel architrave covers the gap), their
+# leaves still parking inside the car's walls either side, which hide them.
+LIFT_SET = 0.47
 # How far each leaf of a parting door slides when fully open (cells; each
 # leaf is half the doorway, 0.5): they stop with ~32 cm of each leaf still
 # showing, as real ones park behind fixed side panels; a 2 m opening.
@@ -97,10 +101,16 @@ class Door:
         its plane, DOOR_SET from the doorway's middle: towards its facing
         (sliding, lift), or away from it (hinged, double: they swing out
         into the doorway)."""
-        toward = -1 if self.kind in (HINGED, DOUBLE) else 1
+        set_ = (-1 if self.kind in (HINGED, DOUBLE) else 1) * self.set_back
         if self.across_x:
-            return self.x + toward * DOOR_SET * round(math.cos(self.facing))
-        return self.y + toward * DOOR_SET * round(math.sin(self.facing))
+            return self.x + set_ * round(math.cos(self.facing))
+        return self.y + set_ * round(math.sin(self.facing))
+
+    @property
+    def set_back(self) -> float:
+        """How far the door stands from its doorway's middle (DOOR_SET; lifts
+        LIFT_SET)."""
+        return LIFT_SET if self.kind == LIFT else DOOR_SET
 
     @property
     def centre(self) -> tuple[float, float]:

@@ -48,7 +48,6 @@ from doomer.client.pixelart import FONT_3X5, BoolArray, Canvas, noise
 from doomer.shared.doors import (
     DOOR_HALF,
     DOOR_HEIGHT,
-    DOOR_SET,
     DOUBLE,
     DOUBLE_JAMB,
     DOUBLE_LEAF,
@@ -263,6 +262,71 @@ def _mac_se30() -> tuple[Box, ...]:
         (case, case, case, case, mouse_top()),
     )
     return mac, keyboard, mouse
+
+
+# --- 1980s desk phone ----------------------------------------------------------------
+# Brown plastic, a low wedge: the front half with the keypad and a column of
+# amber line buttons, a raised cradle at the back with the handset lying
+# across it. Three boxes. Real size ~22 x 20 cm; built ~1.6x, as the Mac is,
+# so it reads. Model +x faces whoever uses it (as the Mac's screen).
+
+_PHONE_W, _PHONE_D = 0.065, 0.06  # half-width (y), half-depth (x), cells
+_PHONE_LOW, _PHONE_HIGH = 0.028, 0.042  # walls: the keypad's top, the cradle's
+
+
+def phone_keys() -> int:
+    """The phone's front half from above: v runs back to front (+x), u from
+    its left to its right (-y), as the user sees it. A 3 x 4 keypad, and the
+    line buttons in a column on the right, amber."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 4.0)
+    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64) | c.rect(60, 64, 0, 64), WOOD, 3.0)
+    for row in range(4):
+        for col in range(3):
+            v0, u0 = 8 + row * 13, 10 + col * 12
+            c.paint(c.rect(v0, v0 + 9, u0, u0 + 8), WOOD, 2.0)  # a key
+            c.paint(c.rect(v0, v0 + 2, u0, u0 + 8), GREY, 9.0)  # its pale top edge
+    for k in range(5):
+        v0 = 6 + k * 11
+        c.paint(c.rect(v0, v0 + 7, 50, 58), ORANGE, 13.0)  # the line buttons
+    return _texture(c)
+
+
+def phone_body() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 3.5)
+    c.paint(c.rect(0, 8, 0, 64), WOOD, 5.0)  # its top edge catches the light
+    return _texture(c)
+
+
+def handset_top() -> int:
+    """The handset from above: a lighter brown than the body, its ear and
+    mouth pieces lighter still, the light along its curve."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 6.0)
+    c.paint(c.rect(0, 64, 0, 14) | c.rect(0, 64, 50, 64), WOOD, 7.0)  # ear and mouth pieces
+    c.paint(c.rect(24, 32, 0, 64), WOOD, 8.0)
+    c.paint(c.rect(56, 64, 0, 64), WOOD, 3.0)
+    return _texture(c)
+
+
+def cradle_top() -> int:
+    """The cradle under the handset: dark, so the handset stands out on it."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 2.0)
+    return _texture(c)
+
+
+def _phone() -> tuple[Box, ...]:
+    keys, body, handset, cradle = phone_keys(), phone_body(), handset_top(), cradle_top()
+    w, d = _PHONE_W, _PHONE_D
+    top = _PHONE_HIGH + 0.022
+    return (
+        Box((-0.02, d), (-w, w), (0.0, _PHONE_LOW), (body, body, body, body, keys)),
+        Box((-d, -0.02), (-w, w), (0.0, _PHONE_HIGH), (body, body, body, body, cradle)),
+        # The handset, lying across the cradle and a little beyond its ends.
+        Box((-d - 0.004, -0.016), (-w - 0.01, w + 0.01), (_PHONE_HIGH, top), (handset,) * 5),
+    )
 
 
 # --- Stairs ----------------------------------------------------------------------
@@ -965,7 +1029,7 @@ def _lift_fittings(door: Door, power: bool) -> list[PlacedBox]:
         lo, hi = sorted((side * 0.5, side * 0.56))
         at(Box((0.5, 0.515), (lo, hi), (0.0, top + 0.04), steel))  # architrave
     at(Box((0.5, 0.515), (-0.56, 0.56), (top, top + 0.04), steel))  # its head
-    sill = (DOOR_SET - 0.05, DOOR_SET + 0.05)
+    sill = (door.set_back - 0.05, door.set_back + 0.05)
     at(Box(sill, (-0.5, 0.5), (0.0, 0.006), (_SILL,) * 5))  # under the doors
     # Only the fronts carry the display and buttons; their thin sides are steel.
     indicator = (_INDICATOR[power], *(_POLISHED,) * 4)
@@ -1503,6 +1567,7 @@ def switch_boxes(switches: Iterable[Switch]) -> list[PlacedBox]:
 # Keyed by thing type name, like SPRITES.
 BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "mac": _mac_se30(),
+    "phone": _phone(),
     "filing_cabinet": _filing_cabinet(),
     "water_cooler": _water_cooler(),
     "ficus": _ficus(),
