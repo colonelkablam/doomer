@@ -98,18 +98,18 @@ sneaky, staple gun and letter opener (double damage from behind), and
 How people look, everywhere a face shows (ID passes, the Employee of the
 Month, the founder's portrait; later the NPCs): early LucasArts adventure
 sprites, as in Monkey Island. Few, chunky pixels: a portrait is a 20 x 20
-grid, the head 10 pixels wide and 12 tall, each pixel a solid block
-(crisp when drawn at a multiple of 20 texels). No outlines: shapes stand
-out by colour, their edges a darker shade. Single-pixel features, well apart: a dark
-pixel for each eye (no whites), five pixels apart with two of skin outside
-each; a lighter strip down the nose between them; a small dark mouth in
-the middle (corners up in a grin, down when stern), never reaching the
-cheeks; a brown bar of moustache.
-Warm two- or three-tone shading in blocks, lit from the left; hair a messy
-silhouette with a stray lock. A shirt collar round the neck with a tie, an
-open neck without. Flat
-colours, no noise. A face is built from stock parts that swap
-(`client/faces.py`, `Face`): skin (fair, tan, dark), hair (side parting,
+grid, the head about 11 pixels wide, each pixel a solid block (crisp when
+drawn at a multiple of 20 texels). Three-quarter view, turned to the left:
+a big nose jutting past the face's edge, heavy dark brows, a dark pixel for
+each eye (no whites) five apart, the far one nearer the nose, a small
+mouth under the nose that never reaches across the face, a big chin, an
+ear and more of the hair at the back. No outlines: edges are a darker
+shade. Warm two- or three-tone shading, lit from the left; hair simple,
+clean shapes. A shirt collar round the neck with a tie, an open neck
+without. Faces are drawn, not computed: each part is a hand-drawn 20 x 20
+template of letters (one per pixel: a tone, or a fixed colour like an
+eye), and a builder stacks the chosen parts' templates, coloured from the
+face's skin, hair, jacket and tie. The stock parts (`client/faces.py`, `Face`): skin (fair, tan, dark), hair (side parting,
 slicked back, perm, mullet, bob, bald) and its colour (brown, black, blond,
 ginger, white), glasses (none, big glasses, aviators), facial hair (none,
 moustache, beard), mouth (grin, flat, stern), jacket and tie. The cast so

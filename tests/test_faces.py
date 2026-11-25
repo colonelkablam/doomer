@@ -68,9 +68,9 @@ def test_a_tie_comes_with_a_collar_and_no_tie_with_an_open_neck() -> None:
     collar = (CREAM << 4) | 15
     tied = _portrait(Face(tie="red"))
     open_ = _portrait(Face(tie="none"))
-    # The collar's left point: pixel (14, 7), just below the neck, left of the knot.
-    assert tied[43, 22] == collar
-    assert open_[43, 22] != collar
+    # The collar's left point: pixel (14, 8), just below the neck, left of the knot.
+    assert tied[43, 25] == collar
+    assert open_[43, 25] != collar
 
 
 def test_pixels_are_solid_blocks() -> None:
