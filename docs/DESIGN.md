@@ -718,6 +718,15 @@ Noted at the end of a session, to pick up next:
   door height from the upper map too (per pixel by height, or by a blend),
   or bake light through doorways onto the floor only (`_compose` with
   doorway cells blocking for every face lookup but floors).
+- **An 1980s desk phone** on the desks (a box model: beige or brown,
+  curly-corded handset on its cradle, push buttons; it has height, so a
+  box, not texture), a few about the office and one on the boss's desk.
+- **Better office windows.** The blinds (`4`) look bad: the slats and the
+  sky between them alias into noisy stripes. Redesign: fewer, wider slats
+  (or blinds half up, so there's clean glass below), flat colours, no noise.
+- **Windows for service rooms** that match their walls: a small high window
+  in the painted blockwork (wired glass, a steel frame), not the office
+  window with blinds, which the plant room has now on its outer wall.
 - Also outstanding: the `corner=` property for things (LEVELS.md);
   `shared/validate.py` (a floor is completable); the automap; the lift
   ride to the next floor; networking (milestone 3).
