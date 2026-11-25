@@ -240,7 +240,7 @@ def office_wall(seed: int = 1) -> U8Array:
     rng = np.random.default_rng(seed)
     v, u = grid()
     shade = _woodchip(rng)
-    shade = np.where(v >= 40, 8.5 + (noise(rng, 8) - 0.5) * 0.6, shade)  # lower panel
+    shade = np.where(v >= 40, 8.0 + (noise(rng, 8) - 0.5) * 0.5, shade)  # lower panel (mid-shade)
     tex = indices(SAND, shade)
     rail = (v >= 38) & (v < 41)
     tex = np.where(rail, indices(WOOD, np.where(v == 38, 10.0, 7.0)), tex)

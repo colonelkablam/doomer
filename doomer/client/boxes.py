@@ -33,6 +33,7 @@ from doomer.client.palette import (
     CREAM,
     GREEN,
     GREY,
+    MOSS,
     OCHRE,
     ORANGE,
     PURPLE,
@@ -532,10 +533,11 @@ def _water_cooler() -> tuple[Box, ...]:
         cabinet,
         *taps,
         # The bottle stands upside down: neck down in the cabinet's collar,
-        # shoulder, then the body up to its flat base at the top (~1.3 m).
-        *_octagon(0.03, (0.29, 0.30), (water, water)),  # neck
-        *_octagon(0.06, (0.30, 0.325), (water, water)),  # shoulder
-        *_octagon(0.085, (0.325, 0.48), (water, water)),  # body
+        # shoulder, then the body up to its flat base at the top (~1.45 m).
+        # A 19-litre bottle is nearly as wide as the cabinet.
+        *_octagon(0.035, (0.29, 0.30), (water, water)),  # neck
+        *_octagon(0.075, (0.30, 0.33), (water, water)),  # shoulder
+        *_octagon(0.105, (0.33, 0.54), (water, water)),  # body
     )
 
 
@@ -553,18 +555,43 @@ _CROWN_R = 0.23  # cells
 
 
 def leaves(seed: int, flat: bool = False) -> int:
-    """A ragged oval of leaf clusters, see-through between them. Lit from
-    above (upright cards) and darker inside the clumps. Flat cards are
-    sparser: seen nearly edge-on, a dense one squashes into a solid stripe."""
+    """A crown of individual leaves (a weeping fig's: small, pointed, glossy),
+    see-through between them. Each is a pointed oval at its own angle,
+    drooping a little on upright cards, lit on one half with a darker edge,
+    the crown's top catching more light. They're scattered inside a ragged
+    outline, not a circle, so the crown has no hard round edge. Flat cards
+    are sparser: seen nearly edge-on, a dense one squashes into a stripe.
+    Exaggerated (~12 cm leaves) so single leaves read at this resolution."""
     rng = np.random.default_rng(seed)
     c = Canvas()
-    coarse, fine = noise(rng, 8), noise(rng, 32)
-    density = 0.6 * coarse + 0.4 * fine
-    outline = c.ellipse(32, 32, 31, 31) if flat else c.ellipse(34, 32, 30, 31)
-    lit = 0.0 if flat else (32 - c.v) / 32 * 1.5  # tops of the crown catch the light
-    leafy = outline & (density > (0.55 if flat else 0.42))
-    c.paint(leafy, GREEN, 4.0 + fine * 7.0 + lit)
-    c.paint(leafy & (fine < 0.25), GREEN, 2.5)  # shadowed leaves
+    v, u = c.v.astype(np.float64), c.u.astype(np.float64)
+    cv, cu = (32.0, 32.0) if flat else (34.0, 32.0)
+    angle = np.arctan2(v - cv, u - cu)
+    a, b = rng.uniform(0, 2 * math.pi, 2)
+    reach = 30.0 * (1.0 + 0.12 * np.sin(3 * angle + a) + 0.08 * np.sin(5 * angle + b))
+    inside = np.hypot(v - cv, u - cu) < reach
+    count = 70 if flat else 150
+    placed = 0
+    while placed < count:
+        lv, lu = rng.uniform(0, 64, 2)
+        if not inside[int(lv), int(lu)]:
+            continue
+        placed += 1
+        # Pointing anywhere on a flat card; mostly downwards (drooping) on an
+        # upright one (v grows downwards).
+        theta = rng.uniform(0, 2 * math.pi) if flat else math.pi / 2 + rng.normal(0, 0.9)
+        along = (v - lv) * math.sin(theta) + (u - lu) * math.cos(theta)
+        across = (v - lv) * math.cos(theta) - (u - lu) * math.sin(theta)
+        length, width = rng.uniform(2.8, 3.8), rng.uniform(1.3, 1.8)
+        taper = 1.0 - 0.35 * np.clip(along / length, 0.0, 1.0)  # pointed at its tip
+        leaf = (along / length) ** 2 + (across / (width * taper)) ** 2 <= 1.0
+        edge = leaf & ((along / length) ** 2 + (across / (width * taper)) ** 2 > 0.55)
+        top = 0.0 if flat else (64.0 - lv) / 64.0 * 2.0  # the crown's top catches the light
+        base = 4.5 + top + rng.uniform(-0.8, 0.8)
+        young = rng.random() < 0.15  # a few paler new leaves
+        ramp = MOSS if young else GREEN
+        shade = np.where(across > 0, base + 1.5, base)  # one half catches the light
+        c.paint(leaf, ramp, np.where(edge, base - 1.5, shade))
     return _texture(c)
 
 

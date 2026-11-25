@@ -104,6 +104,13 @@ and an `exit`; **deathmatch** needs at least 4 `dm_spawn`s.
   Doorway cells take the area of the room they open from (the floor changes
   under the door). Keep areas to whole rooms: a change of carpet mid-room
   looks like a mistake.
+- **Corners** [planned]: a `corner=nw|ne|sw|se` property on things (pot
+  plants first), placing the thing in that corner of its cell, inset by its
+  own footprint (a ficus: 0.2 from each wall, its pot's radius 0.16 plus a
+  gap), so neither a hand-made map nor the generator has to work out the
+  numbers. Until then, write them: cell (x, y)'s NW corner is (x + 0.2,
+  y + 0.2), SE (x + 0.8, y + 0.8). Leaves reaching past a wall are hidden
+  by it.
 - **Desk-top things** (`mac`): turn each a few degrees off square (3-10 deg,
   either way, varied between neighbours), so a row of them looks used rather
   than lined up, and nudge it 0.02-0.06 cells along the desk (up to 0.015

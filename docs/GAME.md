@@ -130,9 +130,9 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Emergency lighting: until the breaker is thrown, only emergency panels are lit and the lobby sign is dark | no | [built] |
 | Lifts: brushed steel doors, a call button (lit amber when called) and a floor indicator (lit with power); a steel car with a handrail behind | no | [built] |
 | Card readers by locked doors: stripe in the pass colour, red/green lamp | no | [built] |
-| Water cooler (box model: cream cabinet, hot and cold taps, upturned octagonal bottle; faces its map angle) | yes | [built] |
+| Water cooler (box model: cream cabinet, hot and cold taps, an upturned 19-litre bottle nearly as wide as the cabinet, ~1.45 m to its top; faces its map angle) | yes | [built] |
 | Filing cabinet (box model: five steel drawers with pulls and label cards; faces its map angle) | yes | [built] |
-| Potted ficus (box model: octagonal terracotta pot, two stems, a crown of crossed see-through leaf cards) | yes | [built] |
+| Potted ficus (box model: octagonal terracotta pot, two stems, a crown of crossed see-through leaf cards drawn as individual drooping leaves in a ragged outline) | yes | [built] |
 | Fluorescent ceiling light (a panel set into the ceiling) | no | [built] |
 | Exit sign (marks the exit) | no | [built] |
 | Swivel chair (inert) | no | planned |
