@@ -111,6 +111,10 @@ and an `exit`; **deathmatch** needs at least 4 `dm_spawn`s.
   numbers. Until then, write them: cell (x, y)'s NW corner is (x + 0.2,
   y + 0.2), SE (x + 0.8, y + 0.8). Leaves reaching past a wall are hidden
   by it.
+- **Macs on desk pairs** go at the sitter's end of each half, at (0.68,
+  0.25) and (0.32, 0.75) of a north/south pod's cell (a quarter turn for
+  east/west), facing their sitter: the tops' paperwork (`areas.desk_top`)
+  keeps to the other end of each half, so a Mac elsewhere sits on it.
 - **Desk-top things** (`mac`): turn each a few degrees off square (3-10 deg,
   either way, varied between neighbours), so a row of them looks used rather
   than lined up, and nudge it 0.02-0.06 cells along the desk (up to 0.015

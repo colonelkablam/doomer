@@ -579,6 +579,7 @@ def surface_texels(
     dither: FloatArray,
     areas: Int64Array,
     table: Int64Array,
+    cell_tops: Int64Array,
     mips: npt.NDArray[np.uint8],
 ) -> npt.NDArray[np.uint8]:
     """The texel each horizontal surface pixel shows, all arrays the same
@@ -586,17 +587,23 @@ def surface_texels(
     (fractional: a per-pixel dither threshold rounds it up or down, so
     neighbouring levels blend instead of meeting at a seam), and the kind of
     surface (areas.FLOOR, CEILING, SOFFIT, a raised top). The texture is
-    table[area of the point's cell, kind]."""
+    table[area of the point's cell, kind]; for a kind past the table's
+    columns (areas.CELL_TOP), the cell's own: cell_tops[cell]."""
     out = np.empty(xs.shape, dtype=np.uint8)
     flat_x, flat_y, flat_l = xs.ravel(), ys.ravel(), level.ravel()
     flat_k, flat_d, flat_out = kind.ravel(), dither.ravel(), out.ravel()
     h, w = areas.shape
     top = mips.shape[1] - 1
+    kinds = table.shape[1]
     for i in range(flat_x.shape[0]):
         x, y = flat_x[i], flat_y[i]
         cx, cy = math.floor(x), math.floor(y)
-        area = areas[cy, cx] if 0 <= cx < w and 0 <= cy < h else 0
-        texture = table[area, flat_k[i]]
+        inside = 0 <= cx < w and 0 <= cy < h
+        area = areas[cy, cx] if inside else 0
+        k_ = flat_k[i]
+        texture = table[area, k_] if k_ < kinds else (cell_tops[cy, cx] if inside else -1)
+        if texture < 0:
+            texture = table[area, 0]
         lv = flat_l[i] + flat_d[i]
         k = top if not lv < top else (0 if lv < 0.0 else int(lv))
         u = math.floor(x * 64.0) & 63

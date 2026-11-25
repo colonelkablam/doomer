@@ -286,7 +286,12 @@ dm_spawn      1.5   3.5   0
   desk tops stay flat colours, with their seams) use the same lookup per
   pixel. Textures come from a table by (area, kind): floor, ceiling, soffit
   (a ceiling lower than a storey, over a doorway: a lining, not ceiling
-  tiles), then the raised tops. Stair treads are box tops, stretched once
+  tiles), then the raised tops. Desk pairs' tops are per cell instead
+  (`areas.cell_tops`: a kind past the table's columns reads a per-cell
+  grid): mahogany with paperwork, four variants by position, turned to the
+  pod's facing. Paperwork as texture, not boxes: flat things cost nothing
+  that way, as the pixels are shaded anyway; each box adds a slab test per
+  screen column it covers. Stair treads are box tops, stretched once
   over each step (a cell wide, an eighth deep), so their carpet is drawn
   pre-squashed 8:1 to come out square.
 - **Texture shading rule**: a texture's gentle variation (noise, ± a

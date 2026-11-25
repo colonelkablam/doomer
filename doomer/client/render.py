@@ -58,6 +58,7 @@ from doomer.client.areas import (
     TOP_KIND,
     Surfaces,
     build_surfaces,
+    cell_tops,
 )
 from doomer.client.boxes import (
     BOX_MODELS,
@@ -249,6 +250,8 @@ class Renderer:
         self._seam_grid: IntArray = np.zeros((0, 0), dtype=np.intp)
         self._map_boxes: list[PlacedBox] = []
         self._map_arrays: fc.MapArrays | None = None
+        self._cell_tops_map: GameMap | None = None
+        self._cell_tops = np.zeros((0, 0), dtype=np.int64)
         self._light_list: list[tuple[float, float, float, bool]] = []
         # Last frame's per-pixel perpendicular distances, and its horizon row.
         self.zbuffer: FloatArray = np.full((w, h), np.inf)
@@ -379,6 +382,13 @@ class Renderer:
             self.surfaces.mips,
         )
 
+    def _cell_tops_for(self, game_map: GameMap) -> npt.NDArray[np.int64]:
+        """Per cell, its own top texture (desk pairs' paperwork) or -1."""
+        if self._cell_tops_map is not game_map:
+            self._cell_tops = cell_tops(game_map, self.surfaces)
+            self._cell_tops_map = game_map
+        return self._cell_tops
+
     def _surface_texels(
         self,
         x: FloatArray,
@@ -414,6 +424,7 @@ class Renderer:
             flat(dither, np.float64),
             self._map_arrays_for(self._frame_map).areas,
             self.surfaces.table,
+            self._cell_tops_for(self._frame_map),
             self.surfaces.mips,
         )
 

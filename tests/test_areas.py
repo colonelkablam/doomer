@@ -16,7 +16,7 @@ from doomer.client.areas import (
     mipmaps,
 )
 from doomer.client.config import LightingConfig, RenderConfig
-from doomer.client.palette import BLUE, STEEL, WARM_GREY
+from doomer.client.palette import BLUE, STEEL, WARM_GREY, WOOD
 from doomer.client.render import Camera, Renderer
 from doomer.shared.mapfile import (
     EAST,
@@ -94,7 +94,15 @@ def test_each_surface_shows_its_areas_texture() -> None:
     ys = np.full(5, 0.4)
     kind = np.array([FLOOR, FLOOR, FLOOR, CEILING, SOFFIT])
     texels = fc.surface_texels(
-        xs, ys, np.zeros(5), kind, np.zeros(5), areas, surfaces.table, surfaces.mips
+        xs,
+        ys,
+        np.zeros(5),
+        kind,
+        np.zeros(5),
+        areas,
+        surfaces.table,
+        np.full((1, 3), -1),
+        surfaces.mips,
     )
     u, v = math.floor(0.3 * 64), math.floor(0.4 * 64)
     expected = [
@@ -120,6 +128,7 @@ def test_far_floor_uses_the_smallest_mip_level() -> None:
         np.zeros(1),
         areas,
         surfaces.table,
+        np.full((1, 1), -1),
         surfaces.mips,
     )
     assert texel[0] == surfaces.mips[surfaces.table[OFFICE, FLOOR], -1, 0, 0]
@@ -186,3 +195,27 @@ def test_a_balcony_carries_on_its_rooms_walls_and_floor() -> None:
     r = Renderer(RenderConfig())
     assert r._face_type(m, 2, 1, SOUTH) == AREA_WALL_TYPE + LOBBY  # its front: stone
     assert TOP_KIND[18] == FLOOR  # its top: the area's floor (terrazzo)
+
+
+def test_desk_pairs_get_paperwork_tops_turned_to_their_facing() -> None:
+    from doomer.client.areas import DESK_VARIANTS, cell_tops
+
+    surfaces = build_surfaces()
+    m = parse_map("[walls]\n######\n#dddd#\n#jj..#\n######\n\n[facing]\n......\n.nnee.\n.ee...\n")
+    tops = cell_tops(m, surfaces)
+    assert tops[1, 1] in surfaces.desk_tops[:, 0] and tops[1, 3] in surfaces.desk_tops[:, 1]
+    assert tops[2, 1] in surfaces.desk_tops[:, 1]  # j (with screens) too
+    assert tops[2, 3] == -1 and tops[0, 0] == -1  # floor, walls: none
+    assert tops[1, 1] != tops[1, 2]  # neighbours differ
+    assert surfaces.desk_tops.shape == (DESK_VARIANTS, 2)
+
+
+def test_paperwork_keeps_clear_of_the_macs() -> None:
+    from doomer.client.areas import desk_top
+
+    # Each sitter's Mac and keyboard: north half round (0.68, 0.25) of the
+    # cell, south half round (0.32, 0.75), in texels. Bare laminate there.
+    for variant in range(4):
+        top = desk_top(variant)
+        bare = (top >> 4) == WOOD
+        assert bare[2:30, 37:56].all() and bare[34:62, 8:27].all()

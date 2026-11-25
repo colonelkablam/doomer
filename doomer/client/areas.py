@@ -22,13 +22,25 @@ one colour; the renderer picks the copy whose texels are about a pixel wide
 """
 
 import functools
+import math
 from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
 import numpy.typing as npt
 
-from doomer.client.palette import BLUE, CREAM, GREY, PALETTE, STEEL, WARM_GREY, WOOD, U8Array
+from doomer.client.palette import (
+    BLUE,
+    CREAM,
+    GREEN,
+    GREY,
+    OCHRE,
+    PALETTE,
+    STEEL,
+    WARM_GREY,
+    WOOD,
+    U8Array,
+)
 from doomer.client.pixelart import grid, indices, noise
 from doomer.client.textures import (
     ALL_SIDES,
@@ -45,7 +57,7 @@ from doomer.client.textures import (
     stone_cladding_upper,
     wood_panelling,
 )
-from doomer.shared.mapfile import EXECUTIVE, LIFT_CAR, LOBBY, OFFICE, SERVICE
+from doomer.shared.mapfile import EXECUTIVE, LIFT_CAR, LOBBY, OFFICE, SERVICE, GameMap
 
 MIP_LEVELS = 7  # 64, 32, 16, 8, 4, 2, 1 texels across
 # Internal wall types (not in map files, which stop at 35) for the plain-wall
@@ -256,11 +268,111 @@ for _area, _look in AREA_LOOKS.items():
     register_wall_texture(AREA_WALL_TYPE + _area, _look.wall_upper(), sides=(UPPER,))
 
 
+# --- desk tops --------------------------------------------------------------------
+# Desk pairs (d, j) get textured tops with a little paperwork on them: a
+# texture, not boxes, so it costs nothing per frame (those pixels are shaded
+# anyway). Four variants, picked per cell by its position, each drawn for a
+# pod facing north/south and turned a quarter for east/west (a pod is the
+# same turned half round, so two orientations cover all four facings).
+#
+# Where things go, in texels of a north/south pod's cell (u along x, v
+# along y; 64 = a cell): each sitter's Mac and keyboard are at their half's
+# outer corner (north half: u ~37-55, v 0-30; map things at (0.68, 0.25)
+# and (0.32, 0.75) of the cell), so the paperwork keeps to the other
+# quarter of each half: north u 3-31, v 3-28; south u 33-61, v 36-61.
+
+DESK_PAIR_TYPES = (13, 19)
+DESK_VARIANTS = 4
+_DESK_ZONES = ((3, 3, 31, 28), (33, 36, 61, 61))  # (u0, v0, u1, v1) per half
+
+
+def _rotated_rect(
+    cv: float, cu: float, half_v: float, half_u: float, angle: float
+) -> npt.NDArray[np.bool_]:
+    v, u = grid()
+    dv, du = v - cv, u - cu
+    a = dv * math.cos(angle) + du * math.sin(angle)
+    b = -dv * math.sin(angle) + du * math.cos(angle)
+    result: npt.NDArray[np.bool_] = (np.abs(a) <= half_v) & (np.abs(b) <= half_u)
+    return result
+
+
+def desk_top(variant: int) -> U8Array:
+    """A desk pair's top (for a pod facing north or south): mahogany
+    laminate, and in the free quarter of each half, some paperwork."""
+    rng = np.random.default_rng(50 + variant)
+    v, u = grid()
+    tex = indices(WOOD, 6.0 + np.sin(u * 0.4 + noise(rng, 8) * 4) * 0.2)
+    items = ("sheets", "folder", "printout", "binder")
+    for half, (u0, v0, u1, v1) in enumerate(_DESK_ZONES):
+        kind = items[(variant + 2 * half) % len(items)]
+        cu, cv = (u0 + u1) / 2 + rng.uniform(-3, 3), (v0 + v1) / 2 + rng.uniform(-2, 2)
+        angle = rng.uniform(-0.35, 0.35)
+
+        def lay(mask: npt.NDArray[np.bool_], ramp: int, shade: float) -> None:
+            """Paint `mask`, with a shadow a texel down and right of it."""
+            nonlocal tex
+            shadow = np.roll(np.roll(mask, 1, axis=0), 1, axis=1) & ~mask
+            tex = np.where(shadow, indices(WOOD, 4.0), tex)
+            tex = np.where(mask, indices(ramp, shade), tex).astype(np.uint8)
+
+        def text_lines(sheet: npt.NDArray[np.bool_], step: int = 2) -> None:
+            """Grey lines of type across a sheet, ragged on the right."""
+            nonlocal tex
+            line = sheet & ((v + u // 3) % step == 0) & (rng.random(v.shape) < 0.8)
+            tex = np.where(line, indices(GREY, 9.0), tex).astype(np.uint8)
+
+        if kind == "sheets":  # a few A4 sheets, fanned
+            for k in range(3):
+                sheet = _rotated_rect(cv - k * 1.5, cu + k * 2.0, 5.2, 3.7, angle + k * 0.25)
+                lay(sheet, CREAM, 14.0)
+                text_lines(
+                    sheet & _rotated_rect(cv - k * 1.5, cu + k * 2.0, 4.0, 2.6, angle + k * 0.25)
+                )
+        elif kind == "folder":  # a manila folder, a sheet sticking out
+            sheet = _rotated_rect(cv - 1.5, cu + 1.5, 5.2, 3.7, angle + 0.2)
+            lay(sheet, CREAM, 14.0)
+            folder = _rotated_rect(cv, cu, 5.6, 4.4, angle)
+            lay(folder, OCHRE, 10.0)
+            tab = _rotated_rect(cv - 5.6, cu - 1.5, 1.0, 1.8, angle)
+            lay(tab, OCHRE, 9.0)
+        elif kind == "printout":  # green-bar fanfold, with its sprocket holes
+            sheet = _rotated_rect(cv, cu, 6.0, 5.2, angle)
+            bars = (v // 2) % 2 == 0
+            lay(sheet, CREAM, 14.0)
+            tex = np.where(sheet & bars, indices(GREEN, 12.0), tex).astype(np.uint8)
+            holes = sheet & ~_rotated_rect(cv, cu, 6.0, 4.0, angle) & (v % 3 == 0)
+            tex = np.where(holes, indices(GREY, 8.0), tex).astype(np.uint8)
+            text_lines(_rotated_rect(cv, cu, 5.0, 3.4, angle), step=3)
+        else:  # a closed ring binder, its label, and a mug of coffee
+            binder = _rotated_rect(cv, cu - 3, 5.4, 3.8, angle)
+            lay(binder, BLUE, 7.0)
+            label = _rotated_rect(cv, cu - 3, 1.2, 2.6, angle)
+            tex = np.where(label, indices(CREAM, 13.0), tex).astype(np.uint8)
+            mv, mu = cv + rng.uniform(-3, 3), cu + 5.5
+            ring = np.hypot(v - mv, u - mu)
+            lay(ring < 2.3, CREAM, 12.0)
+            tex = np.where(ring < 1.5, indices(WOOD, 2.0), tex).astype(np.uint8)  # coffee
+    return tex
+
+
+def desk_tops(variant: int) -> tuple[U8Array, U8Array]:
+    """A variant for a north/south pod, and turned a quarter for east/west
+    (a pair is symmetric under a half turn, so either way round will do)."""
+    top = desk_top(variant)
+    return top, np.ascontiguousarray(np.rot90(top))
+
+
 # Kinds of horizontal surface: columns of Surfaces.table. Then one per
 # TOP_TEXTURES entry, from TOP_KIND.
 FLOOR, CEILING, SOFFIT = range(3)
 TOP_KIND = {wall_type: 3 + k for k, wall_type in enumerate(TOP_TEXTURES)}
 TOP_KIND[18] = FLOOR  # a balcony is floored as the area it's in (the lobby's terrazzo)
+# A kind past the table's columns: the cell's own top texture (Surfaces.desk_tops,
+# chosen per cell by cell_tops), for desk pairs.
+CELL_TOP = 99
+for _desk_type in DESK_PAIR_TYPES:
+    TOP_KIND[_desk_type] = CELL_TOP
 
 
 @dataclass(frozen=True, slots=True)
@@ -270,6 +382,7 @@ class Surfaces:
 
     mips: U8Array  # (texture, level, v, u): level k averages 2^k x 2^k texels. Read-only.
     table: npt.NDArray[np.int64]  # (area, kind) -> texture
+    desk_tops: npt.NDArray[np.int64]  # (variant, 0 north/south or 1 east/west) -> texture
 
     @property
     def floor(self) -> npt.NDArray[np.int64]:
@@ -293,8 +406,25 @@ def build_surfaces() -> Surfaces:
     for area in range(max(AREA_LOOKS) + 1):
         look = AREA_LOOKS.get(area, AREA_LOOKS[OFFICE])
         table.append([add(look.floor), add(look.ceiling), add(look.soffit), *tops])
+    desks = []
+    for variant in range(DESK_VARIANTS):
+        for top in desk_tops(variant):
+            textures.append(top)
+        desks.append([len(textures) - 2, len(textures) - 1])
     mips = np.stack([mipmaps(t) for t in textures])
-    return Surfaces(mips, np.array(table, dtype=np.int64))
+    return Surfaces(mips, np.array(table, dtype=np.int64), np.array(desks, dtype=np.int64))
+
+
+def cell_tops(game_map: GameMap, surfaces: Surfaces) -> npt.NDArray[np.int64]:
+    """Per cell: its own top texture (a desk pair's: a variant by position,
+    turned to its facing), or -1."""
+    out = np.full((game_map.height, game_map.width), -1, dtype=np.int64)
+    for y in range(game_map.height):
+        for x in range(game_map.width):
+            if game_map.walls[y][x] in DESK_PAIR_TYPES:
+                variant = (x * 7 + y * 13) % DESK_VARIANTS  # neighbours differ
+                out[y, x] = surfaces.desk_tops[variant, game_map.facing_at(x, y) % 2]
+    return out
 
 
 def mipmaps(texture: U8Array) -> U8Array:
