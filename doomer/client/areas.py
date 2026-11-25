@@ -32,7 +32,6 @@ import numpy.typing as npt
 from doomer.client.palette import (
     BLUE,
     CREAM,
-    GREEN,
     GREY,
     OCHRE,
     PALETTE,
@@ -58,6 +57,8 @@ from doomer.client.textures import (
     wood_panelling,
 )
 from doomer.shared.mapfile import EXECUTIVE, LIFT_CAR, LOBBY, OFFICE, SERVICE, GameMap
+
+FloatArray = npt.NDArray[np.float64]
 
 MIP_LEVELS = 7  # 64, 32, 16, 8, 4, 2, 1 texels across
 # Internal wall types (not in map files, which stop at 35) for the plain-wall
@@ -286,74 +287,113 @@ DESK_VARIANTS = 4
 _DESK_ZONES = ((3, 3, 31, 28), (33, 36, 61, 61))  # (u0, v0, u1, v1) per half
 
 
-def _rotated_rect(
-    cv: float, cu: float, half_v: float, half_u: float, angle: float
-) -> npt.NDArray[np.bool_]:
+def _frame(cv: float, cu: float, angle: float) -> tuple[FloatArray, FloatArray]:
+    """Texel coordinates in a frame centred at (cv, cu) and turned by
+    `angle`: (down, across) the item, for rotated shapes."""
     v, u = grid()
     dv, du = v - cv, u - cu
-    a = dv * math.cos(angle) + du * math.sin(angle)
-    b = -dv * math.sin(angle) + du * math.cos(angle)
-    result: npt.NDArray[np.bool_] = (np.abs(a) <= half_v) & (np.abs(b) <= half_u)
-    return result
+    down = dv * math.cos(angle) + du * math.sin(angle)
+    across = -dv * math.sin(angle) + du * math.cos(angle)
+    return down, across
+
+
+class _Desk:
+    """A desk top being drawn: mahogany laminate, then flat things laid on it
+    one over another, each casting a texel of shadow down and to the right.
+    Flat things only: anything with height (a mug, a binder) looks painted
+    on from a texture; that's for boxes."""
+
+    def __init__(self, rng: np.random.Generator) -> None:
+        v, u = grid()
+        self.tex = indices(WOOD, 6.0 + np.sin(u * 0.4 + noise(rng, 8) * 4) * 0.2)
+
+    def lay(self, mask: npt.NDArray[np.bool_], ramp: int, shade: float) -> None:
+        shadow = np.roll(np.roll(mask, 1, axis=0), 1, axis=1) & ~mask
+        self.tex = np.where(shadow, indices(WOOD, 4.0), self.tex).astype(np.uint8)
+        self.tex = np.where(mask, indices(ramp, shade), self.tex).astype(np.uint8)
+
+    def sheet(self, cv: float, cu: float, angle: float, typed: bool = True) -> None:
+        """A sheet of A4 (10.4 x 7.4 texels: 1.3 times life size, so it
+        reads), with lines of type: margins, ragged right ends."""
+        down, across = _frame(cv, cu, angle)
+        paper = (np.abs(down) <= 5.2) & (np.abs(across) <= 3.7)
+        self.lay(paper, CREAM, 14.0)
+        if typed:
+            row = np.floor(down + 5.2).astype(np.int64)
+            ends = 2.6 - (row * 37 % 5) * 0.5  # each line stops somewhere else
+            line = (np.abs(down) <= 4.0) & (row % 2 == 0) & (across >= -2.6) & (across <= ends)
+            self.tex = np.where(line, indices(GREY, 9.0), self.tex).astype(np.uint8)
+
+    def folder(self, cv: float, cu: float, angle: float, papers: bool = True) -> None:
+        """A closed manila file, the shape of a desktop's folder icon: the back
+        panel with its tab at the top left, the front panel a little lower,
+        and (`papers`) the edges of sheets showing between them."""
+        down, across = _frame(cv, cu, angle)
+        back = (np.abs(down) <= 5.6) & (np.abs(across) <= 4.4)
+        tab = (down >= -6.8) & (down < -5.6) & (across >= -4.4) & (across <= -1.4)
+        self.lay(back | tab, OCHRE, 9.0)
+        if papers:
+            peek = (down >= -5.0) & (down < -3.8) & (np.abs(across) <= 3.8)
+            self.tex = np.where(peek, indices(CREAM, 13.0), self.tex).astype(np.uint8)
+        front = (down >= -3.8) & (down <= 5.6) & (np.abs(across) <= 4.4)
+        self.tex = np.where(front, indices(OCHRE, 11.0), self.tex).astype(np.uint8)
+        self.tex = np.where(
+            front & (down < -3.0),
+            indices(OCHRE, 12.5),
+            self.tex,  # its folded top edge
+        ).astype(np.uint8)
+
+    def open_folder(self, cv: float, cu: float, angle: float) -> None:
+        """A manila file opened flat: two panels either side of the crease,
+        a typed sheet in the right-hand one."""
+        down, across = _frame(cv, cu, angle)
+        spread = (np.abs(down) <= 5.6) & (np.abs(across) <= 8.8)
+        self.lay(spread, OCHRE, 10.5)
+        crease = spread & (np.abs(across) < 0.5)
+        self.tex = np.where(crease, indices(OCHRE, 8.0), self.tex).astype(np.uint8)
+        # A sheet in its right-hand panel (the frame's +across side).
+        self.sheet(cv - 4.4 * math.sin(angle), cu + 4.4 * math.cos(angle), angle)
+
+
+# Layouts for the free end of each half, centred on (cv, cu); each a few
+# flat things, randomly askew.
+def _splayed_files(d: _Desk, cv: float, cu: float, rng: np.random.Generator) -> None:
+    """Three files spread about, a little askew, like icons on a desktop."""
+    for dv, du in ((-5.5, -7.0), (4.5, -1.0), (-3.0, 7.0)):
+        d.folder(cv + dv, cu + du, rng.uniform(-0.25, 0.25))
+
+
+def _stack(d: _Desk, cv: float, cu: float, rng: np.random.Generator) -> None:
+    """A file with two sheets left on it, half off."""
+    angle = rng.uniform(-0.2, 0.2)
+    d.folder(cv + 1.5, cu - 3.5, angle, papers=False)
+    for k in range(2):
+        d.sheet(cv - 2 + k * 1.5, cu + 2.5 + k * 2.5, angle + rng.uniform(-0.3, 0.3))
+
+
+def _loose_sheets(d: _Desk, cv: float, cu: float, rng: np.random.Generator) -> None:
+    for k in range(4):
+        d.sheet(cv + rng.uniform(-4, 4), cu + (k - 1.5) * 4.5, rng.uniform(-0.8, 0.8))
+
+
+def _open_file(d: _Desk, cv: float, cu: float, rng: np.random.Generator) -> None:
+    d.open_folder(cv, cu, rng.uniform(-0.2, 0.2))
+
+
+_LAYOUTS = (_splayed_files, _stack, _loose_sheets, _open_file)
 
 
 def desk_top(variant: int) -> U8Array:
     """A desk pair's top (for a pod facing north or south): mahogany
-    laminate, and in the free quarter of each half, some paperwork."""
+    laminate, and in the free end of each half, some paperwork: manila files
+    and A4, in one of four layouts per half."""
     rng = np.random.default_rng(50 + variant)
-    v, u = grid()
-    tex = indices(WOOD, 6.0 + np.sin(u * 0.4 + noise(rng, 8) * 4) * 0.2)
-    items = ("sheets", "folder", "printout", "binder")
+    desk = _Desk(rng)
     for half, (u0, v0, u1, v1) in enumerate(_DESK_ZONES):
-        kind = items[(variant + 2 * half) % len(items)]
-        cu, cv = (u0 + u1) / 2 + rng.uniform(-3, 3), (v0 + v1) / 2 + rng.uniform(-2, 2)
-        angle = rng.uniform(-0.35, 0.35)
-
-        def lay(mask: npt.NDArray[np.bool_], ramp: int, shade: float) -> None:
-            """Paint `mask`, with a shadow a texel down and right of it."""
-            nonlocal tex
-            shadow = np.roll(np.roll(mask, 1, axis=0), 1, axis=1) & ~mask
-            tex = np.where(shadow, indices(WOOD, 4.0), tex)
-            tex = np.where(mask, indices(ramp, shade), tex).astype(np.uint8)
-
-        def text_lines(sheet: npt.NDArray[np.bool_], step: int = 2) -> None:
-            """Grey lines of type across a sheet, ragged on the right."""
-            nonlocal tex
-            line = sheet & ((v + u // 3) % step == 0) & (rng.random(v.shape) < 0.8)
-            tex = np.where(line, indices(GREY, 9.0), tex).astype(np.uint8)
-
-        if kind == "sheets":  # a few A4 sheets, fanned
-            for k in range(3):
-                sheet = _rotated_rect(cv - k * 1.5, cu + k * 2.0, 5.2, 3.7, angle + k * 0.25)
-                lay(sheet, CREAM, 14.0)
-                text_lines(
-                    sheet & _rotated_rect(cv - k * 1.5, cu + k * 2.0, 4.0, 2.6, angle + k * 0.25)
-                )
-        elif kind == "folder":  # a manila folder, a sheet sticking out
-            sheet = _rotated_rect(cv - 1.5, cu + 1.5, 5.2, 3.7, angle + 0.2)
-            lay(sheet, CREAM, 14.0)
-            folder = _rotated_rect(cv, cu, 5.6, 4.4, angle)
-            lay(folder, OCHRE, 10.0)
-            tab = _rotated_rect(cv - 5.6, cu - 1.5, 1.0, 1.8, angle)
-            lay(tab, OCHRE, 9.0)
-        elif kind == "printout":  # green-bar fanfold, with its sprocket holes
-            sheet = _rotated_rect(cv, cu, 6.0, 5.2, angle)
-            bars = (v // 2) % 2 == 0
-            lay(sheet, CREAM, 14.0)
-            tex = np.where(sheet & bars, indices(GREEN, 12.0), tex).astype(np.uint8)
-            holes = sheet & ~_rotated_rect(cv, cu, 6.0, 4.0, angle) & (v % 3 == 0)
-            tex = np.where(holes, indices(GREY, 8.0), tex).astype(np.uint8)
-            text_lines(_rotated_rect(cv, cu, 5.0, 3.4, angle), step=3)
-        else:  # a closed ring binder, its label, and a mug of coffee
-            binder = _rotated_rect(cv, cu - 3, 5.4, 3.8, angle)
-            lay(binder, BLUE, 7.0)
-            label = _rotated_rect(cv, cu - 3, 1.2, 2.6, angle)
-            tex = np.where(label, indices(CREAM, 13.0), tex).astype(np.uint8)
-            mv, mu = cv + rng.uniform(-3, 3), cu + 5.5
-            ring = np.hypot(v - mv, u - mu)
-            lay(ring < 2.3, CREAM, 12.0)
-            tex = np.where(ring < 1.5, indices(WOOD, 2.0), tex).astype(np.uint8)  # coffee
-    return tex
+        layout = _LAYOUTS[(variant + 2 * half) % len(_LAYOUTS)]  # halves differ
+        cu, cv = (u0 + u1) / 2 + rng.uniform(-2, 2), (v0 + v1) / 2 + rng.uniform(-1.5, 1.5)
+        layout(desk, cv, cu, rng)
+    return desk.tex
 
 
 def desk_tops(variant: int) -> tuple[U8Array, U8Array]:
