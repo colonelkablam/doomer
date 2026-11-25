@@ -9,6 +9,7 @@ from doomer.shared.doors import (
     DOOR_HALF,
     DOOR_SET,
     HINGED,
+    HINGED_LEAF,
     OPEN_SECONDS,
     SLIDING,
     door_walls,
@@ -80,12 +81,12 @@ def test_doors_come_from_the_map_shut() -> None:
 def test_a_shut_hinged_door_stops_you() -> None:
     world, p = world_at(3.5, 6.0)
     run(world, 90, forward=1.0, angle=NORTH)
-    # The door stands at the north end of its doorway (it opens north).
-    assert p.y == pytest.approx(4.5 - DOOR_SET + DOOR_HALF + MOVE.radius)
+    # It swings north, so it stands at the south end of its doorway.
+    assert p.y == pytest.approx(4.5 + DOOR_SET + DOOR_HALF + MOVE.radius)
 
 
 def test_use_opens_a_hinged_door_and_you_can_walk_through() -> None:
-    world, p = world_at(3.5, 4.95)  # in the doorway's recess, 0.9 from the door
+    world, p = world_at(3.5, 5.6)  # south of it, 0.65 from it
     run(world, 1, use=True, angle=NORTH)
     events = drain_events(world)
     assert any(isinstance(e, DoorToggled) and e.opening for e in events)
@@ -96,7 +97,7 @@ def test_use_opens_a_hinged_door_and_you_can_walk_through() -> None:
 
 
 def test_holding_use_toggles_once() -> None:
-    world, _ = world_at(3.5, 4.95)
+    world, _ = world_at(3.5, 5.6)
     run(world, 30, use=True, angle=NORTH)  # held for half a second
     assert world.doors[0].opening
 
@@ -111,15 +112,15 @@ def test_use_needs_you_to_face_the_door_and_be_near_it() -> None:
 
 
 def test_a_door_wont_shut_on_you() -> None:
-    world, p = world_at(3.5, 4.95)
+    world, p = world_at(3.5, 5.6)
     run(world, 1, use=True, angle=NORTH)
     run(world, ticks_for(HINGED), angle=NORTH)
-    p.y = 3.7  # standing where the leaf swings (north of the door)
+    p.y = 4.6  # standing where the leaf swings (in the doorway, north of the door)
     run(world, 1, angle=SOUTH)  # (release use)
     run(world, 1, use=True, angle=NORTH)  # try to shut it on yourself
     run(world, ticks_for(HINGED), angle=NORTH)
     assert world.doors[0].open == 1.0
-    p.y = 4.6  # step back into the recess: clear of the swing, within reach (1.3)
+    p.y = 5.6  # step back south of the door: clear of the swing, within reach (1.3)
     run(world, 1, angle=NORTH)
     run(world, 1, use=True, angle=NORTH)
     run(world, ticks_for(HINGED), angle=NORTH)
@@ -165,7 +166,7 @@ def test_double_doors_block_open_on_use_and_let_you_through() -> None:
     assert world.doors[0].kind == DOUBLE
     p.x, p.y = 3.5, 6.0
     run(world, 90, forward=1.0, angle=NORTH)
-    assert p.y == pytest.approx(4.5 - DOOR_SET + DOOR_HALF + MOVE.radius)  # shut: stopped
+    assert p.y == pytest.approx(4.5 + DOOR_SET + DOOR_HALF + MOVE.radius)  # shut: stopped
     run(world, 1, use=True, angle=NORTH)  # right in front of it
     run(world, ticks_for(DOUBLE), angle=NORTH)
     run(world, 90, forward=1.0, angle=NORTH)
@@ -187,32 +188,42 @@ def test_double_door_leaves_swing_from_their_hinges_towards_the_facing() -> None
             end_y = leaf.y + math.sin(leaf.angle) * leaf.box.x[1]
             if fraction == 0.0:  # shut: the free ends meet in the middle
                 assert end_x == pytest.approx(3.5, abs=0.01)
-                assert end_y == pytest.approx(4.5 - DOOR_SET)  # at the doorway's north end
+                assert end_y == pytest.approx(4.5 + DOOR_SET)  # at the doorway's south end
             else:  # open: swung north (the facing), out of the doorway
-                assert end_y < 4.5 - DOOR_SET - 0.4
+                assert end_y < 4.5 + DOOR_SET - 0.4
 
 
-@pytest.mark.parametrize("degrees, plane", [(0, 3.95), (90, 4.95), (180, 3.05), (270, 4.05)])
-def test_a_door_stands_at_the_end_of_its_doorway_it_opens_towards(
-    degrees: int, plane: float
-) -> None:
-    m = parse_map(ROOMS.replace("door_hinged 3.5 4.5 270", f"door_hinged 3.5 4.5 {degrees}"))
+@pytest.mark.parametrize(
+    "kind, degrees, plane",
+    [
+        # Hinged doors stand at the end away from their swing ...
+        ("door_hinged", 0, 3.05),
+        ("door_hinged", 90, 4.05),
+        ("door_hinged", 180, 3.95),
+        ("door_hinged", 270, 4.95),
+        ("door_double", 270, 4.95),
+        # ... sliding ones at the end they face.
+        ("door_sliding", 0, 3.95),
+        ("door_sliding", 270, 4.05),
+    ],
+)
+def test_where_a_door_stands_in_its_doorway(kind: str, degrees: int, plane: float) -> None:
+    m = parse_map(ROOMS.replace("door_hinged 3.5 4.5 270", f"{kind} 3.5 4.5 {degrees}"))
     door = doors_from_map(m)[0]
     assert door.plane == pytest.approx(plane)
-    walls = door_walls(door)
-    assert all(w.at == pytest.approx(plane) for w in walls)
+    assert all(w.at == pytest.approx(plane) for w in door_walls(door))
 
 
-def test_open_glass_doors_leave_a_strip_of_each_leaf_in_the_doorway() -> None:
-    from doomer.shared.doors import SLIDE
-
-    door = doors_from_map(parse_map(ROOMS.replace("door_hinged", "door_sliding")))[0]
-    door.open = 1.0
-    walls = door_walls(door)
-    assert len(walls) == 2  # a leaf each side still blocks its strip
-    for w in walls:
-        assert w.hi - w.lo == pytest.approx(0.5 - SLIDE[SLIDING])
-    assert 1.0 - 2 * (0.5 - SLIDE[SLIDING]) >= 0.7  # still a wide way through
+def test_a_door_swinging_open_nudges_you_out_of_its_way() -> None:
+    world, p = world_at(3.5, 5.6)
+    run(world, 1, use=True, angle=NORTH)  # open it, from the south (it swings north)
+    p.y = 4.75  # then step into the doorway, right behind the door
+    run(world, ticks_for(HINGED) + 2, angle=NORTH)
+    door = world.doors[0]
+    assert door.open == 1.0  # it didn't stop for you
+    # Pushed north, just clear of the open leaf (it sweeps HINGED_LEAF deep).
+    assert p.y == pytest.approx(door.plane - HINGED_LEAF - MOVE.radius)
+    assert p.y > 4.0  # still in the doorway: nudged, not thrown into the next room
 
 
 @pytest.mark.parametrize(

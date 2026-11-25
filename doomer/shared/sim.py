@@ -15,7 +15,7 @@ from collections.abc import Mapping
 
 from doomer.shared.collision import ThinWall, move_box
 from doomer.shared.config import MovementConfig
-from doomer.shared.doors import LIFT, door_walls, try_use, update_doors
+from doomer.shared.doors import LIFT, clear_swing, door_walls, try_use, update_doors
 from doomer.shared.events import (
     DoorLocked,
     DoorToggled,
@@ -52,6 +52,11 @@ def step(world: World, inputs: Mapping[int, PlayerInput]) -> None:
         power,
         departing,
     )
+    # A door swinging open towards someone nudges them back out of its way.
+    radius = world.config.movement.radius
+    for p in world.players.values():
+        for door in world.doors:
+            p.x, p.y = clear_swing(door, p.x, p.y, radius)
     if departing and not world.complete and _lifts_shut(world, positions):
         world.complete = True
         world.events.append(LevelComplete(world.tick))

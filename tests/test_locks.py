@@ -93,7 +93,7 @@ def test_you_can_take_a_pass_off_a_counter_from_the_floor() -> None:
 
 
 def test_a_locked_door_stays_shut_and_says_which_pass_it_needs() -> None:
-    world, p = world_at(3.5, 4.95)  # in the recess, 0.9 from the door
+    world, p = world_at(3.5, 5.6)  # south of the door, 0.65 from it
     events = run(world, 1, NORTH, use=True)
     run(world, settle(HINGED), NORTH)
     assert world.doors[0].open == 0.0
@@ -102,7 +102,7 @@ def test_a_locked_door_stays_shut_and_says_which_pass_it_needs() -> None:
 
 
 def test_with_the_pass_a_locked_door_opens() -> None:
-    world, p = world_at(3.5, 4.95)  # in the recess, 0.9 from the door
+    world, p = world_at(3.5, 5.6)  # south of the door, 0.65 from it
     world.passes.add("blue")
     events = run(world, 1, NORTH, use=True)
     run(world, settle(HINGED), NORTH)
@@ -125,7 +125,7 @@ def test_the_whole_loop_blue_then_red() -> None:
     # Fetch the blue pass, open the blue door, then the red pass, the red door.
     world, p = world_at(5.5, 6.5)
     run(world, 30, EAST, forward=1.0)  # over the blue pass
-    p.x, p.y = 3.5, 4.95
+    p.x, p.y = 3.5, 5.6
     run(world, 1, NORTH, use=True)
     run(world, settle(HINGED), NORTH)
     run(world, 90, NORTH, forward=1.0)

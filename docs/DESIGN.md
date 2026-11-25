@@ -396,12 +396,18 @@ dm_spawn      1.5   3.5   0
   furniture stays as map cells.
 - **Doors** (prototype; `shared/doors.py`, drawn by `boxes.door_boxes`): a
   door is a thing in a doorway cell (open floor between two wall cells),
-  standing at the end of the doorway on the side it opens into (its facing),
-  `DOOR_SET` (0.45) from the cell's middle: 0.05 cells (~13 cm, a frame's
-  depth) in from that edge. So it's flush with the room it serves and the
-  rest of the doorway is a recess on the other side (a corridor's); sliding
-  and lift leaves slide inside the walls either side, not over the room's
-  wall face (on the edge itself they'd poke out and flicker against it).
+  standing at one end of it, `DOOR_SET` (0.45) from the cell's middle:
+  0.05 cells (~13 cm, a frame's depth) in from that edge, flush with the
+  room it serves, the rest of the doorway a recess on the other side (a
+  corridor's). Hinged and double doors stand at the end away from their
+  swing (facing) and swing out into that recess: a leaf (0.6) is shorter
+  than the recess (0.95), so the swing never reaches the corridor itself or
+  the room's furniture; someone in the swing as it opens is nudged back out
+  of it (`doors.clear_swing`, applied by the simulation each tick), and it
+  still won't shut on anyone. Sliding and lift doors stand at the end they
+  face, flush with that room; their leaves slide inside the walls either
+  side, not over the room's wall face (on the edge itself they'd poke out
+  and flicker against it).
   `Door.plane` is that plane (collision, light); fittings (card readers, a
   lift's surround) keep the doorway's centre. The doorway's side walls
   (plain wall faces facing into a door's cell) take a door lining

@@ -1,14 +1,20 @@
-"""Doors: panels in the middle of a doorway cell that open and close.
+"""Doors: panels at one end of a doorway cell that open and close.
 
 A door is a map thing in a doorway: an open cell between two wall cells. Its
-angle says which way it faces: across the doorway, the way it opens (into the
-room it serves). The door stands at the end of its doorway on that side, 0.05
-cells in from the edge (DOOR_SET from the cell's middle): flush with that
-room's wall, a frame's depth back, so sliding and lift leaves slide inside
-the walls either side rather than over the room's wall face. Walls either
-side hold it, and a lowered ceiling over the doorway (6/8) makes a lintel:
-its face over the door is in the door's plane. The rest of the doorway is a
-recess on the other side.
+angle says which way it faces: across the doorway, the way it opens. It
+stands at one end of the doorway, 0.05 cells in from the edge (DOOR_SET from
+the cell's middle), flush with the room it serves; the rest of the doorway
+is a recess on the other side (a corridor's):
+- hinged and double doors stand at the end away from their swing, and swing
+  out into their own recess (a leaf, 0.6, is shorter than the recess, 0.95),
+  so the swing never reaches the corridor itself or the room's furniture.
+  Face them towards the corridor. Someone standing in the swing as it opens
+  is nudged back out of it (clear_swing), as you step back pulling a door.
+- sliding and lift doors stand at the end they face, flush with that room
+  (the office, the lift lobby); their leaves slide inside the walls either
+  side rather than over the room's wall face.
+Walls either side hold it, and a lowered ceiling over the doorway (6/8) makes
+a lintel: its face over the door is in the door's plane.
 
 Kinds:
 - hinged: one leaf, `HINGED_LEAF` wide, on a hinge at one side of the
@@ -87,10 +93,13 @@ class Door:
     @property
     def plane(self) -> float:
         """Where the door stands across its doorway: x (if across_x) or y of
-        its plane, DOOR_SET from the doorway's middle towards its facing."""
+        its plane, DOOR_SET from the doorway's middle: towards its facing
+        (sliding, lift), or away from it (hinged, double: they swing out
+        into the doorway)."""
+        toward = -1 if self.kind in (HINGED, DOUBLE) else 1
         if self.across_x:
-            return self.x + DOOR_SET * round(math.cos(self.facing))
-        return self.y + DOOR_SET * round(math.sin(self.facing))
+            return self.x + toward * DOOR_SET * round(math.cos(self.facing))
+        return self.y + toward * DOOR_SET * round(math.sin(self.facing))
 
     @property
     def centre(self) -> tuple[float, float]:
@@ -151,14 +160,37 @@ def door_walls(door: Door) -> list[ThinWall]:
 SWING_REACH = 0.65  # cells: how far a hinged leaf sweeps into the room (0.6 leaf)
 
 
-def in_doorway(door: Door, x: float, y: float, radius: float) -> bool:
-    """Is a box of half-width `radius` at (x, y) where a hinged door's leaves
-    swing: from its plane into the room it opens into, across the doorway?"""
+def _swing_frame(door: Door, x: float, y: float) -> tuple[float, float, int]:
+    """(how far from the door's plane towards its swing, how far along the
+    doorway from its middle, +1/-1: the swing's direction along the axis)."""
     across, along = (x, y) if door.across_x else (y, x)
     middle = door.y if door.across_x else door.x
     side = round(math.cos(door.facing)) if door.across_x else round(math.sin(door.facing))
-    into = (across - door.plane) * side  # how far into the room
-    return -radius - 0.05 < into < SWING_REACH + radius and abs(along - middle) < 0.5 + radius
+    return (across - door.plane) * side, along - middle, side
+
+
+def in_doorway(door: Door, x: float, y: float, radius: float) -> bool:
+    """Is a box of half-width `radius` at (x, y) where a hinged door's leaves
+    swing: from its plane out into its recess, across the doorway?"""
+    into, along, _ = _swing_frame(door, x, y)
+    return -radius - 0.05 < into < SWING_REACH + radius and abs(along) < 0.5 + radius
+
+
+def clear_swing(door: Door, x: float, y: float, radius: float) -> tuple[float, float]:
+    """Where a player at (x, y) must be to be clear of a hinged or double
+    door's leaves as they are now: nudged straight back out of their sweep,
+    or where they are. The sweep is as deep as a leaf has turned (leaf x
+    sin(angle)), across the whole doorway; the recess is deeper than a
+    leaf plus a player, so it never pushes anyone into a wall."""
+    if door.kind not in (HINGED, DOUBLE) or door.open <= 0.0:
+        return x, y
+    into, along, side = _swing_frame(door, x, y)
+    leaf = HINGED_LEAF if door.kind == HINGED else DOUBLE_LEAF
+    depth = leaf * math.sin(door.open * SWING)
+    if not (0.0 <= into < depth + radius) or abs(along) >= 0.5 + radius:
+        return x, y
+    push = (depth + radius - into) * side
+    return (x + push, y) if door.across_x else (x, y + push)
 
 
 def try_use(

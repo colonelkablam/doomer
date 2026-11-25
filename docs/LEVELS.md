@@ -68,7 +68,7 @@ units at most). Anything higher with no stairs is unreachable.
 | `reception_desk` | Two-level reception desk | Angle: the way its front (the visitors' side) faces. 1.84 cells long, 0.61 deep (0.31 in front of its position, 0.30 behind). Things placed over it rest on it: the ledge (front 0.17 cells) or the work surface (behind). Leave the receptionist a way round to the back |
 | `pass_blue`, `pass_red`, `pass_gold` | ID passes: staff, facilities, executive | Walk over (or reach) to take; the team shares it. On a counter or desk, put it within 0.5 of the edge you approach from (you're stopped at the edge; reach is 0.75 from your centre) |
 | `door_lift` | Lift doors and the floor's exit | In a doorway cell (ceiling `6`), angle out of the lift; the car is the cell behind (against the angle), walled with `k` ([facing] into the car), with a `ceiling_light` (main circuit: dark until the power's on). Clad the wall round it with `l`. Co-op needs a lift or an `exit` |
-| `door_hinged`, `door_double`, `door_sliding` | Office door / double office doors (use to open) / automatic glass doors | In a doorway cell: open floor between two full walls, the doorway one cell wide. Angle: across the doorway, into the room the door serves (see Doors and corridors): the door stands at that end of the doorway, flush with the room. Give the doorway cell a ceiling of `6` (a lintel at ~2 m: the face over the door). `lock=blue` (or red, gold): opens only for a team with that pass; card readers appear beside it. Not in a two-storey cell, and nothing blocking within a cell either side |
+| `door_hinged`, `door_double`, `door_sliding` | Office door / double office doors (use to open) / automatic glass doors | In a doorway cell: open floor between two full walls, the doorway one cell wide. Angle: across the doorway, the way it opens: hinged and double towards the corridor (they stand at the room's end and swing out into the doorway), sliding towards the room (they stand at that end); see Doors and corridors. Give the doorway cell a ceiling of `6` (a lintel at ~2 m: the face over the door). `lock=blue` (or red, gold): opens only for a team with that pass; card readers appear beside it. Not in a two-storey cell, and nothing blocking within a cell either side |
 | `breaker` | Main breaker: restores the power | Stand it just in front of a wall's face, angle out of the wall (it blocks 0.16 out from the wall). A map with one starts on emergency lighting: put `exit_sign`s over the main doors on the way there (and out), including the plant room's, so the route is lit in pools. Put it behind a lock (the plant room), before the lifts |
 | `executive_desk` | The boss's absurd desk, with its chair (box model) | Mid-room, two cells long across its facing: angle = towards visitors, the boss's chair behind it (1 cell back). Leave a cell clear round it. Things on it rest on its top: put a pass within 0.5 of the visitors' edge |
 | `exit_sign` | Green EXIT sign over a door, always lit; in a power cut, a dim emergency light (a pool ~1-2 cells round it) | At the face of the wall over the doorway, on the side people leave from (e.g. x = 9.02 for a doorway whose office-side wall face is x = 9), angle out of the wall. One per main door on the route: office -> lobby -> street, and the plant room |
@@ -139,11 +139,14 @@ it opens into, flush with that room's wall; the rest is a recess on the
 other side. The rules that follow from that, for hand-made and generated
 floors:
 
-1. **Doors open into rooms, off circulation.** A door between a corridor
-   (or the lobby) and a room faces into the room: the room gets a clean,
-   flush wall with the door in it; the corridor gets a one-cell recess.
-   Between two rooms, face it into the more private one (the boss's office
-   off his secretary's).
+1. **Doors are flush with rooms, recessed off circulation.** A door between
+   a corridor (or the lobby) and a room stands at the room's end of the
+   doorway: the room gets a clean, flush wall with the door in it; the
+   corridor gets a one-cell recess. Hinged and double doors face the
+   corridor (they swing out, into the recess, never into the corridor
+   itself; anyone standing there is nudged back as it opens); glass sliding
+   doors face the room. Between two rooms, the door belongs to the more
+   private one (the boss's office off his secretary's).
 2. **Lift doors are the exception**: flush with the lobby (they face out of
    the car), as real landing doors are, the car behind.
 3. **The doorway cell belongs to the corridor**: its area, a `6` ceiling

@@ -108,12 +108,13 @@ eeeeeeee
 coop_start      1.5   3.5   0
 # Doors (prototype): glass doors from the lobby into the offices (staff
 # pass: blue, on the reception counter), and a
-# double office door from the corridor into the open plan (swings north, into it)
+# double office doors between the corridor and the open plan: flush with the
+# open plan, swinging out (south) into their recess off the corridor
 door_sliding    8.5   4.5   0     lock=blue
-door_double     12.5  10.5  270
+door_double     12.5  10.5  90
 # The plant room (for now, the small room south of the corridor): facilities
 # pass (red), which is on the boss's desk
-door_hinged     11.5  12.5  90    lock=red
+door_hinged     11.5  12.5  270   lock=red
 # The plant room's main breaker, against its south wall: restores the power
 breaker         10.5  14.99 270
 pass_blue       4.37  4.4   0
@@ -175,10 +176,10 @@ ficus           9.5   1.5   0
 ficus           22.5  9.5   0
 ficus           14.5  4.5   0
 dm_spawn        21.5  6.5   180
-# The boss's double doors, at the end of the corridor: they open west into
-# the office, so they stand flush with its wall (the doorway's a recess off
-# the corridor), under a lintel (ceiling 6)
-door_double     8.5   11.5  180
+# The boss's double doors, at the end of the corridor: flush with the office's
+# panelling, swinging out (east) into their recess off the corridor, under a
+# lintel (ceiling 6)
+door_double     8.5   11.5  0
 # Boss office: the boss's absurd desk, mid-room, the boss's back to the
 # west windows; the Mac on it faces the boss
 executive_desk  3.0   12.5  0
