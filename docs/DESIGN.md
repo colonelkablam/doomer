@@ -637,7 +637,8 @@ keys), later floor/ceiling heights; place things. Shows mode readiness
 | 4 | Enemies: entities, behaviours, sight, flow-field pathing, projectiles (see GAME.md "NPC design") | Co-op floor with staplers, chairs and a photocopier |
 | 5 | Level editor | Round-trips a map; shows mode readiness |
 | 2b ✅ | Raised floors: low blocks (desk pods, counters) rendered with faces and tops, per-pixel z-buffer, things on blocks | Desks hide what's behind them; terminals sit on desks |
-| 2d | Lighting: baked light map from the ceiling panels (falloff, wall occlusion, ambient), applied to walls, floors, ceilings, boxes and sprites; dynamic lights later (see Rendering, "Lighting") | Pools of light under the panels, dark corners; no frame over budget |
+| 2d ✅ | Lighting: baked light map from the ceiling panels (falloff, wall occlusion, ambient), applied to walls, floors, ceilings, boxes and sprites; dynamic lights later (see Rendering, "Lighting") | Pools of light under the panels, dark corners; no frame over budget |
+| 2e ✅ | The ground-floor loop: passes and locks, power and emergency lighting, lifts; areas (textured floors, ceilings, walls dressed by area); doors flush with rooms; the boss's desk; compiled ray casting (numba) | Lobby -> blue pass -> office -> red pass -> plant room -> breaker -> lift: "GROUND FLOOR COMPLETE" |
 | 2c ✅ | Heights and movement: per-cell ceilings, span renderer, look up/down, jump, crouch, stand on desks, stairs; double-height lobby with a gallery | Walk up the steps to the gallery, jump onto a desk |
 | 6 | Ramp cells (sloped floors) for proper-looking stairs and full-storey mezzanines | A storey-high mezzanine reached by a ramp/stair |
 
@@ -646,6 +647,80 @@ and collision work, and the network protocol carries the results (`z`, pitch,
 jump, crouch). Steps are a whole cell deep (2.7 m), so stairs look terraced;
 ramp cells (a sloped floor, drawn with a closed-form ray-plane intersection)
 are the fix.
+
+## Working method
+
+How decisions get made here, so a new session carries on the same way:
+
+1. **Look before judging.** Render the view in question headless
+   (`doomer.client.headless`, or a script calling `Renderer.render` and
+   `save_png`), crop and enlarge the problem area, and look at it. Measure
+   when it's numeric (frame times with a fixed set of views; shade counts;
+   light-map values at points) before saying what's wrong.
+2. **Find the cause, not the symptom.** Most "looks wrong" reports so far
+   had a mechanism behind them: light-map spill through doorways, texture
+   noise quantising into blotches, a ceiling cutting a texture, a use point
+   left behind when doors moved. Say what it is, with the evidence.
+3. **Prefer the simplest thing that's right**: textures over boxes for flat
+   things; one rule over per-thing options (doors at the end of their
+   doorway, faced by how they open); config knobs for taste (lift,
+   integer_scaling) rather than hard-coded choices.
+4. **Be honest about costs and mistakes.** Benchmark changes to the frame
+   (lobby / open plan / corridor views); when an estimate was wrong (the
+   shade-curve palette), say so and change course; when a fix breaks
+   something (the door push made doors one-way), revert it and write down
+   why.
+5. **Every change: tests, the four checks, docs, commit, push.** Tests pin
+   behaviour (and fail without the change: check that). DESIGN.md (engine),
+   GAME.md (content, [built]/[planned]), LEVELS.md (rules for maps and the
+   generator) are updated with the change, including dead ends worth
+   remembering.
+
+Rules that have come out of it (details in the sections above):
+
+- Textures: gentle variation sits mid-shade (10.0 +- 0.25, never 8.5 +- 0.5)
+  or it blotches up close; avoid gradients and noise on things seen close
+  (doors, surrounds); thin lines read best near the axes; small things are
+  a few pixels, keep them rare and square-on; draw for the stretch of the
+  face (box faces and screens stretch textures once).
+- Flat things are textures (desk paperwork, Post-its on screens); things
+  with height are boxes (the Mac, the boss's desk); a one-off centrepiece
+  of a dozen boxes is cheap, dozens of repeated boxes aren't.
+- Light: the light map is a floor plan; faces take their light from the
+  floor in front of them, faces above head height from a second map in
+  which lintels and doors stop light. Shut opaque doors block light at
+  their plane. Emergency light is the exit signs.
+- Areas dress a floor: each cell's floor, ceiling and soffit, and the look
+  of plain walls facing into it; doorways' side walls are linings.
+- Doors: flush with the room they serve, the doorway a recess on the
+  corridor side; hinged ones swing out into the recess (never into the
+  corridor); glass and lift doors face their room and park leaving a strip
+  of each leaf. Lifts are one cell off the lobby. Corridors 2 cells wide;
+  recesses are cover. See LEVELS.md, "Doors and corridors".
+
+## Open work
+
+Noted at the end of a session, to pick up next:
+
+- **Lift doors and their recess.** The doors stand 0.05 in from the lobby
+  wall's face; the 13 cm reveal between them and the architrave reads
+  oddly. Either bring lift doors flush (DOOR_SET nearer 0.5 for lifts,
+  with the leaves parking inside the car walls, not over the lobby face),
+  or line the reveal properly (steel, matching the architrave).
+- **Desk paperwork.** On the variant with the pink note, remove the sheet
+  of paper next to it and put a second square note (as the first: on the
+  texel grid, a band across its top) in its place.
+- **Light leaking up the wall round the lobby's glass doors.** Lobby light
+  passing through the glass doorway lights the office floor just inside,
+  and the full walls either side of the doors take their light from that
+  floor, so they brighten all the way up. Bulkheads already use the
+  upper map (`LightMap.high()`); the fix to try: walls light the part above
+  door height from the upper map too (per pixel by height, or by a blend),
+  or bake light through doorways onto the floor only (`_compose` with
+  doorway cells blocking for every face lookup but floors).
+- Also outstanding: the `corner=` property for things (LEVELS.md);
+  `shared/validate.py` (a floor is completable); the automap; the lift
+  ride to the next floor; networking (milestone 3).
 
 ## Setup
 
