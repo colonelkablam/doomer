@@ -312,12 +312,6 @@ def _slip_mask(cv: float, cu: float, angle: float) -> npt.NDArray[np.bool_]:
     return result
 
 
-def _post_it_mask(cv: float, cu: float, angle: float) -> npt.NDArray[np.bool_]:
-    down, across = _frame(cv, cu, angle)
-    result: npt.NDArray[np.bool_] = (np.abs(down) <= 2.2) & (np.abs(across) <= 2.2)
-    return result
-
-
 class _Desk:
     """A desk top being drawn: mahogany laminate, then flat things laid on it
     one over another, each casting a texel of shadow down and to the right.
@@ -427,14 +421,6 @@ class _Desk:
         lines &= (across > -1.8) & (across < 1.0)
         self.tex = np.where(lines, indices(PINK, 8.0), self.tex).astype(np.uint8)
 
-    def post_it(self, cv: float, cu: float, angle: float) -> None:
-        """A yellow Post-it: plain, its sticky strip a shade darker."""
-        down, _ = _frame(cv, cu, angle)
-        note = _post_it_mask(cv, cu, angle)
-        self.lay(note, OCHRE, 15.0)
-        strip = note & (down < -1.3)
-        self.tex = np.where(strip, indices(OCHRE, 13.0), self.tex).astype(np.uint8)
-
     def open_folder(self, cv: float, cu: float, angle: float) -> None:
         """A manila file opened flat: two panels either side of the crease,
         a typed sheet in the right-hand one."""
@@ -478,7 +464,7 @@ _LAYOUTS = (_splayed_files, _stack, _loose_sheets, _open_file)
 def desk_top(variant: int) -> U8Array:
     """A desk pair's top (for a pod facing north or south): mahogany
     laminate, and in the free end of each half, some paperwork: manila files
-    and A4, in one of four layouts per half, message slips and Post-its.
+    and A4, in one of four layouts per half, and message slips.
     One variant (PENCIL_VARIANT) has a pencil too: at this size a pencil is
     a short yellow stripe, best kept rare."""
     rng = np.random.default_rng(50 + variant)
@@ -487,17 +473,13 @@ def desk_top(variant: int) -> U8Array:
         layout = _LAYOUTS[(variant + 2 * half) % len(_LAYOUTS)]  # halves differ
         cu, cv = (u0 + u1) / 2 + rng.uniform(-2, 2), (v0 + v1) / 2 + rng.uniform(-1.5, 1.5)
         layout(desk, cv, cu, rng)
-        # On bare desk in the same free end: a message slip or two, a
-        # Post-it, and maybe a pencil (never on the paper, where it'd be lost).
+        # On bare desk in the same free end: a message slip or two, and
+        # maybe a pencil (never on the paper, where it'd be lost).
         zone = (u0, v0, u1, v1)
         for _ in range(rng.integers(1, 3)):
             at = desk.place(zone, rng, _slip_mask)
             if at is not None:
                 desk.slip(*at)
-        if rng.random() < 0.7:
-            at = desk.place(zone, rng, _post_it_mask)
-            if at is not None:
-                desk.post_it(*at)
         if variant == PENCIL_VARIANT and half == 0:
             # Roughly along or across the desk: a thin line reads best near the axes.
             square = float(rng.choice([0.0, math.pi / 2]))
