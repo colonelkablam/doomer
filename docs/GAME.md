@@ -158,10 +158,18 @@ room behind it.
 | Executive | `e` | Wood panelling: four tall raised panels across, dado rail, short panels below | Deep blue carpet tiles | Suspended ceiling |
 | Lobby | `l` | Pale polished stone slabs | Terrazzo slabs | Smooth plaster |
 | Service | `s` | Painted breeze block: cream gloss above a grey dado | Grey flecked lino | Bare concrete, formwork marks |
+| Lift car | `c` | Brushed stainless panels with a handrail (the car walls `k`: a tinted mirror on the back wall) | Black studded rubber | Perforated brushed steel |
 
 Windows (`4`, ribbon windows with blinds, in offices; `f`, the curtain wall,
 in the lobby), lift doors and furniture keep their own textures wherever
-they are.
+they are. Where a ceiling steps down (over a doorway), the face above
+looks like the area you see it from.
+
+Lifts [built]: brushed stainless doors in a doorway lined with polished
+steel (architrave, grooved sill), a floor indicator above (amber G between
+up and down arrows, dark without power), a call plate beside (the up
+button glows once called), and inside the car a button panel by the door
+(B, G, 1-5, P; G lit).
 
 ## Walls [built]
 
@@ -185,8 +193,8 @@ they are.
 | g (16) | Main entrance: closed glass double doors, curtain wall above | Lobby entrance |
 | h (17) | Stairs: half a storey per cell ([facing] = up); you walk a smooth slope, drawn as 8 carpeted steps | Lobby stairs |
 | i (18) | Balcony floor: raised floor with a railing along edges that drop away | Lobby balcony |
-| k (20) | Lift car walls: brushed steel panels, mirror strip, handrail (inside the car); office wall on their back face ([facing] points into the car) | Lift cars |
-| l (21) | Lift lobby cladding: pale polished stone slabs | Round lift doors |
+| k (20) | Lift car walls: brushed stainless panels and a handrail inside the car, a tinted mirror on the back wall (its front: [facing] points into the car); outside, a plain wall dressed by its area | Lift cars |
+| l (21) | Pale polished stone slabs (the lobby look, wherever it's placed) | Round lift doors |
 | j (19) | Desk pair with cubicle screens: as `d`, plus fabric screens to seated head height (~1.25 m) down the middle and across each cell edge (box models; they block you on the desk tops) | Open-plan cubicles |
 
 ## Pickups

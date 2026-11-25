@@ -104,3 +104,16 @@ def test_hud_messages_for_lifts() -> None:
 
     assert message_for(LiftNoPower(0, 0, 1)) == "The lift has no power"
     assert message_for(LevelComplete(0)) is None  # a banner instead (Hud.complete)
+
+
+def test_a_lift_has_its_fittings_round_it() -> None:
+    from doomer.client.boxes import door_boxes
+    from doomer.shared.doors import LIFT, Door
+
+    lift = Door(0, LIFT, 2.5, 2.5, -math.pi / 2)
+    dark = door_boxes([lift], power=False)
+    lit = door_boxes([lift], power=True)
+    # Two leaves plus lining, architrave, sill, indicator, call plate and
+    # button, and the car's panel: more than the leaves alone.
+    assert len(dark) == len(lit) > 8
+    assert sum(p.box.glow for p in lit) > sum(p.box.glow for p in dark)  # lit with power

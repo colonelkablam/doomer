@@ -20,10 +20,11 @@ DEFAULT_FACING = SOUTH
 _FACING_CHARS = "nesw"
 # Areas: what kind of space each cell is, for its look (floor, ceiling, and
 # the plain walls facing into it): open-plan office, executive suite,
-# entrance lobby, service (plant rooms, back corridors). [areas] letters.
-OFFICE, EXECUTIVE, LOBBY, SERVICE = range(4)
+# entrance lobby, service (plant rooms, back corridors), inside a lift car.
+# [areas] letters.
+OFFICE, EXECUTIVE, LOBBY, SERVICE, LIFT_CAR = range(5)
 DEFAULT_AREA = OFFICE
-AREA_CHARS = "oels"
+AREA_CHARS = "oelsc"
 
 # Wall types with built-in shape (the rest are just textures, chosen by the
 # client): a stair cell's floor slopes up across the cell, towards the way
@@ -77,7 +78,7 @@ class GameMap:
     things: tuple[Thing, ...]
     # Which way each cell's front faces (desks): NORTH/EAST/SOUTH/WEST = 0-3.
     facing: Grid = ()
-    # Each cell's area (OFFICE/EXECUTIVE/LOBBY/SERVICE).
+    # Each cell's area (OFFICE, EXECUTIVE, LOBBY, SERVICE, LIFT_CAR).
     areas: Grid = ()
 
     def in_bounds(self, x: int, y: int) -> bool:

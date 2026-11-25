@@ -138,3 +138,21 @@ def test_rendered_floors_follow_the_areas() -> None:
     # and carpet tiles (steel) beyond, in the office.
     ramps = set((frame[160, int(r.horizon) + 1 :] >> 4).tolist())
     assert WARM_GREY in ramps and STEEL in ramps
+
+
+def test_a_bulkhead_looks_like_the_area_it_faces() -> None:
+    # A lobby (two storeys) whose ceiling steps down into an office doorway:
+    # the face above the doorway is seen from the lobby, so it's dressed as
+    # the lobby's walls are.
+    m = parse_map(
+        "[walls]\n#######\n#.....#\n#######\n\n[ceiling]\n8888888\n8gg8888\n8888888\n"
+        "\n[areas]\nlll\nlll\nlll\n"
+    )
+    r = Renderer(RenderConfig())
+    columns = fc.cast_columns(r._map_arrays_for(m), 1.5, 1.5, np.array([0.0]))
+    # Span 0: the camera's own (high) ceiling; span 1: into x = 3, the office.
+    assert columns.ints[fc.UPPER_SLOT, 1, 0] == r._upper_slot(AREA_WALL_TYPE + LOBBY)
+    back = fc.cast_columns(r._map_arrays_for(m), 4.5, 1.5, np.array([math.pi]))
+    # From the office, looking back into the lobby, the ceiling steps up:
+    # no bulkhead faces you, but the span's look is the office's.
+    assert back.ints[fc.UPPER_SLOT, 0, 0] == r._upper_slot(AREA_WALL_TYPE + OFFICE)

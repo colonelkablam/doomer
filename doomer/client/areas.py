@@ -35,15 +35,17 @@ from doomer.client.textures import (
     BACK,
     TEX_SIZE,
     UPPER,
+    lift_car_side,
     office_wall,
     office_wall_upper,
     painted_block,
     painted_block_upper,
     register_wall_texture,
     stone_cladding,
+    stone_cladding_upper,
     wood_panelling,
 )
-from doomer.shared.mapfile import EXECUTIVE, LOBBY, OFFICE, SERVICE
+from doomer.shared.mapfile import EXECUTIVE, LIFT_CAR, LOBBY, OFFICE, SERVICE
 
 MIP_LEVELS = 7  # 64, 32, 16, 8, 4, 2, 1 texels across
 # Internal wall types (not in map files, which stop at 35) for the plain-wall
@@ -101,6 +103,17 @@ def lino(seed: int = 33) -> U8Array:
     return np.where(u == 0, indices(GREY, 5.0), indices(GREY, shade)).astype(np.uint8)
 
 
+def studded_rubber(seed: int = 39) -> U8Array:
+    """Lift cars: black studded rubber flooring (raised discs, lit on top)."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    shade = 2.5 + (noise(rng, 8) - 0.5) * 0.6
+    du, dv = (u % 8) - 3.5, (v % 8) - 3.5
+    stud = du * du + dv * dv < 6.0
+    lit = stud & (du + dv < -1.0)
+    return indices(GREY, np.where(lit, 6.0, np.where(stud, 4.0, shade)))
+
+
 # --- ceilings ----------------------------------------------------------------------
 
 
@@ -125,6 +138,17 @@ def plaster(seed: int = 37) -> U8Array:
     """A smooth painted plaster ceiling (the lobby)."""
     rng = np.random.default_rng(seed)
     return indices(CREAM, 12.6 + (noise(rng, 4) - 0.5) * 0.5 + (noise(rng, 32) - 0.5) * 0.3)
+
+
+def car_ceiling(seed: int = 40) -> U8Array:
+    """A lift car's ceiling: brushed steel panels, perforated (a ventilated
+    ceiling), the light panel in the middle."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    shade = 9.5 + (noise(rng, 64)[:1, :] - 0.5) * 0.8
+    holes = (u % 4 == 1) & (v % 4 == 1)
+    joints = (u % 32 == 0) | (v % 32 == 0)
+    return indices(GREY, np.where(joints, 6.0, np.where(holes, 7.5, shade)))
 
 
 def concrete(seed: int = 38) -> U8Array:
@@ -153,8 +177,9 @@ AREA_LOOKS: dict[int, AreaLook] = {
     EXECUTIVE: AreaLook(
         lambda: carpet_tiles(36, BLUE, 5.0), ceiling_tiles, wood_panelling, wood_panelling
     ),
-    LOBBY: AreaLook(terrazzo, plaster, stone_cladding, stone_cladding),
+    LOBBY: AreaLook(terrazzo, plaster, stone_cladding, stone_cladding_upper),
     SERVICE: AreaLook(lino, concrete, painted_block, painted_block_upper),
+    LIFT_CAR: AreaLook(studded_rubber, car_ceiling, lift_car_side, lift_car_side),
 }
 
 for _area, _look in AREA_LOOKS.items():

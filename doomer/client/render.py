@@ -84,6 +84,7 @@ from doomer.client.textures import (
 )
 from doomer.shared.furniture import resting_height
 from doomer.shared.mapfile import (
+    AREA_CHARS,
     EAST,
     NORTH,
     RAIL_HEIGHT,
@@ -102,7 +103,6 @@ MAX_PITCH = math.radians(25)  # y-shearing looks wrong much beyond this
 # Bayer matrix: each value 0-15 appears once, arranged so that any threshold
 # switches on pixels that are spread as evenly as possible.
 BAYER_4X4 = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]])
-BULKHEAD_TYPE = 1  # wall type whose upper texture faces a dropped ceiling
 NEAR_PLANE = 0.05  # sprites closer than this (in cells) aren't drawn
 # A face is lit by the light map this far back along the ray from where the
 # ray meets it: in the open space it faces (the first light sample in front
@@ -600,7 +600,10 @@ class Renderer:
                 [int(self.slot_table[1, side]) for side in range(4)] + [self._upper_slot(1)] * 4,
                 dtype=np.int64,
             )
-            bulkhead = int(self.slot_table[BULKHEAD_TYPE, UPPER])
+            bulkhead = np.array(
+                [self._upper_slot(AREA_WALL_TYPE + area) for area in range(len(AREA_CHARS))],
+                dtype=np.int64,
+            )
             self._map_arrays = fc.map_arrays(game_map, slots, outside, bulkhead)
             self._slots_map = game_map
         return self._map_arrays

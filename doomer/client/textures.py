@@ -576,18 +576,40 @@ TOP_COLOURS: dict[int, int] = {
 }
 
 
+def _car_panels(rng: np.random.Generator) -> U8Array:
+    """A lift car's walls: tall brushed stainless panels (the brushing runs
+    up, so it varies across), in a dark reveal, over a black kick plate,
+    with a round chrome handrail at hip height casting a shadow below."""
+    v, u = grid()
+    brushed = 10.0 + (noise(rng, 64)[:1, :] - 0.5) * 0.4 + ((u * 7) % 5 == 0) * 0.3
+    tex = indices(GREY, np.broadcast_to(brushed, v.shape))
+    reveal = (u % 21 == 0) & (u < 63)  # three panels across
+    tex = np.where(reveal | (u == 63), indices(GREY, 4.0), tex)
+    tex = np.where((v >= 39) & (v < 42), indices(GREY, np.where(v == 39, 15.0, 11.0)), tex)
+    tex = np.where(v == 42, indices(GREY, 5.0), tex)  # the rail's shadow
+    return np.where(v >= 58, indices(GREY, np.where(v == 58, 6.0, 2.0)), tex).astype(np.uint8)
+
+
 def lift_car_wall(seed: int = 20) -> U8Array:
-    """Inside a lift car: brushed steel panels, a mirror strip, a handrail."""
+    """Inside a lift car, the back wall (facing the doors): the panels, with a
+    tinted mirror above the handrail."""
     rng = np.random.default_rng(seed)
     v, u = grid()
-    brushed = 9.0 + (noise(rng, 32)[:, :1] - 0.5) * 0.8 + ((u * 7) % 5 == 0) * 0.6
-    tex = indices(GREY, np.broadcast_to(brushed, v.shape))
-    tex = np.where((u % 32 == 0) | (u % 32 == 31), indices(GREY, 6.0), tex)  # panel joints
-    mirror_shade = (11.0 - (v - 8) * 0.12).astype(np.float64)
-    tex = np.where((v >= 8) & (v < 26), indices(STEEL, mirror_shade), tex)  # mirror
-    rail = (v >= 40) & (v < 43)
-    tex = np.where(rail, indices(GREY, np.where(v == 40, 14.0, 11.0)), tex)  # handrail
-    return np.where(v >= 60, indices(GREY, 4.0), tex).astype(np.uint8)
+    tex = _car_panels(rng)
+    glass = (v >= 6) & (v < 36) & (u >= 3) & (u < 61)
+    shade = (8.5 + (v - 6) * 0.04 + np.where((u + v) % 23 < 3, 2.0, 0.0)).astype(
+        np.float64
+    )  # glints
+    tex = np.where(glass, indices(STEEL, shade), tex)
+    frame = ((v == 5) | (v == 36)) & (u >= 2) & (u < 62) | ((u == 2) | (u == 61)) & (v >= 5) & (
+        v <= 36
+    )
+    return np.where(frame, indices(GREY, 13.0), tex).astype(np.uint8)
+
+
+def lift_car_side(seed: int = 23) -> U8Array:
+    """Inside a lift car, the side walls: just the panels and handrail."""
+    return _car_panels(np.random.default_rng(seed))
 
 
 def stone_cladding(seed: int = 21) -> U8Array:
@@ -599,6 +621,16 @@ def stone_cladding(seed: int = 21) -> U8Array:
     tex = np.where(veins, indices(WARM_GREY, 10.5), tex)  # faint: veins, not cracks
     tex = np.where((v == 31) | (u == 0), indices(WARM_GREY, 8.0), tex)  # slab joints
     return np.where(v >= 60, indices(WARM_GREY, 5.0), tex).astype(np.uint8)
+
+
+def stone_cladding_upper(seed: int = 21) -> U8Array:
+    """The stone above one storey: the slabs carry on, without the plinth."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    veins = np.abs(noise(rng, 4) - noise(rng, 16) * 0.5 - 0.25) < 0.02
+    tex = indices(WARM_GREY, 12.0 + (noise(rng, 8) - 0.5) * 0.8)
+    tex = np.where(veins, indices(WARM_GREY, 10.5), tex)
+    return np.where((v == 31) | (v == 63) | (u == 0), indices(WARM_GREY, 8.0), tex).astype(np.uint8)
 
 
 DEFAULT_WALL_TEXTURES: dict[int, Callable[[], U8Array]] = {
@@ -623,10 +655,11 @@ register_wall_texture(5, office_wall_upper(), sides=(UPPER,))
 # 'k' (20): lift car walls: steel inside the car; the back face (BACK, with
 # [facing] pointing into the car) is ordinary office wall.
 register_wall_texture(20, lift_car_wall())
+register_wall_texture(20, lift_car_side(), sides=(RIGHT, LEFT))
 register_wall_texture(20, office_wall(), sides=(BACK,))
 # 'l' (21): the lift lobby's stone cladding round the lift doors.
 register_wall_texture(21, stone_cladding())
-register_wall_texture(21, office_wall_upper(), sides=(UPPER,))
+register_wall_texture(21, stone_cladding_upper(), sides=(UPPER,))
 # 'h' (17): stairs (shape in doomer/shared/mapfile.py). Sides: plain plaster
 # stringer with a skirting line; top: the same blue carpet as raised floors.
 register_wall_texture(17, raised_floor_edge())

@@ -168,12 +168,14 @@ dm_spawn      1.5   3.5   0
 - `[facing]` (optional): one of `n`, `e`, `s`, `w` per cell (`.` or missing =
   `s`): which way a cell's front faces, for wall types with different
   textures per side (desks: the front is where you sit).
-- `[areas]` (optional): one of `o`, `e`, `l`, `s` per cell (`.` or missing
-  = `o`): open-plan office, executive, lobby, service. Cosmetic (the server
+- `[areas]` (optional): one of `o`, `e`, `l`, `s`, `c` per cell (`.` or
+  missing = `o`): open-plan office, executive, lobby, service, lift car. Cosmetic (the server
   ignores it): it picks the cell's floor and ceiling textures, and how plain
   walls (`#`) look from that side. A plain wall face takes the look of the
   area it faces, so one wall can be stone on its lobby side and painted
-  block on its plant-room side. Looks are in `client/areas.py`.
+  block on its plant-room side. A bulkhead (where the ceiling steps down)
+  follows the same rule: it looks like the area it's seen from. Looks are
+  in `client/areas.py`.
 - `[things]`: one per line, `type x y angle [key=value ...]`. Positions are
   floats in cell units (`1.5` = centre of cell 1). Unknown types are an
   error at load time. Properties after the angle are declared per thing
@@ -402,9 +404,12 @@ dm_spawn      1.5   3.5   0
   power (else `LiftNoPower`); a called lift's doors open for anyone near.
   When every player stands in a lift car, the doors close, and once those
   with people behind them are shut the floor is done (`LevelComplete`,
-  `World.complete`; the HUD shows a banner). Each has a call button beside
-  it (lit amber once called) and a floor indicator over it (lit with
-  power). Co-op needs a lift or an `exit`. Riding to the next floor comes
+  `World.complete`; the HUD shows a banner). Its fittings are box models
+  drawn from its state (`boxes._lift_fittings`): the doorway lined in
+  polished steel through its depth with an architrave and a grooved sill;
+  a call plate beside it (up button lit amber once called); a floor
+  indicator over it (G and arrows, lit with power); inside the car, a
+  button panel by the door. Co-op needs a lift or an `exit`. Riding to the next floor comes
   with the tower of floors.
 - **Power** (`shared/switches.py`): level flags in `World.flags`, set by
   switches. The breaker sets `power`; a map with a breaker starts without it

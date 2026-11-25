@@ -6,7 +6,7 @@ name: Ground Floor
 # on top. [facing] says which way a desk's
 # front (where you sit) faces; for stairs (h) the way they go up. f = curtain
 # wall, g = entrance doors, i = balcony (railed); [ceiling] g = 16/8, a
-# double-height space. [areas]: l lobby, e executive, s service, . office
+# double-height space. [areas]: l lobby, e executive, s service, c lift car, . office
 # (floors, ceilings, and how plain # walls look from each side). See docs/GAME.md.
 
 [walls]
@@ -90,7 +90,7 @@ lllllllll
 lllllllll
 lllllllll
 lllllllll
-lllllllll
+llclclcll
 lllllllll
 eeeeeeee
 eeeeeeee

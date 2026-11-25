@@ -91,12 +91,14 @@ class MapArrays:
     facing: Int64Array
     slots: Int64Array  # (height, width, 8): [face 0-3, the upper slot of face 0-3]
     outside: Int64Array  # (8,)
-    bulkhead: int  # the upper slot over any open span (a dropped ceiling's face)
+    # Per area: the texture of a bulkhead (where the ceiling steps down) seen
+    # from that area, as plain walls look (client/areas.py).
+    bulkhead: Int64Array
     areas: Int64Array
 
 
 def map_arrays(
-    game_map: GameMap, slots: Int64Array, outside: Int64Array, bulkhead: int
+    game_map: GameMap, slots: Int64Array, outside: Int64Array, bulkhead: Int64Array
 ) -> MapArrays:
     def grid(rows: tuple[tuple[int, ...], ...]) -> Int64Array:
         return np.array(rows, dtype=np.int64).reshape(game_map.height, game_map.width)
@@ -155,6 +157,7 @@ def cast_columns(
         arrays.slots,
         arrays.outside,
         arrays.bulkhead,
+        arrays.areas,
         x,
         y,
         angles,
@@ -262,7 +265,8 @@ def _cast_columns(
     facing: Int64Array,
     slots: Int64Array,
     outside: Int64Array,
-    bulkhead: int,
+    bulkhead: Int64Array,
+    areas: Int64Array,
     x: float,
     y: float,
     angles: FloatArray,
@@ -448,6 +452,12 @@ def _cast_columns(
             it[CELL_X, n, col] = cell_x
             it[CELL_Y, n, col] = cell_y
             it[WALL_TYPE, n, col] = wall
+            if not low_block:
+                # Where the ceiling steps down, a bulkhead face looks into
+                # the space the ray came from: dressed as that area.
+                px, py = (cell_x, cell_y - step_y) if y_side else (cell_x - step_x, cell_y)
+                area = areas[py, px] if 0 <= px < width and 0 <= py < height else 0
+                it[UPPER_SLOT, n, col] = bulkhead[area]
             it[Y_SIDE, n, col] = y_side
             it[EXIT_Y_SIDE, n, col] = exit_y_side
             it[FACE, n, col] = face
@@ -509,7 +519,12 @@ def _cast_columns(
             if not block:
                 it[SLOT, j, col] = 0
                 it[BACK_SLOT, j, col] = 0
-                it[UPPER_SLOT, j, col] = bulkhead  # a bulkhead's face above it
+                if j < n_own:  # the camera's own space: as the area it's in
+                    it[UPPER_SLOT, j, col] = (
+                        bulkhead[areas[start_y, start_x]]
+                        if _in_map(walls, start_x, start_y)
+                        else bulkhead[0]
+                    )
                 continue
             cx, cy = it[CELL_X, j, col], it[CELL_Y, j, col]
             if 0 <= cx < width and 0 <= cy < height:
