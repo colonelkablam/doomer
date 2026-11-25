@@ -735,6 +735,12 @@ Noted at the end of a session, to pick up next:
   random (a few degrees, a few cm), so a row looks used, not lined up.
   Collision a small footprint (they block, but you can't stand on them).
   Watch the box budget: a pod row is 12 chairs, so keep each to ~5 boxes.
+- **A bigger computer for the boss**: a late-80s business PC in place of
+  the Mac on the executive desk: a wide beige system unit lying flat, a big
+  CRT monitor on top of it with a green-phosphor screen (text in green on
+  black, glowing: `glow`), a long heavy keyboard in front. A box model like
+  the Mac (~4-5 boxes), generic in design (no maker's badge), scaled up as
+  the Mac is so it reads; a thing type of its own (`pc`), facing the boss.
 - Also outstanding: the `corner=` property for things (LEVELS.md);
   `shared/validate.py` (a floor is completable); the automap; the lift
   ride to the next floor; networking (milestone 3).
