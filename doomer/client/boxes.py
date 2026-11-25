@@ -1022,15 +1022,14 @@ def floor_indicator(lit: bool) -> int:
 
 
 def car_panel(power: bool) -> int:
-    """Inside the car, on the return by the door (a narrow face: its buttons
-    are drawn wide to come out round): steel, a column of floor buttons,
+    """Inside the car by the door: steel, a column of round floor buttons,
     the lowest (G: you're here) lit amber with power."""
     c = Canvas()
     c.paint(c.rect(0, 64, 0, 64), GREY, 11.0)
     c.paint(c.rect(0, 64, 0, 64) & ~c.rect(3, 61, 4, 60), GREY, 8.0)
     for k in range(4):
         here = power and k == 3
-        c.paint(c.ellipse(12 + k * 13, 32, 4, 12), OCHRE if here else GREY, 15.0 if here else 7.0)
+        c.paint(c.ellipse(12 + k * 13, 32, 5, 9), OCHRE if here else GREY, 15.0 if here else 7.0)
     return _texture(c)
 
 
@@ -1039,7 +1038,6 @@ _POLISHED, _SILL, _CALL_PLATE = polished_steel(), sill(), call_plate()
 _CALL = {lit: call_button(lit) for lit in (False, True)}
 _INDICATOR = {lit: floor_indicator(lit) for lit in (False, True)}
 _CAR_PANEL = {lit: car_panel(lit) for lit in (False, True)}
-_TRANSOM = 0.035  # walls: the steel strip inside the car over its doors
 
 
 def _lift_fittings(door: Door, power: bool) -> list[PlacedBox]:
@@ -1048,8 +1046,7 @@ def _lift_fittings(door: Door, power: bool) -> list[PlacedBox]:
     is one cell, its car the doorway cell itself, its doors at the lobby
     end: a steel architrave on the lobby wall round them, the sill under
     them, the floor indicator over them and the call plate beside them; and
-    inside the car, its front: steel returns and a transom round the doors,
-    its button panel on one return."""
+    inside the car, on its side wall by the door, its button panel."""
     f = door.facing
     along = (-math.sin(f), math.cos(f))
     called = power and door.called
@@ -1074,18 +1071,10 @@ def _lift_fittings(door: Door, power: bool) -> list[PlacedBox]:
     at(Box((0.5, 0.51), (-0.035, 0.035), (0.36, 0.44), (_CALL_PLATE, *(_POLISHED,) * 4)), bx, by)
     button = (_CALL[called], *(_POLISHED,) * 4)
     at(Box((0.5, 0.516), (-0.018, 0.018), (0.39, 0.41), button, glow=called), bx, by)
-    # Inside, the car's front: the doors are set in behind it, framed by a
-    # steel return either side (as wide as the strip of each parked leaf, so
-    # the opening is clear) and a transom over them that hides their tops.
-    front = (door.set_back - 0.05, door.set_back - 0.01)  # just inside the leaves
-    for side in (-1, 1):
-        lo, hi = sorted((side * 0.5, side * SLIDE[LIFT]))
-        at(Box(front, (lo, hi), (0.0, top), steel))
-    at(Box(front, (-0.5, 0.5), (top - _TRANSOM, top), steel))
-    # The car's button panel, on one return's face into the car
-    # (-x, the box's back face).
-    panel = (_POLISHED, _POLISHED, _CAR_PANEL[power], _POLISHED, _POLISHED)
-    at(Box((front[0] - 0.01, front[0]), (SLIDE[LIFT] + 0.02, 0.48), (0.3, 0.52), panel))
+    # The car's panel, on its side wall (y = 0.5) just inside the doors.
+    # Its buttons on the face into the car: -y, the box's left face.
+    panel = (_POLISHED, _POLISHED, _POLISHED, _CAR_PANEL[power], _POLISHED)
+    at(Box((0.05, 0.22), (0.485, 0.5), (0.3, 0.52), panel))
     return out
 
 

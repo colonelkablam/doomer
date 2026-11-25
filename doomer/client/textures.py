@@ -579,6 +579,9 @@ TOP_COLOURS: dict[int, int] = {
 }
 
 
+RAIL_END = 8  # texels: the car's handrail stops this far short of each corner
+
+
 def _car_panels(rng: np.random.Generator) -> U8Array:
     """A lift car's walls: tall brushed stainless panels (the brushing runs
     up, so it varies across), in a dark reveal, over a black kick plate,
@@ -588,8 +591,13 @@ def _car_panels(rng: np.random.Generator) -> U8Array:
     tex = indices(GREY, np.broadcast_to(brushed, v.shape))
     reveal = (u % 21 == 0) & (u < 63)  # three panels across
     tex = np.where(reveal | (u == 63), indices(GREY, 4.0), tex)
-    tex = np.where((v >= 39) & (v < 42), indices(GREY, np.where(v == 39, 15.0, 11.0)), tex)
-    tex = np.where(v == 42, indices(GREY, 5.0), tex)  # the rail's shadow
+    # The rail stops short of each end of the wall (by the doors, it would
+    # otherwise seem to run on out of the car), its ends a shade darker.
+    rail = (u >= RAIL_END) & (u < 64 - RAIL_END)
+    ends = (u == RAIL_END) | (u == 63 - RAIL_END)
+    bar = np.where(v == 39, 15.0, np.where(ends, 8.0, 11.0))
+    tex = np.where(rail & (v >= 39) & (v < 42), indices(GREY, bar), tex)
+    tex = np.where(rail & (v == 42), indices(GREY, 5.0), tex)  # the rail's shadow
     return np.where(v >= 58, indices(GREY, np.where(v == 58, 6.0, 2.0)), tex).astype(np.uint8)
 
 

@@ -460,10 +460,8 @@ dm_spawn      1.5   3.5   0
   drawn from its state (`boxes._lift_fittings`), kept simple: a steel
   architrave on the lobby wall and a sill; a plain call plate beside it
   with one round button (amber once called); a black indicator strip over
-  it (an amber G with power); inside the car, its front: a steel return
-  either side of the doors (as wide as each parked leaf's strip, so the
-  opening stays clear) and a transom over them, a panel of round buttons
-  on one return (G lit with power). Co-op needs a lift or an `exit`. Riding to the next floor comes
+  it (an amber G with power); inside the car, a panel of round buttons by
+  the door (G lit with power). Co-op needs a lift or an `exit`. Riding to the next floor comes
   with the tower of floors.
 - **Dark rooms and the palette**: each ramp's 16 shades are evenly spaced
   (shade s is (s + 1)/16 of full), so dim surfaces sit where steps are big:
