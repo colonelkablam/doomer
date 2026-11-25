@@ -51,3 +51,36 @@ def test_mouse_capture_falls_back_when_relative_mode_unavailable(
         assert not pygame.event.get_grab()
     finally:
         pygame.quit()
+
+
+@pytest.mark.parametrize(
+    "window, integer, expected",
+    [
+        ((1280, 800), True, (0, 0, 1280, 800)),  # the default window: exactly 4x
+        ((1920, 1080), True, (160, 40, 1600, 1000)),  # 5x, black borders
+        ((1920, 1080), False, (96, 0, 1728, 1080)),  # as large as fits: 5.4x
+        ((2560, 1440), True, (160, 20, 2240, 1400)),  # 7x: height decides (1440 / 200)
+        ((300, 150), True, (0, 0, 300, 150)),  # smaller than the game: shrinks, keeps 1
+    ],
+)
+def test_the_picture_fills_the_window_keeping_its_shape(
+    window: tuple[int, int], integer: bool, expected: tuple[int, int, int, int]
+) -> None:
+    from doomer.client.app import view_rect
+
+    assert tuple(view_rect(window, (320, 200), integer)) == expected
+
+
+class ToggleThenQuit(QuitAfter):
+    def update(self, real_dt: float, player_input: PlayerInput) -> list[Event]:
+        if self.frames_left == 3:  # F11 part way through: full screen, then quit
+            pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_F11, mod=0))
+        return super().update(real_dt, player_input)
+
+
+@pytest.mark.parametrize("start_fullscreen", [False, True])
+def test_full_screen_starts_and_toggles(start_fullscreen: bool) -> None:
+    session = ToggleThenQuit(5, new_world(load_map(MAPS / "test.map"), "coop"), "smoke")
+    config = ClientConfig(render=RenderConfig(vsync=False, fullscreen=start_fullscreen))
+    run(session, config, session.player.angle)
+    assert session.frames_left <= 0

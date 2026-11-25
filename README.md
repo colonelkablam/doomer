@@ -25,7 +25,8 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 Controls: mouse to look around (including up and down), WASD to move, arrow
 keys also work, Space to jump (you can get onto desks), Ctrl or C to crouch.
-Esc releases the mouse; Esc again quits. Click to recapture.
+Esc releases the mouse; Esc again quits. Click to recapture. F11 (or Alt+Enter)
+toggles full screen; the window can be resized too.
 
 Options: a map path as the first argument (default `maps/office.map`),
 `--mode coop|deathmatch`, `--config client.toml` (see `client.example.toml`).

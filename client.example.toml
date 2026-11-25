@@ -3,7 +3,9 @@
 # Anything you leave out keeps its default. Unknown keys are an error.
 
 [render]
-window_scale = 3        # window = 320x200 times this
+window_scale = 4        # window = 320x200 times this (drag to resize)
+fullscreen = false      # F11 or Alt+Enter toggles while playing
+integer_scaling = true  # whole-number scaling: crisp pixels, black borders
 fov_degrees = 75.0
 max_fps = 144           # 0 = uncapped
 vsync = true

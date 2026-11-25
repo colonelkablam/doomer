@@ -7,7 +7,12 @@ Colour = tuple[int, ...]
 class RenderConfig:
     width: int = 320  # internal resolution; scaled up to the window
     height: int = 200
-    window_scale: int = 3
+    window_scale: int = 4  # the window starts at width x height times this (resizable)
+    fullscreen: bool = False  # start full screen (F11 or Alt+Enter toggles it)
+    # Scale the picture by a whole number (every game pixel the same size,
+    # crisp; black borders fill the rest), or as large as fits (fills more of
+    # the screen, but pixels come out unevenly sized).
+    integer_scaling: bool = True
     fov_degrees: float = 75.0  # horizontal
     max_fps: int = 144  # 0 = uncapped
     vsync: bool = True

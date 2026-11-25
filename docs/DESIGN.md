@@ -187,7 +187,13 @@ dm_spawn      1.5   3.5   0
 
 ## Rendering
 
-- Grid raycaster (DDA) at 320x200 internal resolution, scaled up to the window.
+- Grid raycaster (DDA) at 320x200 internal resolution, scaled up to the window
+  (nearest-neighbour): a 4x window by default (1280x800), resizable, or full
+  screen at the monitor's resolution (F11 / Alt+Enter, or `fullscreen`). The
+  picture keeps its shape, centred; `integer_scaling` (default) scales by a
+  whole number so every game pixel is the same size, with black borders
+  (1600x1000 on a 1080p screen), else as large as fits (1728x1080), pixels
+  unevenly sized. The HUD draws inside the picture (`app.view_rect`).
 - **Two-phase frame**: the DDA (one ray per column, 320 a frame) is compiled;
   everything per-pixel is vectorised numpy over the whole frame.
 - **Compiled ray casting** (`client/fastcast.py`): the renderer's DDA is the
