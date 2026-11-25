@@ -127,7 +127,10 @@ DESK_JOIN_DARKEN = 5  # ... and for the joins between neighbouring pairs in a ro
 DESK_SEAM_WIDTH = 0.01  # half-width of those lines, in cells (~3 cm wide)
 STEP_HEIGHT = 0.125  # a rise up to this is a step, not a drop that needs a railing
 # Ceiling light panels: half-size in cells, and colours (diffuser is full-bright).
-LIGHT_HALF = (0.25, 0.125)  # two ceiling tiles (areas.ceiling_tiles lines up with it)
+# The middle 2 x 2 ceiling tiles of a cell (areas.ceiling_tiles: 4 x 4 per
+# cell, lined up with the cell's edges), the grid's bars carried across it.
+LIGHT_HALF = (0.25, 0.25)
+LIGHT_BAR = 0.012  # half-width of the bars across a panel, cells (as the T-bars)
 LIGHT_DIFFUSER = (CREAM << 4) | 15
 DEAD_DIFFUSER = (GREY << 4) | 8  # a panel with no power
 LIGHT_FRAME = (GREY << 4) | 9
@@ -1269,6 +1272,7 @@ class Renderer:
         if not panel.any():
             return
         diffuser = panel & (ox < half_x - 0.02) & (oy < half_y - 0.02)
+        diffuser &= (ox > LIGHT_BAR) & (oy > LIGHT_BAR)  # four lit tiles, the grid across them
         frame_colour = COLORMAP[
             light_level(self._brightness(np.broadcast_to(depth, panel.shape))), LIGHT_FRAME
         ]

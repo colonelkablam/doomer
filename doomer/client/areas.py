@@ -139,12 +139,11 @@ TOP_TEXTURES: dict[int, Callable[[], U8Array]] = {14: blue_carpet}
 
 def ceiling_tiles(seed: int = 31) -> U8Array:
     """A suspended ceiling: fissured mineral tiles (600 mm, 4 x 4 per cell) in
-    a white T-bar grid. The grid is offset half a tile in y so a light panel
-    (0.5 x 0.25 cells, centred in its cell: render.LIGHT_HALF) takes the
-    place of exactly two tiles."""
+    a white T-bar grid lined up with the cell's edges. A light panel takes
+    the middle 2 x 2 tiles of its cell (render.LIGHT_HALF)."""
     rng = np.random.default_rng(seed)
     v, u = grid()
-    tu, tv = u % 16, (v + 8) % 16
+    tu, tv = u % 16, v % 16
     # 2-texel bars, split evenly between the tiles either side (the tiling
     # rule), so they survive the first mip level instead of averaging away.
     tbar = (tu == 0) | (tu == 15) | (tv == 0) | (tv == 15)

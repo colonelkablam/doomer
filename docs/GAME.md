@@ -154,7 +154,7 @@ room behind it.
 
 | Area | Map letter | Plain walls | Floor | Ceiling |
 |---|---|---|---|---|
-| Open-plan office | `o` (default) | Beige woodchip above a painted dado, skirting | Blue-grey carpet tiles, laid quarter-turned | Suspended ceiling: fissured tiles in a white grid (light panels take the place of two tiles) |
+| Open-plan office | `o` (default) | Beige woodchip above a painted dado, skirting | Blue-grey carpet tiles, laid quarter-turned | Suspended ceiling: fissured tiles in a white grid 4 x 4 per cell, lined up with its edges; a light panel is the middle 2 x 2, the grid carried across it |
 | Executive | `e` | Wood panelling: four tall raised panels across, dado rail, short panels below | Deep blue carpet tiles | Suspended ceiling |
 | Lobby | `l` | Pale polished stone slabs | Terrazzo slabs | Smooth plaster |
 | Service | `s` | Painted breeze block: cream gloss above a grey dado | Grey flecked lino | Bare concrete, formwork marks |

@@ -337,7 +337,7 @@ dm_spawn      1.5   3.5   0
 - **Ceiling lights** are panels set into the ceiling, not sprites: ceiling
   casting. Each `ceiling_light` thing marks a cell; the panel's corners are
   projected to a screen bounding box, and for those pixels the world point on
-  the ceiling plane decides whether it's inside the 1.2 x 0.6 m panel. Drawn
+  the ceiling plane decides whether it's inside the panel: the middle 2 x 2 ceiling tiles (1.35 m square), the grid's bars carried across it. Drawn
   only where nearer than what's there (the default ceiling's own depth where
   the z-buffer is empty). Full-bright diffuser, shaded grey frame.
 - **Sprites** (`client/sprites.py`): 64x64 palette art with an opacity mask,

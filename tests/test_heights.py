@@ -139,19 +139,19 @@ def test_ceiling_light_panel_is_drawn_into_the_ceiling() -> None:
     from doomer.client.palette import CREAM
 
     lit = parse_map("[walls]\n#######\n#.....#\n#######\n\n[things]\nceiling_light 3.5 1.5 0\n")
-    # Standing at the light's cell centre, looking along x and up: the column
-    # straight ahead passes under the panel's long axis.
-    camera = Camera(2.6, 1.5, 0.0, pitch=math.radians(25))
+    # Looking along x and up, a little off the cell's centre line: the column
+    # straight ahead passes under the panel, beside the bar across its middle.
+    camera = Camera(2.6, 1.62, 0.0, pitch=math.radians(25))
     frame = R.render_indices(lit, camera)
     column = frame[COL, : int(R.horizon)]
     diffuser = (CREAM << 4) | 15
     hits = [y for y in range(len(column)) if column[y] == diffuser]
     assert hits, "no light panel pixels"
-    # Those pixels are on the ceiling at x within the panel: 3.5 +/- 0.2.
+    # Those pixels are on the ceiling at x within the panel: 3.5 +/- 0.25.
     for y in hits:
         up = R.horizon - (y + 0.5)
         depth = (1.0 - EYE_HEIGHT) * R.projection / up
-        assert abs(camera.x + depth - 3.5) < 0.23
+        assert abs(camera.x + depth - 3.5) < 0.26
     # A room without the light thing has no panel.
     plain = parse_map("[walls]\n#######\n#.....#\n#######\n")
     assert diffuser not in R.render_indices(plain, camera)[COL].tolist()
