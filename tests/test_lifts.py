@@ -12,14 +12,14 @@ from doomer.shared.world import World, drain_events, new_world, spawn_player
 
 SOUTH, NORTH = math.pi / 2, -math.pi / 2
 
-# A lobby (y 1..3) with a lift in its south wall: doorway (4, 4), car (4, 5).
+# A lobby (y 1..3) with a lift in its south wall: the car is the cell (4, 4),
+# its doors its outer wall on the lobby line.
 LOBBY = """\
 [walls]
 ##########
 #........#
 #........#
 #........#
-####.#####
 ####.#####
 ##########
 
@@ -59,7 +59,7 @@ def settle() -> int:
 def test_the_lift_door_and_its_car() -> None:
     world, _ = lobby()
     (door,) = world.doors
-    assert door.kind == LIFT and door.car == (4, 5)
+    assert door.kind == LIFT and door.car == (4, 4)
 
 
 def test_without_power_the_lift_wont_come() -> None:
@@ -78,7 +78,7 @@ def test_call_it_step_in_and_the_floor_is_done() -> None:
     run(world, settle(), {1: PlayerInput(angle=SOUTH)})
     assert world.doors[0].open == 1.0
     events = run(world, 90, {1: PlayerInput(forward=1.0, angle=SOUTH)})  # into the car
-    assert (math.floor(p.x), math.floor(p.y)) == (4, 5)
+    assert (math.floor(p.x), math.floor(p.y)) == (4, 4)
     events += run(world, settle(), {1: PlayerInput(angle=SOUTH)})
     assert world.doors[0].open == 0.0  # the doors shut behind you
     assert world.complete
@@ -94,7 +94,7 @@ def test_it_waits_for_everyone() -> None:
     run(world, 90, {1: PlayerInput(forward=1.0, angle=SOUTH), 2: idle})
     run(world, settle() + 30, {1: idle, 2: idle})
     assert not world.complete and world.doors[0].open == 1.0  # held for the other player
-    p2.x, p2.y = 4.5, 5.3  # now both aboard (one cell: they overlap, which is fine)
+    p2.x, p2.y = 4.5, 4.6  # now both aboard (one cell: they overlap, which is fine)
     run(world, settle() + 2, {1: idle, 2: idle})
     assert world.complete
 

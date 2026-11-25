@@ -24,8 +24,9 @@ Kinds:
   in the middle, both swinging the same way; narrow jambs. Use, as hinged.
 - Any of them can be locked (`lock=blue` in the map): it opens only for a
   team holding that ID pass (doomer/shared/pickups.py).
-- lift: two brushed steel leaves, parting like sliding doors, in front of a
-  lift car (the cell behind the doorway, against the door's facing). Use
+- lift: two brushed steel leaves, parting like sliding doors: the outer
+  wall of a lift car, which is the doorway cell itself (one cell off the
+  lobby, walled in behind, its doors facing out). Use
   calls the lift, only with power; then the doors open for anyone near.
   When every player is in a lift car, the doors close and the floor is done.
 - sliding: two glass leaves, each half the cell, that part towards the
@@ -108,11 +109,10 @@ class Door:
 
     @property
     def car(self) -> tuple[int, int]:
-        """For a lift door: its car, the cell behind the doorway (against the
-        facing: the facing points out of the lift)."""
-        return math.floor(self.x - math.cos(self.facing)), math.floor(
-            self.y - math.sin(self.facing)
-        )
+        """For a lift door: its car, the doorway cell itself. A lift is one
+        cell off its lobby, its doors the car's outer wall (at the end they
+        face: the facing points out of the lift)."""
+        return math.floor(self.x), math.floor(self.y)
 
     @property
     def across_x(self) -> bool:

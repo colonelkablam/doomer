@@ -448,17 +448,18 @@ dm_spawn      1.5   3.5   0
   reception desk is the first: a ledge at the front (~1.15 m), a work
   surface behind it (~0.73 m).
 - **Lifts** (`door_lift`, `shared/doors.py`): brushed steel doors parting
-  like the glass ones, in a doorway in front of a lift car (the cell behind
-  the doorway, against the door's facing). Use calls the lift, only with
+  like the glass ones. A lift is one cell off its lobby: the car is the
+  doorway cell itself (`Door.car`), walled in on three sides, its doors its
+  outer wall at the lobby end (they face out), under a 6/8 ceiling (~2 m). Use calls the lift, only with
   power (else `LiftNoPower`); a called lift's doors open for anyone near.
   When every player stands in a lift car, the doors close, and once those
   with people behind them are shut the floor is done (`LevelComplete`,
   `World.complete`; the HUD shows a banner). Its fittings are box models
-  drawn from its state (`boxes._lift_fittings`): the doorway lined in
-  polished steel through its depth with an architrave and a grooved sill;
-  a call plate beside it (up button lit amber once called); a floor
-  indicator over it (G and arrows, lit with power); inside the car, a
-  button panel by the door. Co-op needs a lift or an `exit`. Riding to the next floor comes
+  drawn from its state (`boxes._lift_fittings`), kept simple: a steel
+  architrave on the lobby wall and a sill; a plain call plate beside it
+  with one round button (amber once called); a black indicator strip over
+  it (an amber G with power); inside the car, a panel of round buttons by
+  the door (G lit with power). Co-op needs a lift or an `exit`. Riding to the next floor comes
   with the tower of floors.
 - **Dark rooms and the palette**: each ramp's 16 shades are evenly spaced
   (shade s is (s + 1)/16 of full), so dim surfaces sit where steps are big:

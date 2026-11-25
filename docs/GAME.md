@@ -181,11 +181,11 @@ the area's wall (stone in the lobby) and its floor the area's floor
 carpet runner on the treads, each with a metal nosing. Plain raised floors
 (`e`) are fitted blue carpet.
 
-Lifts [built]: brushed stainless doors in a doorway lined with polished
-steel (architrave, grooved sill), a floor indicator above (amber G between
-up and down arrows, dark without power), a call plate beside (the up
-button glows once called), and inside the car a button panel by the door
-(B, G, 1-5, P; G lit).
+Lifts [built]: one cell off the lobby, the brushed stainless doors the
+car's outer wall, in a steel architrave with a sill; a black indicator strip
+above (an amber G, dark without power), a plain call plate beside with one
+round button (glows once called), and inside the car a panel of round
+buttons by the door (G lit).
 
 ## Walls [built]
 

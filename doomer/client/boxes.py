@@ -900,67 +900,40 @@ def sill() -> int:
 
 
 def call_plate() -> int:
-    """A lift's call plate: polished steel, a down button below the up one
-    (the up button is its own box, lit when called)."""
+    """A lift's call plate: plain steel, a darker border."""
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), GREY, 12.0)
-    c.paint(c.rect(0, 64, 0, 3) | c.rect(0, 64, 61, 64), GREY, 7.0)
-    c.paint(c.rect(0, 3, 0, 64) | c.rect(61, 64, 0, 64), GREY, 7.0)
-    down = c.ellipse(44, 32, 9, 9)
-    c.paint(down, GREY, 8.0)
-    c.paint(down & c.rect(40, 44, 27, 38), GREY, 3.0)  # a down arrow
-    c.paint(down & c.rect(44, 47, 30, 35), GREY, 3.0)
-    c.paint(down & c.rect(47, 49, 31, 34), GREY, 3.0)
+    c.paint(c.rect(0, 64, 0, 64), GREY, 11.0)
+    c.paint(c.rect(0, 64, 0, 64) & ~c.rect(4, 60, 6, 58), GREY, 8.0)
     return _texture(c)
 
 
 def call_button(lit: bool) -> int:
-    """The up button: a round button with an arrow, amber once the lift's coming."""
+    """The call button: a plain round button, amber once the lift's coming."""
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), GREY, 12.0)
-    button = c.ellipse(32, 32, 26, 26)
-    c.paint(button, OCHRE if lit else GREY, 15.0 if lit else 8.0)
-    arrow = GREY, 4.0
-    c.paint(button & c.rect(18, 24, 29, 35), *arrow)
-    c.paint(button & c.rect(24, 30, 23, 41), *arrow)
-    c.paint(button & c.rect(30, 46, 29, 35), *arrow)
+    c.paint(c.rect(0, 64, 0, 64), GREY, 11.0)
+    c.paint(c.ellipse(32, 32, 28, 28), OCHRE if lit else GREY, 15.0 if lit else 7.0)
     return _texture(c)
 
 
 def floor_indicator(lit: bool) -> int:
-    """Above a lift: a steel-framed black glass strip, the floor (G) in amber
-    in the middle and up and down arrows either side, all dark without power."""
+    """Above a lift: a black strip, the floor (G) in amber when powered."""
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), GREY, 12.0)  # the frame
-    c.paint(c.rect(6, 58, 4, 60), GREY, 1.0)  # black glass
-    on, off = (OCHRE, 15.0), (GREY, 3.0)
-    ramp, shade = on if lit else off
-    c.text("G", 22, 26, ramp, shade, scale=3)
-    for u0, up in ((8, True), (48, False)):  # arrows: dim unless moving
-        for row in range(6):
-            width = row if up else 5 - row
-            c.paint(c.rect(26 + row * 2, 28 + row * 2, u0 + 4 - width, u0 + 5 + width), GREY, 5.0)
+    c.paint(c.rect(0, 64, 0, 64), GREY, 1.0)
+    c.paint(c.rect(0, 64, 0, 64) & ~c.rect(3, 61, 2, 62), GREY, 10.0)  # thin steel frame
+    if lit:
+        c.text("G", 22, 26, OCHRE, 15.0, scale=4)
     return _texture(c)
 
 
 def car_panel(power: bool) -> int:
-    """Inside the car, beside the door: a steel panel with two columns of
-    floor buttons (B, G, 1-5, P), the alarm bell at the foot, and a small
-    position display on top. G lit amber (you're here) with power."""
+    """Inside the car by the door: steel, a column of round floor buttons,
+    the lowest (G: you're here) lit amber with power."""
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), GREY, 11.5)
-    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64), GREY, 7.0)
-    c.paint(c.rect(4, 12, 16, 48), GREY, 1.0)  # the display
-    if power:
-        c.text("G", 5, 29, OCHRE, 15.0)
-    labels = ("5", "P", "3", "4", "1", "2", "B", "G")
-    for k, label in enumerate(labels):
-        row, col = divmod(k, 2)
-        cv, cu = 20 + row * 10, 22 + col * 20
-        here = power and label == "G"
-        c.paint(c.ellipse(cv, cu, 4, 4), OCHRE if here else GREY, 15.0 if here else 8.0)
-        c.text(label, cv - 2, cu - 10, GREY, 4.0)
-    c.paint(c.ellipse(58, 32, 4, 4), ORANGE, 9.0)  # alarm
+    c.paint(c.rect(0, 64, 0, 64), GREY, 11.0)
+    c.paint(c.rect(0, 64, 0, 64) & ~c.rect(3, 61, 4, 60), GREY, 8.0)
+    for k in range(4):
+        here = power and k == 3
+        c.paint(c.ellipse(12 + k * 13, 32, 5, 9), OCHRE if here else GREY, 15.0 if here else 7.0)
     return _texture(c)
 
 
@@ -969,16 +942,15 @@ _POLISHED, _SILL, _CALL_PLATE = polished_steel(), sill(), call_plate()
 _CALL = {lit: call_button(lit) for lit in (False, True)}
 _INDICATOR = {lit: floor_indicator(lit) for lit in (False, True)}
 _CAR_PANEL = {lit: car_panel(lit) for lit in (False, True)}
-_LINING = 0.03  # the doorway's steel lining, each side (cells)
 
 
 def _lift_fittings(door: Door, power: bool) -> list[PlacedBox]:
     """Everything round a lift door but its leaves, in the door's model
-    space (x across the doorway, + towards the lobby; y along it): the
-    doorway lined in polished steel through its depth, an architrave on
-    the lobby wall, the sill; the call plate beside it and the floor
-    indicator over it, on the lobby side; and inside the car, beside the
-    door, its control panel."""
+    space (x across the doorway, + towards the lobby; y along it). The lift
+    is one cell, its car the doorway cell itself, its doors at the lobby
+    end: a steel architrave on the lobby wall round them, the sill under
+    them, the floor indicator over them and the call plate beside them; and
+    inside the car, on its side wall by the door, its button panel."""
     f = door.facing
     along = (-math.sin(f), math.cos(f))
     called = power and door.called
@@ -990,23 +962,23 @@ def _lift_fittings(door: Door, power: bool) -> list[PlacedBox]:
 
     top = DOOR_HEIGHT
     for side in (-1, 1):
-        lo, hi = sorted((side * 0.5, side * (0.5 - _LINING)))
-        at(Box((-0.5, 0.5), (lo, hi), (0.0, top), steel))  # lining the reveal
         lo, hi = sorted((side * 0.5, side * 0.56))
         at(Box((0.5, 0.515), (lo, hi), (0.0, top + 0.04), steel))  # architrave
     at(Box((0.5, 0.515), (-0.56, 0.56), (top, top + 0.04), steel))  # its head
-    at(
-        Box((DOOR_SET - 0.05, DOOR_SET + 0.05), (-0.5, 0.5), (0.0, 0.006), (_SILL,) * 5)
-    )  # under the doors
-    indicator = (_INDICATOR[power],) * 5
-    at(Box((0.5, 0.52), (-0.15, 0.15), (top + 0.07, top + 0.17), indicator, glow=power))
-    # The call plate, on the wall beside the doorway; its up button.
+    sill = (DOOR_SET - 0.05, DOOR_SET + 0.05)
+    at(Box(sill, (-0.5, 0.5), (0.0, 0.006), (_SILL,) * 5))  # under the doors
+    # Only the fronts carry the display and buttons; their thin sides are steel.
+    indicator = (_INDICATOR[power], *(_POLISHED,) * 4)
+    at(Box((0.5, 0.52), (-0.12, 0.12), (top + 0.07, top + 0.15), indicator, glow=power))
+    # The call plate, on the wall beside the doors, and its one button.
     bx, by = door.x + along[0] * 0.66, door.y + along[1] * 0.66
-    at(Box((0.5, 0.51), (-0.04, 0.04), (0.34, 0.46), (_CALL_PLATE,) * 5), bx, by)
-    up = (_CALL[called],) * 5
-    at(Box((0.5, 0.516), (-0.022, 0.022), (0.415, 0.445), up, glow=called), bx, by)
-    # The car's panel, on its side wall (y = 0.5) just inside the door.
-    at(Box((-0.8, -0.62), (0.485, 0.5), (0.3, 0.58), (_CAR_PANEL[power],) * 5, glow=power))
+    at(Box((0.5, 0.51), (-0.035, 0.035), (0.36, 0.44), (_CALL_PLATE, *(_POLISHED,) * 4)), bx, by)
+    button = (_CALL[called], *(_POLISHED,) * 4)
+    at(Box((0.5, 0.516), (-0.018, 0.018), (0.39, 0.41), button, glow=called), bx, by)
+    # The car's panel, on its side wall (y = 0.5) just inside the doors.
+    # Its buttons on the face into the car: -y, the box's left face.
+    panel = (_POLISHED, _POLISHED, _POLISHED, _CAR_PANEL[power], _POLISHED)
+    at(Box((0.05, 0.22), (0.485, 0.5), (0.3, 0.52), panel))
     return out
 
 

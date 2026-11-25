@@ -2,7 +2,7 @@ name: Ground Floor
 # [floor] values on wall cells make low blocks, in eighths of a wall:
 # 2 = desk (0.68 m), 3 = counter (1 m). Wall types: b = executive desk,
 # d = two 1980s steel desks back to back, j = the same with cubicle screens,
-# k = lift car walls (steel inside), l = the lift lobby's stone cladding
+# k = lift car walls (steel inside, the area's look outside)
 # on top. [facing] says which way a desk's
 # front (where you sit) faces; for stairs (h) the way they go up. f = curtain
 # wall, g = entrance doors, i = balcony (railed); [ceiling] g = 16/8, a
@@ -17,8 +17,8 @@ g......h1..............4
 g......................4
 f.......1..............4
 f.......1.jjj...jjj....4
-2l.l.l.l1..............4
-4k.k.k.k1..............4
+2k.k.k.k1..............4
+4kkkkkkk1..............4
 4kkkkkkk1..............4
 4.......1111.1111111.111
 4......................4
@@ -72,7 +72,7 @@ f.......1.jjj...jjj....4
 ........................
 ..........nnn...nnn.....
 ........................
-........................
+..n.n.n.................
 .nnnnnnn................
 ........................
 ........................
@@ -89,8 +89,8 @@ lllllllll
 lllllllll
 lllllllll
 lllllllll
-lllllllll
 llclclcll
+lllllllll
 lllllllll
 eeeeeeee
 eeeeeeee
@@ -122,14 +122,15 @@ pass_red        3.3   12.0  0
 reception_desk  4.6   4.0   180
 # On the wall behind reception, above the glass doors (the wall's face is x = 8)
 welcome_sign    7.99  4.5   180
-# The lifts, in the lobby's south wall: call one (E) once the power's on, step
-# in; when everyone's aboard the doors close and the floor is done
+# The lifts, in the lobby's south wall: each one cell (the car), its doors on
+# the lobby line. Call one (E) once the power's on, step in; when everyone's
+# aboard the doors close and the floor is done
 door_lift       2.5   7.5   270
 door_lift       4.5   7.5   270
 door_lift       6.5   7.5   270
-ceiling_light   2.5   8.5   0
-ceiling_light   4.5   8.5   0
-ceiling_light   6.5   8.5   0
+ceiling_light   2.5   7.5   0
+ceiling_light   4.5   7.5   0
+ceiling_light   6.5   7.5   0
 mac             4.66  3.57   355.2
 ficus           1.5   1.5   0
 ficus           5.5   5.5   0
