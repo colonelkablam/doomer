@@ -264,6 +264,161 @@ def _mac_se30() -> tuple[Box, ...]:
     return mac, keyboard, mouse
 
 
+# --- Late-80s business PC (the boss's): green screen on a flat system unit -----------
+# Generic (no maker's badge), in the pearly off-white of the time: a wide
+# system unit lying flat, a big 14" CRT standing on it (a deep bezel box,
+# the tube's housing tapering behind as a smaller box), a green-phosphor
+# screen that glows while there's power, and a long heavy keyboard in
+# front. Real sizes ~48 x 40 x 13 cm (unit), 36 x 38 x 33 cm (monitor),
+# 49 x 21 cm (keyboard); built ~1.9x (the Mac's 1.6x and a bit: the
+# boss's desk is huge). Model +x faces the
+# user (the screen), +y is the user's left.
+
+PC_BEIGE = CREAM
+_PC_UNIT = (0.28, 0.33, 0.085)  # depth (x), width (y), height (walls)
+_PC_BEZEL = (0.1, 0.25, 0.22)
+_PC_TUBE = (0.14, 0.18, 0.17)
+_PC_KEYS = (0.13, 0.33, 0.03)
+_PC_SCREEN = (0.19, 0.15)  # the glass: width, height, centred on the bezel
+
+
+def _beige(shade: float = 11.0) -> Canvas:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), PC_BEIGE, shade)
+    c.paint(c.rect(0, 2, 0, 64), PC_BEIGE, shade + 1.5)  # top edge catches the light
+    c.paint(c.rect(60, 64, 0, 64), PC_BEIGE, shade - 3.0)  # shadow underneath
+    return c
+
+
+def pc_unit_front() -> int:
+    """The system unit's front (wide and low, stretched over 64 x 64): two
+    5.25" floppy drives on the right, a hard disk lamp, a big power switch."""
+    c = _beige(11.5)
+    for u0 in (34, 49):  # the drives, each a slot and a latch
+        c.paint(c.rect(14, 46, u0, u0 + 13), PC_BEIGE, 9.0)
+        c.paint(c.rect(28, 32, u0 + 1, u0 + 12), GREY, 2.0)
+        c.paint(c.rect(20, 26, u0 + 5, u0 + 8), PC_BEIGE, 7.0)
+    c.paint(c.rect(18, 24, 6, 9), GREEN, 11.0)  # power lamp
+    c.paint(c.rect(18, 24, 12, 15), ORANGE, 9.0)  # disk lamp
+    c.paint(c.rect(4, 8, 6, 30), PC_BEIGE, 9.0)  # a moulded line along the top
+    for u0 in range(6, 28, 3):  # vents below
+        c.paint(c.rect(34, 50, u0, u0 + 1), PC_BEIGE, 7.0)
+    return _texture(c)
+
+
+def pc_side(vents: bool = True) -> int:
+    c = _beige(10.0)
+    if vents:
+        for v0 in range(10, 50, 4):
+            c.paint(c.rect(v0, v0 + 2, 40, 58), PC_BEIGE, 7.0)
+    return _texture(c)
+
+
+def pc_top() -> int:
+    c = _beige(12.0)
+    return _texture(c)
+
+
+def pc_bezel() -> int:
+    """The monitor's front: a deep beige bezel round the dark screen (the
+    glowing glass itself is a box of its own, just proud of this), a row of
+    knobs under it."""
+    c = _beige(11.5)
+    c.paint(c.rect(5, 52, 6, 58), PC_BEIGE, 8.0)  # the bezel's inner step
+    c.paint(c.rect(6, 51, 7, 57), GREY, 1.0)
+    for u0 in (40, 46, 52):
+        c.paint(c.rect(55, 59, u0, u0 + 3), PC_BEIGE, 6.0)  # brightness, contrast, power
+    return _texture(c)
+
+
+def pc_screen() -> int:
+    """The green screen: a spreadsheet, green on black. It glows while
+    there's power (Box.mains); without, it only takes the room's light."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREEN, 0.0)
+    rng = np.random.default_rng(77)
+    c.paint(c.rect(3, 9, 3, 61), GREEN, 11.0)  # the inverse menu bar
+    for u0, u1 in ((5, 13), (16, 22), (25, 35), (38, 44)):
+        c.paint(c.rect(5, 7, u0, u1), GREEN, 1.0)
+    c.paint(c.rect(13, 14, 3, 61), GREEN, 7.0)  # column header rule
+    for row in range(7):  # rows of figures: a label, then numbers right-aligned
+        v0 = 17 + row * 6
+        c.paint(c.rect(v0, v0 + 3, 3, 3 + int(rng.integers(6, 14))), GREEN, 12.0)
+        for right in (34, 47, 60):
+            c.paint(c.rect(v0, v0 + 3, right - int(rng.integers(5, 10)), right), GREEN, 13.0)
+    c.paint(c.rect(59, 62, 3, 6), GREEN, 15.0)  # the cursor
+    return _texture(c)
+
+
+def pc_keyboard_top() -> int:
+    """A long, heavy keyboard: function keys across the top, the main block,
+    the cursor keys and number pad to the right (stretched over a wide,
+    shallow box, so its rows are tall in texels)."""
+    c = _beige(11.0)
+    rows = ((6, 14), (17, 25), (27, 35), (37, 45), (47, 55))
+    for r, (v0, v1) in enumerate(rows):
+        main = (3, 41) if r else (3, 41)
+        step = 3
+        spans = [(u, u + 2) for u in range(main[0] + (r % 2), main[1], step)]
+        if r == 4:
+            spans = [(3, 7), (8, 12), (13, 33), (34, 38), (39, 41)]  # the space bar
+        spans += [(u, u + 2) for u in range(51, 61, 3)]  # the number pad
+        if r >= 3:
+            spans += [(44, 46), (47, 49)] if r == 4 else [(45, 48)]  # cursor keys
+        for u0, u1 in spans:
+            c.paint(c.rect(v0, v1, u0, u1), GREY, 9.0)
+            c.paint(c.rect(v0, v0 + 2, u0, u1), GREY, 11.0)
+    return _texture(c)
+
+
+def _glass_edge() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 1.0)
+    return _texture(c)
+
+
+_PC_GLASS_EDGE = _glass_edge()
+
+
+def _pc() -> tuple[Box, ...]:
+    side, plain_side, top = pc_side(), pc_side(vents=False), pc_top()
+    ud, uw, uh = _PC_UNIT
+    bd, bw, bh = _PC_BEZEL
+    td, tw, th = _PC_TUBE
+    kd, kw, kh = _PC_KEYS
+    x0 = ud / 2  # the unit's front
+    bx = (x0 - bd - 0.01, x0 - 0.01)  # the monitor, set back a touch on the unit
+    sw, sh = _PC_SCREEN
+    s0 = uh + (bh - sh) / 2 + 0.01
+    k0 = x0 + 0.03
+    return (
+        Box((-ud / 2, x0), (-uw / 2, uw / 2), (0.0, uh), (pc_unit_front(), side, side, side, top)),
+        Box(
+            bx,
+            (-bw / 2, bw / 2),
+            (uh, uh + bh),
+            (pc_bezel(), plain_side, plain_side, plain_side, top),
+        ),
+        Box(
+            (bx[0] - td, bx[0]),
+            (-tw / 2, tw / 2),
+            (uh + 0.01, uh + th),
+            (side, side, side, side, top),
+        ),
+        Box(
+            (bx[1], bx[1] + 0.002),
+            (-sw / 2, sw / 2),
+            (s0, s0 + sh),
+            (pc_screen(), *(_PC_GLASS_EDGE,) * 4),
+            glow=True,
+            mains=True,
+        ),
+        Box(
+            (k0, k0 + kd), (-kw / 2, kw / 2), (0.0, kh), (side, side, side, side, pc_keyboard_top())
+        ),
+    )
+
+
 # --- 1980s desk phone ----------------------------------------------------------------
 # Brown plastic, low: on the user's left a raised cradle with the handset
 # lying on it front to back (an earpiece and a mouthpiece, wider and deeper,
@@ -1082,7 +1237,7 @@ def _lift_fittings(door: Door, power: bool) -> list[PlacedBox]:
 # A transaction ledge at the front (~1.15 m) for visitors to lean on and sign
 # in at, over a wood-slatted front panel on a recessed plinth with the
 # word WELCOME in brass letters; behind it, a work surface at desk height (~0.73 m)
-# over a steel drawer pedestal, with the switchboard phone; returns wrapping
+# over a steel drawer pedestal (its phone a `phone` thing on it); returns wrapping
 # both ends. Model x points to the visitors' side. Collision and the heights
 # things rest at (the ledge, the work surface): RECEPTION_FOOTPRINTS in
 # doomer/shared/things.py, which these dimensions match.
@@ -1149,20 +1304,6 @@ def pedestal_front() -> int:
     return _texture(c)
 
 
-def phone_top() -> int:
-    """A switchboard phone from above: the handset along the back, a keypad,
-    and a row of line lamps."""
-    c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), CREAM, 10.0)
-    c.paint(c.rect(4, 18, 6, 58), GREY, 4.0)  # handset
-    for v0 in (26, 36, 46):
-        for u0 in (14, 26, 38):
-            c.paint(c.rect(v0, v0 + 6, u0, u0 + 8), GREY, 9.0)  # keys
-    for u0 in range(8, 56, 8):
-        c.paint(c.rect(56, 60, u0, u0 + 4), BRICK, 12.0)  # line lamps
-    return _texture(c)
-
-
 def book_top() -> int:
     """The visitors' book, open: ruled pages either side of the spine."""
     c = Canvas()
@@ -1202,13 +1343,7 @@ def _reception_desk() -> tuple[Box, ...]:
             (0.0, _R_WORK - 0.015),
             (steel, steel, steel, steel, steel),
         ),
-        # The phone, the visitors' book.
-        Box(
-            (-0.12, -0.02),
-            (-0.55, -0.42),
-            (_R_WORK, _R_WORK + 0.03),
-            (work_side,) * 4 + (phone_top(),),
-        ),
+        # The visitors' book (the phone is a thing of its own: `phone`).
         Box(
             (0.17, 0.27),
             (0.35, 0.52),
@@ -1600,6 +1735,7 @@ def switch_boxes(switches: Iterable[Switch]) -> list[PlacedBox]:
 BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "mac": _mac_se30(),
     "phone": _phone(),
+    "pc": _pc(),
     "filing_cabinet": _filing_cabinet(),
     "water_cooler": _water_cooler(),
     "ficus": _ficus(),

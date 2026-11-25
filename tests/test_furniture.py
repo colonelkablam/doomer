@@ -121,16 +121,30 @@ def test_the_red_pass_on_the_boss_desk_can_be_reached_from_the_front() -> None:
     assert red.taken
 
 
-def test_the_phone_sits_on_the_boss_desk_its_handset_front_to_back() -> None:
+def test_phones_sit_on_the_boss_and_reception_desks_handsets_front_to_back() -> None:
     from doomer.client.boxes import BOX_MODELS
     from doomer.shared.mapfile import load_map
 
     office = load_map("maps/office.map")
-    (phone,) = office.things_of_type("phone")
-    assert resting_height(office, phone) > 0.3  # on the boss's desk top
+    boss, reception = sorted(office.things_of_type("phone"), key=lambda t: t.x)
+    assert resting_height(office, boss) > 0.3  # on the boss's desk top
+    assert resting_height(office, reception) == pytest.approx(0.27)  # reception's work surface
     keypad, cradle, handset = BOX_MODELS["phone"]  # three boxes
     assert cradle.z[1] > keypad.z[1]  # the cradle raised beside the keypad
     assert cradle.y[0] >= keypad.y[1] - 1e-9  # on the user's left (+y), the keypad right
     assert handset.z[0] >= cradle.z[1] - 1e-9  # lying on it
     # Front to back: longer along x than across.
     assert handset.x[1] - handset.x[0] > 2 * (handset.y[1] - handset.y[0])
+
+
+def test_the_boss_has_a_green_screen_pc_on_the_desk() -> None:
+    from doomer.client.boxes import BOX_MODELS
+    from doomer.shared.mapfile import load_map
+
+    office = load_map("maps/office.map")
+    (pc,) = office.things_of_type("pc")
+    assert resting_height(office, pc) > 0.3  # on the boss's desk top
+    unit, monitor, tube, screen, keyboard = BOX_MODELS["pc"]
+    assert monitor.z[0] == unit.z[1] and tube.x[1] <= monitor.x[0]  # standing on it, tube behind
+    assert screen.glow and screen.mains  # lit only while there's power
+    assert screen.x[0] == monitor.x[1] and keyboard.x[0] > unit.x[1]  # on its face; keys in front
