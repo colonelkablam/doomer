@@ -96,13 +96,16 @@ sneaky, staple gun and letter opener (double damage from behind), and
 ## People
 
 How people look, everywhere a face shows (ID passes, the Employee of the
-Month, the founder's portrait; later the NPCs): early-90s LucasArts-style
-cartoon portraits. Big round heads on small shoulders and a short neck; a
-dark ink outline round everything; skin in three tones lit from the upper
-left; big round outlined eyes with dot pupils under arched brows; a
-bulbous nose with a shine; a wide mouth (toothy when grinning); hair one
-solid shape with a lighter streak. A shirt collar round the neck with a
-tie, its points either side of the knot; an open neck without. Flat
+Month, the founder's portrait; later the NPCs): early LucasArts adventure
+sprites, as in Monkey Island. Few, chunky pixels: a portrait is a 20 x 20
+grid, the head about 9 pixels wide and 11 tall, each pixel a solid block
+(crisp when drawn at a multiple of 20 texels). No outlines: shapes stand
+out by colour, their edges a darker shade. Single-pixel features: a dark
+pixel for each eye (no whites), a lighter strip down the nose, a short dark
+mouth (turned up in a grin, down when stern), a brown bar of moustache.
+Warm two- or three-tone shading in blocks, lit from the left; hair a messy
+silhouette with a stray lock. A shirt collar round the neck with a tie, an
+open neck without. Flat
 colours, no noise. A face is built from stock parts that swap
 (`client/faces.py`, `Face`): skin (fair, tan, dark), hair (side parting,
 slicked back, perm, mullet, bob, bald) and its colour (brown, black, blond,

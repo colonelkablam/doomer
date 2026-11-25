@@ -21,9 +21,9 @@ from doomer.client.palette import BLUE
 from doomer.client.pixelart import Canvas
 
 
-def _portrait(face: Face, size: int = 64) -> np.ndarray:
+def _portrait(face: Face, size: int = 60) -> np.ndarray:
     c = Canvas()
-    draw_portrait(c, 0, 0, size, face, (BLUE, 8.0))
+    draw_portrait(c, 0, 0, size, face, (BLUE, 8.0))  # 60: three texels a pixel
     return c.index.copy()
 
 
@@ -66,8 +66,14 @@ def test_a_tie_comes_with_a_collar_and_no_tie_with_an_open_neck() -> None:
     from doomer.client.palette import CREAM
 
     collar = (CREAM << 4) | 15
-    tied = _portrait(Face(tie="red"))  # 64 texels: the design grid x 2
+    tied = _portrait(Face(tie="red"))
     open_ = _portrait(Face(tie="none"))
-    # The collar's left point: just below the neck, left of the knot.
-    assert tied[49, 26] == collar
-    assert open_[49, 26] != collar
+    # The collar's left point: pixel (14, 7), just below the neck, left of the knot.
+    assert tied[43, 22] == collar
+    assert open_[43, 22] != collar
+
+
+def test_pixels_are_solid_blocks() -> None:
+    picture = _portrait(CAST["gary"])  # three texels to a pixel
+    blocks = picture[:60, :60].reshape(20, 3, 20, 3)
+    assert (blocks == blocks[:, :1, :, :1]).all()

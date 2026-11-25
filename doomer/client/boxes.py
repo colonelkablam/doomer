@@ -366,7 +366,7 @@ def founder_portrait() -> int:
     c.paint(c.rect(0, 1, 0, 64) | c.rect(0, 64, 0, 1), OCHRE, 13.0)
     c.paint(c.rect(4, 60, 4, 60), OCHRE, 7.0)
     c.paint(c.rect(6, 58, 6, 58), WOOD, 2.0)
-    draw_portrait(c, 7, 8, 48, CAST["founder"], None)
+    draw_portrait(c, 8, 12, 40, CAST["founder"], None)
     c.paint(c.rect(50, 57, 14, 50), OCHRE, 13.0)  # the plaque
     _centred(c, "FOUNDER", 51, GREY, 2.0)
     return _texture(c)
@@ -1373,22 +1373,22 @@ def _card(c: Canvas, ramp: int) -> BoolArray:
 
 
 def pass_front(colour: str, ramp: int) -> int:
-    """BOOMER on a white strip, a big photo (CAST["pass_<colour>"]), name
-    lines and a barcode beside it, the colour's name big on a dark band."""
+    """BOOMER on a white strip, a big photo (CAST["pass_<colour>"], 40
+    texels: two to each of its pixels), name lines and a barcode beside it,
+    the colour's name on a dark band at the foot."""
     c = Canvas()
     _card(c, ramp)
-    c.paint(c.rect(2, 4, 26, 38), GREY, 2.0)  # the clip slot
-    c.paint(c.rect(6, 14, 3, 61), CREAM, 15.0)
-    _centred(c, "BOOMER", 7, GREY, 2.0)
-    c.paint(c.rect(16, 47, 3, 34), GREY, 2.0)  # the photo's border
-    draw_portrait(c, 17, 4, 29, CAST[f"pass_{colour}"], (STEEL, 12.0))
-    for v0, u1 in ((18, 60), (23, 54), (28, 58)):  # name, department, number
-        c.paint(c.rect(v0, v0 + 2, 37, u1), CREAM, 15.0)
-    bars = c.rect(34, 45, 37, 60) & np.isin(c.u % 5, (0, 2, 3))
-    c.paint(c.rect(33, 46, 36, 61), CREAM, 15.0)
-    c.paint(bars, GREY, 1.0)  # a barcode
-    c.paint(c.rect(49, 62, 2, 62), ramp, 5.0)
-    _centred(c, colour.upper(), 51, CREAM, 15.0, scale=2)
+    c.paint(c.rect(1, 3, 26, 38), GREY, 2.0)  # the clip slot
+    c.paint(c.rect(4, 11, 3, 61), CREAM, 15.0)
+    _centred(c, "BOOMER", 5, GREY, 2.0)
+    c.paint(c.rect(13, 55, 2, 44), GREY, 2.0)  # the photo's border
+    draw_portrait(c, 14, 3, 40, CAST[f"pass_{colour}"], (STEEL, 12.0))
+    for v0 in (15, 20, 25):  # name, department, number
+        c.paint(c.rect(v0, v0 + 2, 47, 61), CREAM, 15.0)
+    c.paint(c.rect(30, 55, 47, 61), CREAM, 15.0)
+    c.paint(c.rect(31, 54, 48, 60) & np.isin(c.v % 5, (0, 2, 3)), GREY, 1.0)  # a barcode
+    c.paint(c.rect(56, 63, 2, 62), ramp, 4.0)
+    _centred(c, colour.upper(), 57, CREAM, 15.0)
     return _texture(c)
 
 
