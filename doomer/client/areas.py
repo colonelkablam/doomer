@@ -35,6 +35,7 @@ from doomer.client.palette import (
     GREY,
     OCHRE,
     PALETTE,
+    PINK,
     STEEL,
     WARM_GREY,
     WOOD,
@@ -343,6 +344,23 @@ class _Desk:
             self.tex,  # its folded top edge
         ).astype(np.uint8)
 
+    def writing(self, cv: float, cu: float, angle: float, pencil: bool) -> None:
+        """A pencil (yellow, a sharpened point, a pink eraser in its ferrule)
+        or a Bic-style biro (clear barrel, blue cap): one texel wide and
+        seven long, about twice life size so it reads as one."""
+        down, across = _frame(cv, cu, angle)
+        body = (np.abs(across) <= 0.55) & (np.abs(down) <= 3.5)
+        self.lay(body, OCHRE if pencil else GREY, 14.0 if pencil else 12.5)
+        tip = body & (down < -2.5)  # the writing end
+        far = body & (down > 2.5)  # eraser / cap
+        if pencil:
+            self.tex = np.where(tip, indices(WOOD, 9.0), self.tex).astype(np.uint8)
+            self.tex = np.where(tip & (down < -3.2), indices(GREY, 3.0), self.tex).astype(np.uint8)
+            self.tex = np.where(far, indices(PINK, 10.0), self.tex).astype(np.uint8)
+        else:
+            self.tex = np.where(tip, indices(GREY, 6.0), self.tex).astype(np.uint8)
+            self.tex = np.where(far, indices(BLUE, 8.0), self.tex).astype(np.uint8)
+
     def open_folder(self, cv: float, cu: float, angle: float) -> None:
         """A manila file opened flat: two panels either side of the crease,
         a typed sheet in the right-hand one."""
@@ -393,6 +411,11 @@ def desk_top(variant: int) -> U8Array:
         layout = _LAYOUTS[(variant + 2 * half) % len(_LAYOUTS)]  # halves differ
         cu, cv = (u0 + u1) / 2 + rng.uniform(-2, 2), (v0 + v1) / 2 + rng.uniform(-1.5, 1.5)
         layout(desk, cv, cu, rng)
+        # A pen or pencil or two, somewhere in the same free end.
+        for _ in range(rng.integers(1, 3)):
+            pv = rng.uniform(v0 + 4, v1 - 4)
+            pu = rng.uniform(u0 + 4, u1 - 4)
+            desk.writing(pv, pu, rng.uniform(0, math.pi), pencil=bool(rng.random() < 0.6))
     return desk.tex
 
 
