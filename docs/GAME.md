@@ -119,6 +119,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Desk pod (a row of back-to-back steel desk pairs, a seam where each pair meets and joins between pairs, a Mac over each sitter's knee space) | yes | [built] |
 | Cubicle screens on desk pods (fabric, aluminium cap, seated head height; a booth per sitter) | yes (from the side) | [built] |
 | Executive desk (kneehole desk: drawer pedestals, open in the middle) | yes | [built] |
+| The boss's desk (`executive_desk`, box model): absurdly big, two cells (~5.4 m) of mahogany: a thick top with a brass inlay strip and green leather tooled in gold, two carved raised-panel pedestals (drawers with brass pulls on the boss's side), a grand panelled front, a brass BOSS nameplate, and a high-backed buttoned oxblood leather chair behind | yes | [built] |
 | Reception counter (low block, wood, 1 m) | yes | [built] |
 | Beige PC terminal (stands on a desk pod or counter; rotating sprite, 16 views, faces its map angle) | no | [built] |
 | Apple Macintosh SE/30 with keyboard and mouse (on a desk; solid box model, faces its map angle) | no | [built] |
@@ -197,7 +198,7 @@ button glows once called), and inside the car a button panel by the door
 | 8 | Steel panels | Server room |
 | 9 | Mainframe cabinet (blinking lights) | Server room |
 | a (10) | Plain table: laminate slab on steel legs, open underneath (low block, height 2) | Spare: canteen, meeting rooms |
-| b (11) | Executive desk: kneehole between drawer pedestals at the front; solid wood modesty panel and sides (low block, height 2, uses [facing]) | Executive offices |
+| b (11) | Executive desk: kneehole between drawer pedestals at the front; solid wood modesty panel and sides (low block, height 2, uses [facing]) | Lesser executives (the boss has `executive_desk`) |
 | c (12) | 1980s steel desk: mahogany laminate top, grey steel frame and legs, one drawer pedestal at its left end; open underneath (low block, height 2, uses [facing]) | Single desks |
 | d (13) | Two steel desks back to back in one cell, sitters facing each other: both long sides show a desk front (pedestal on the right), both ends are half pedestal panel, half open (low block, height 2; [facing] sets the axis). Its top carries paperwork beside each sitter's Mac (textured, flat things only): manila files shaped like a desktop's folder icons, splayed about, stacked with sheets on, or open flat; loose A4 with lines of type; and, in one variant each, a pencil or a square pink sticky note. Four variants | Open-plan pods |
 | e (14) | Raised floor: plain sides with a nosing line every 1/8, blue carpet top (low block; walk up 1/8 steps) | Lobby gallery and its steps |

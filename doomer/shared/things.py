@@ -89,6 +89,22 @@ RECEPTION_DESK = register_thing_type(
     )
 )
 
+# The boss's desk: absurdly big (two cells long), a leather-topped slab on two
+# carved pedestals, a high-backed chair behind it (model -x: the boss sits
+# facing +x, towards visitors). Things on it rest on its top.
+EXECUTIVE_DESK = register_thing_type(
+    ThingType(
+        "executive_desk",
+        "The boss's desk: two cells of mahogany and leather, a throne behind it",
+        blocking=True,
+        radius=1.0,
+        footprints=(
+            Footprint((-0.46, 0.46), (-1.0, 1.0), 0.33),  # the top
+            Footprint((-1.0, -0.62), (-0.22, 0.22), 0.55),  # the chair
+        ),
+    )
+)
+
 # A fluorescent light panel set into its cell's ceiling (drawn as a panel,
 # not a sprite). `circuit=emergency`: stays lit when the power's off
 # (doomer/shared/switches.py); main-circuit panels go dark.

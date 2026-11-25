@@ -20,7 +20,7 @@ f.......1.jjj...jjj....4
 2l.l.l.l1..............4
 4k.k.k.k1..............4
 4kkkkkkk1..............4
-4...b...1111.1111111.111
+4.......1111.1111111.111
 4......................4
 4.......111.11.........4
 4.......1....1.66......4
@@ -38,7 +38,7 @@ f.......1.jjj...jjj....4
 000000000000000000000000
 000000000000000000000000
 000000000000000000000000
-000020000000000000000000
+000000000000000000000000
 000000000000000000000000
 000000000000000000000000
 000000000000000000000000
@@ -74,7 +74,7 @@ f.......1.jjj...jjj....4
 ........................
 ........................
 .nnnnnnn................
-....n...................
+........................
 ........................
 ........................
 ........................
@@ -117,7 +117,7 @@ door_hinged     11.5  12.5  90    lock=red
 # The plant room's main breaker, against its south wall: restores the power
 breaker         10.5  14.99 270
 pass_blue       4.37  4.4   0
-pass_red        4.2   10.3  0
+pass_red        3.3   12.0  0
 reception_desk  4.6   4.0   180
 # On the wall behind reception, above the glass doors (the wall's face is x = 8)
 welcome_sign    7.99  4.5   180
@@ -175,8 +175,10 @@ ficus           9.5   1.5   0
 ficus           22.5  9.5   0
 ficus           14.5  4.5   0
 dm_spawn        21.5  6.5   180
-# Boss office: executive desk
-mac             4.45   10.51  262.2
+# Boss office: the boss's absurd desk, mid-room, the boss's back to the
+# west windows; the Mac on it faces the boss
+executive_desk  3.0   12.5  0
+mac             2.85  12.95 176.5
 filing_cabinet  1.28  10.16 90
 filing_cabinet  1.62  10.16 90
 filing_cabinet  2.38  10.16 90

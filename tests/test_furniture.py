@@ -89,3 +89,33 @@ def test_walking_up_to_the_desk_you_stop_at_its_ledge() -> None:
         step(world, {1: PlayerInput(forward=1.0, angle=0.0)})
     # The ledge's front edge (the desk faces west): x = 4.5 - 0.31.
     assert p.x == pytest.approx(4.5 - 0.31 - world.config.movement.radius)
+
+
+def test_the_boss_desk_blocks_where_it_is_drawn() -> None:
+    from doomer.client.boxes import BOX_MODELS
+
+    footprints = THING_TYPES["executive_desk"].footprints
+    for box in BOX_MODELS["executive_desk"]:  # every box is inside some footprint
+        assert any(
+            f.x[0] - 1e-9 <= box.x[0]
+            and box.x[1] <= f.x[1] + 1e-9
+            and f.y[0] - 1e-9 <= box.y[0]
+            and box.y[1] <= f.y[1] + 1e-9
+            for f in footprints
+        ), box
+
+
+def test_the_red_pass_on_the_boss_desk_can_be_reached_from_the_front() -> None:
+    from doomer.shared.mapfile import load_map
+    from doomer.shared.player import PlayerInput
+    from doomer.shared.sim import step
+    from doomer.shared.world import new_world, spawn_player
+
+    world = new_world(load_map("maps/office.map"), "coop")
+    p = spawn_player(world, 1, "p")
+    p.x, p.y = 5.5, 12.0
+    red = next(k for k in world.pickups if k.type == "pass_red")
+    for _ in range(120):  # walk west, into the desk's front
+        step(world, {1: PlayerInput(forward=1.0, angle=math.pi)})
+    assert p.x == pytest.approx(3.0 + 0.46 + world.config.movement.radius)  # stopped at it
+    assert red.taken

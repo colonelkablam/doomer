@@ -1245,6 +1245,161 @@ def _welcome_sign() -> tuple[Box, ...]:
     return (backing, *letters)
 
 
+# --- The boss's desk ---------------------------------------------------------------
+# Absurd on purpose: two cells long (~5.4 m), a thick top overhanging two
+# carved pedestals, green leather inlaid in it, a brass nameplate, and a
+# high-backed oxblood leather chair. Model x points to the visitors' side;
+# the boss sits at -x. Box faces stretch their texture once over the face,
+# so each texture is drawn for its face's proportions. Collision and the
+# heights things rest at: EXECUTIVE_DESK in doomer/shared/things.py.
+
+_X_TOP = (0.29, 0.33)  # walls: the top slab (~0.8-0.9 m)
+_X_HALF_LEN, _X_HALF_DEPTH = 1.0, 0.46  # cells
+
+
+def _mahogany(c: Canvas, where: BoolArray, shade: float = 6.0, along_u: bool = True) -> None:
+    """Dark red-brown mahogany, its grain running along u (or v)."""
+    rng = np.random.default_rng(171)
+    run = c.v if along_u else c.u
+    grain = np.sin(run * 0.9 + noise(rng, 8) * 5) * 0.35
+    c.paint(where, BRICK, shade + grain)
+
+
+def exec_top() -> int:
+    """The top, from above: u along the desk's length (2 cells), v across it
+    (0.92): texels ~2:1. A mahogany border, a gold-tooled line, green leather."""
+    c = Canvas()
+    _mahogany(c, c.rect(0, 64, 0, 64), 6.5)
+    leather = c.rect(8, 56, 4, 60)
+    rng = np.random.default_rng(172)
+    c.paint(leather, GREEN, 4.0 + (noise(rng, 16) - 0.5) * 0.5)
+    tooling = leather & ~c.rect(10, 54, 5, 59)
+    c.paint(tooling, OCHRE, 11.0)
+    return _texture(c)
+
+
+def exec_edge() -> int:
+    """The top's thick edge: mahogany with a brass inlay strip."""
+    c = Canvas()
+    _mahogany(c, c.rect(0, 64, 0, 64), 7.0)
+    c.paint(c.rect(0, 8, 0, 64), BRICK, 8.5)  # catches the light
+    c.paint(c.rect(28, 36, 0, 64), OCHRE, 12.0)
+    c.paint(c.rect(56, 64, 0, 64), BRICK, 4.0)
+    return _texture(c)
+
+
+def _raised_panels(c: Canvas, columns: int, rows: int = 1, margin: int = 6) -> None:
+    """Raised-and-fielded panels in a mahogany frame: lit top and left
+    bevels, shadowed bottom and right."""
+    _mahogany(c, c.rect(0, 64, 0, 64), 6.0, along_u=False)
+    w, h = (64 - margin * (columns + 1)) // columns, (64 - margin * (rows + 1)) // rows
+    for i in range(columns):
+        for j in range(rows):
+            u0, v0 = margin + i * (w + margin), margin + j * (h + margin)
+            c.paint(c.rect(v0, v0 + h, u0, u0 + w), BRICK, 5.0)
+            c.paint(c.rect(v0 + 3, v0 + h - 3, u0 + 3, u0 + w - 3), BRICK, 7.0)  # the field
+            c.paint(c.rect(v0, v0 + 1, u0, u0 + w) | c.rect(v0, v0 + h, u0, u0 + 1), BRICK, 9.0)
+            c.paint(
+                c.rect(v0 + h - 1, v0 + h, u0, u0 + w) | c.rect(v0, v0 + h, u0 + w - 1, u0 + w),
+                BRICK,
+                3.0,
+            )
+
+
+def exec_front() -> int:
+    """The visitors' side, between the pedestals: two grand raised panels."""
+    c = Canvas()
+    _raised_panels(c, 2)
+    return _texture(c)
+
+
+def exec_pedestal_panel() -> int:
+    c = Canvas()
+    _raised_panels(c, 1)
+    return _texture(c)
+
+
+def exec_drawers() -> int:
+    """The boss's side of a pedestal: three drawers, brass pulls."""
+    c = Canvas()
+    _mahogany(c, c.rect(0, 64, 0, 64), 6.5, along_u=True)
+    for k in range(3):
+        v0 = 3 + k * 20
+        c.paint(c.rect(v0 + 18, v0 + 20, 0, 64), BRICK, 3.0)  # the gap under it
+        c.paint(c.rect(v0 + 7, v0 + 11, 24, 40), OCHRE, 12.0)  # the pull
+        c.paint(c.rect(v0 + 10, v0 + 11, 24, 40), OCHRE, 8.0)
+    return _texture(c)
+
+
+def exec_dark() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), BRICK, 2.5)
+    return _texture(c)
+
+
+def _brass_canvas() -> Canvas:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), OCHRE, 12.0)
+    return c
+
+
+def nameplate() -> int:
+    """Polished brass, BOSS engraved in black (a wedge on the desk's front edge)."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), OCHRE, 13.0)
+    c.paint(c.rect(0, 64, 0, 64) & ~c.rect(4, 60, 3, 61), OCHRE, 10.0)
+    for i, ch in enumerate("BOSS"):
+        for gy, row in enumerate(FONT_3X5[ch]):
+            for gx, bit in enumerate(row):
+                if bit == "#":
+                    u0, v0 = 9 + i * 12 + gx * 3, 14 + gy * 7
+                    c.paint(c.rect(v0, v0 + 7, u0, u0 + 3), GREY, 1.0)
+    return _texture(c)
+
+
+def leather(tufted: bool) -> int:
+    """Oxblood leather; buttoned (tufted) on the chair's back."""
+    rng = np.random.default_rng(173)
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), BRICK, 4.5 + (noise(rng, 16) - 0.5) * 0.5)
+    if tufted:
+        buttons = ((c.v + (c.u // 12 % 2) * 6) % 12 == 6) & (c.u % 12 == 6)
+        c.paint(buttons, BRICK, 2.0)
+        c.paint(c.rect(0, 4, 0, 64), BRICK, 6.0)  # its rolled top
+    return _texture(c)
+
+
+def _executive_desk() -> tuple[Box, ...]:
+    top, edge = exec_top(), exec_edge()
+    front, panel, drawers, dark = exec_front(), exec_pedestal_panel(), exec_drawers(), exec_dark()
+    plate = nameplate()
+    brass = _texture(_brass_canvas())
+    seat, back_rest = leather(False), leather(True)
+    steel = steel_edge()
+    lx, ly = _X_HALF_DEPTH, _X_HALF_LEN
+    boxes = [
+        Box((-lx, lx), (-ly, ly), _X_TOP, (edge, edge, edge, edge, top)),
+        # The front between the pedestals, set back under the overhang.
+        Box((0.30, 0.36), (-0.55, 0.55), (0.06, _X_TOP[0]), (front, dark, dark, dark, dark)),
+        # The nameplate, on the front edge, facing visitors.
+        Box((0.36, 0.42), (-0.16, 0.16), (_X_TOP[1], _X_TOP[1] + 0.035), (plate, *(brass,) * 4)),
+        # The chair: a star base, a column, the seat, a high buttoned back.
+        Box((-0.93, -0.65), (-0.16, 0.16), (0.0, 0.02), (steel,) * 5),
+        Box((-0.83, -0.75), (-0.04, 0.04), (0.02, 0.14), (steel,) * 5),
+        Box((-0.96, -0.62), (-0.21, 0.21), (0.14, 0.2), (seat,) * 5),
+        Box((-1.0, -0.93), (-0.22, 0.22), (0.2, 0.55), (back_rest, seat, seat, seat, seat)),
+    ]
+    for side in (-1, 1):
+        lo, hi = sorted((side * 0.55, side * 0.95))
+        # A pedestal: carved panels outside, drawers on the boss's side; a
+        # dark plinth under it.
+        boxes.append(
+            Box((-0.40, 0.38), (lo, hi), (0.025, _X_TOP[0]), (panel, panel, drawers, panel, dark))
+        )
+        boxes.append(Box((-0.38, 0.36), (lo + 0.02, hi - 0.02), (0.0, 0.025), (dark,) * 5))
+    return tuple(boxes)
+
+
 # --- Exit signs: the emergency lights ---------------------------------------------
 # A green box over a main door, "EXIT" in white, lit from inside: on its own
 # battery, so lit with or without power. It's also what lights the floor in
@@ -1378,6 +1533,7 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "reception_desk": _reception_desk(),
     "welcome_sign": _welcome_sign(),
     "exit_sign": _exit_sign(),
+    "executive_desk": _executive_desk(),
 }
 BOX_TEXTURES: U8Array = np.stack(_TEXTURES)  # [texture][u][v]
 BOX_OPAQUE: BoolArray = np.stack(_OPAQUE)  # [texture][u][v]: False = see-through
