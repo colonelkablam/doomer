@@ -196,7 +196,7 @@ button glows once called), and inside the car a button panel by the door
 | a (10) | Plain table: laminate slab on steel legs, open underneath (low block, height 2) | Spare: canteen, meeting rooms |
 | b (11) | Executive desk: kneehole between drawer pedestals at the front; solid wood modesty panel and sides (low block, height 2, uses [facing]) | Executive offices |
 | c (12) | 1980s steel desk: mahogany laminate top, grey steel frame and legs, one drawer pedestal at its left end; open underneath (low block, height 2, uses [facing]) | Single desks |
-| d (13) | Two steel desks back to back in one cell, sitters facing each other: both long sides show a desk front (pedestal on the right), both ends are half pedestal panel, half open (low block, height 2; [facing] sets the axis). Its top carries paperwork beside each sitter's Mac (textured, flat things only): manila files shaped like a desktop's folder icons, splayed about, stacked with sheets on, or open flat; loose A4 with lines of type; on the bare desk beside them, pink "While You Were Out" message slips, a yellow Post-it, and a pencil or biro (blue or red) or two. Four variants | Open-plan pods |
+| d (13) | Two steel desks back to back in one cell, sitters facing each other: both long sides show a desk front (pedestal on the right), both ends are half pedestal panel, half open (low block, height 2; [facing] sets the axis). Its top carries paperwork beside each sitter's Mac (textured, flat things only): manila files shaped like a desktop's folder icons, splayed about, stacked with sheets on, or open flat; loose A4 with lines of type; on the bare desk beside them, pink "While You Were Out" message slips and a yellow Post-it (and on two desks a pencil). Four variants | Open-plan pods |
 | e (14) | Raised floor: plain sides with a nosing line every 1/8, blue carpet top (low block; walk up 1/8 steps) | Lobby gallery and its steps |
 | f (15) | Glazed curtain wall: aluminium mullions and glass, two storeys meeting at a transom | Lobby outer walls |
 | g (16) | Main entrance: closed glass double doors, curtain wall above | Lobby entrance |
@@ -204,7 +204,7 @@ button glows once called), and inside the car a button panel by the door
 | i (18) | Balcony floor: raised floor with a railing along edges that drop away; front and floor dressed by its area | Lobby balcony |
 | k (20) | Lift car walls: brushed stainless panels and a handrail inside the car, a tinted mirror on the back wall (its front: [facing] points into the car); outside, a plain wall dressed by its area | Lift cars |
 | l (21) | Pale polished stone slabs (the lobby look, wherever it's placed) | Round lift doors |
-| j (19) | Desk pair with cubicle screens: as `d`, plus fabric screens to seated head height (~1.25 m) down the middle and across each cell edge (box models; they block you on the desk tops) | Open-plan cubicles |
+| j (19) | Desk pair with cubicle screens: as `d`, plus fabric screens to seated head height (~1.25 m) down the middle and across each cell edge (box models; they block you on the desk tops). Each side of a screen is bare or has things pinned to it: a couple of Post-its, a cluster of them, or a wall calendar | Open-plan cubicles |
 
 ## Pickups
 

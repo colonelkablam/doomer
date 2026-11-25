@@ -36,6 +36,7 @@ from doomer.client.palette import (
     MOSS,
     OCHRE,
     ORANGE,
+    PINK,
     PURPLE,
     SAND,
     STEEL,
@@ -351,9 +352,14 @@ def stair_boxes(game_map: GameMap) -> list[PlacedBox]:
 # booth. Where they are, their size and their collision: doomer/shared/screens.py.
 
 
-def screen_fabric() -> int:
+def screen_fabric(look: int = 0) -> int:
     """Grey-blue woven fabric with an aluminium cap; stretched over a whole
-    cell's length and the screen's height, so texels are ~4 x 1 cm."""
+    cell's length and the screen's height, so a texel is ~4.2 cm across by
+    ~0.9 cm high: anything pinned on is drawn ~4.7 times taller than wide.
+
+    `look` (SCREEN_LOOKS): 0 bare; 1 two Post-its; 2 a cluster of four (one
+    pink); 3 a wall calendar and a Post-it. Things pinned on are flat, so a
+    texture suits them (as the desks' paperwork)."""
     rng = np.random.default_rng(41)
     c = Canvas()
     weave = ((c.v // 2) % 2) * 0.4
@@ -361,6 +367,39 @@ def screen_fabric() -> int:
     c.paint(c.rect(0, 7, 0, 64), GREY, 11.0)  # cap
     c.paint(c.rect(0, 2, 0, 64), GREY, 13.0)
     c.paint(c.rect(60, 64, 0, 64), GREY, 6.0)  # foot, in shadow
+    pin = np.random.default_rng(140 + look)
+
+    def post_it(v0: int, u0: int, ramp: int = OCHRE) -> None:
+        """~10 cm square: 3 texels across, 12 down; shadow below and right."""
+        c.paint(c.rect(v0 + 1, v0 + 13, u0 + 1, u0 + 4), STEEL, 4.0)
+        c.paint(c.rect(v0, v0 + 12, u0, u0 + 3), ramp, 15.0 if ramp == OCHRE else 13.0)
+        c.paint(c.rect(v0, v0 + 3, u0, u0 + 3), ramp, 13.0 if ramp == OCHRE else 11.0)
+
+    def spot(width: int) -> tuple[int, int]:
+        return int(pin.integers(12, 44)), int(pin.integers(4, 60 - width))
+
+    if look == 1:
+        for _ in range(2):
+            post_it(*spot(3))
+    elif look == 2:
+        v0, u0 = spot(10)
+        for k, (dv, du) in enumerate(((0, 0), (2, 4), (15, 1), (13, 6))):
+            post_it(min(v0 + dv, 46), u0 + du, PINK if k == 2 else OCHRE)
+    elif look == 3:
+        # A wall calendar, ~34 x 42 cm: 8 texels across, 47 down. Its month
+        # in red, a landscape (sky, hills), then the grid of days.
+        u0 = int(pin.integers(2, 7))  # near an end: Macs stand against screens at 14-27, 37-50
+        c.paint(c.rect(10, 58, u0 + 1, u0 + 9), STEEL, 4.0)  # shadow
+        c.paint(c.rect(9, 57, u0, u0 + 8), CREAM, 14.0)
+        c.paint(c.rect(9, 13, u0, u0 + 8), BRICK, 10.0)  # the month
+        c.paint(c.rect(13, 22, u0, u0 + 8), BLUE, 11.0)  # sky
+        c.paint(c.rect(22, 30, u0, u0 + 8), GREEN, 8.0)  # hills
+        c.paint(c.rect(19, 23, u0 + 2, u0 + 6) & (c.v + c.u * 2 > 41 + u0 * 2), GREEN, 9.5)
+        days = c.rect(32, 56, u0 + 1, u0 + 7) & ((c.v - 32) % 5 == 0)
+        c.paint(days, GREY, 9.0)  # the rows of weeks
+        c.paint(c.rect(32, 56, u0, u0 + 8) & (c.u % 2 == 0) & ((c.v - 34) % 5 == 0), GREY, 7.0)
+        c.paint(c.rect(9, 10, u0 + 3, u0 + 5), GREY, 4.0)  # the pin
+        post_it(int(pin.integers(14, 40)), u0 + 14 + int(pin.integers(0, 12)))
     return _texture(c)
 
 
@@ -371,11 +410,17 @@ def screen_trim() -> int:
     return _texture(c)
 
 
-_FABRIC, _TRIM = screen_fabric(), screen_trim()
-# Screens are world-aligned (angle 0): thin across x (big faces east/west) or
-# thin across y (big faces north/south).
-_THIN_X = (_FABRIC, _TRIM, _FABRIC, _TRIM, _TRIM)
-_THIN_Y = (_TRIM, _FABRIC, _TRIM, _FABRIC, _TRIM)
+SCREEN_LOOKS = 4
+# How often each look appears: mostly bare, the calendar rarest.
+_LOOK_WEIGHTS = (0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3)
+_FABRICS, _TRIM = [screen_fabric(k) for k in range(SCREEN_LOOKS)], screen_trim()
+
+
+def _look(x: float, y: float, side: int) -> int:
+    """A screen face's look, scrambled from its position, so it's the same
+    every time and neighbours differ."""
+    n = int(round(x * 16)) * 7919 + int(round(y * 16)) * 104729 + side * 15485863
+    return _LOOK_WEIGHTS[n % 1009 % len(_LOOK_WEIGHTS)]
 
 
 def desk_screens(game_map: GameMap) -> list[PlacedBox]:
@@ -384,12 +429,16 @@ def desk_screens(game_map: GameMap) -> list[PlacedBox]:
     for sc in shared_desk_screens(game_map):
         middle, length = (sc.lo + sc.hi) / 2, (sc.hi - sc.lo) / 2
         thin, long = (-SCREEN_HALF, SCREEN_HALF), (-length, length)
+        # Screens are world-aligned (angle 0): thin across x (big faces east
+        # and west) or thin across y (big faces north and south). Each big
+        # face gets its own look.
+        x, y = (sc.at, middle) if sc.axis == 0 else (middle, sc.at)
+        a, b = _FABRICS[_look(x, y, 0)], _FABRICS[_look(x, y, 1)]
         if sc.axis == 0:  # the plane x = at: thin across x
-            box = Box(thin, long, (0.0, SCREEN_HEIGHT), _THIN_X)
-            out.append(PlacedBox(sc.at, middle, sc.base, 0.0, box))
+            box = Box(thin, long, (0.0, SCREEN_HEIGHT), (a, _TRIM, b, _TRIM, _TRIM))
         else:
-            box = Box(long, thin, (0.0, SCREEN_HEIGHT), _THIN_Y)
-            out.append(PlacedBox(middle, sc.at, sc.base, 0.0, box))
+            box = Box(long, thin, (0.0, SCREEN_HEIGHT), (_TRIM, a, _TRIM, b, _TRIM))
+        out.append(PlacedBox(x, y, sc.base, 0.0, box))
     return out
 
 
