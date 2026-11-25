@@ -121,17 +121,19 @@ def test_the_red_pass_on_the_boss_desk_can_be_reached_from_the_front() -> None:
     assert red.taken
 
 
-def test_phones_sit_on_the_desks_and_face_their_user() -> None:
+def test_the_phone_sits_on_the_boss_desk_its_handset_front_to_back() -> None:
     from doomer.client.boxes import BOX_MODELS
     from doomer.shared.mapfile import load_map
 
     office = load_map("maps/office.map")
-    phones = office.things_of_type("phone")
-    assert len(phones) >= 5
-    for t in phones:
-        assert resting_height(office, t) > 0.2  # on a desk, not the floor
-    boxes = BOX_MODELS["phone"]
-    assert len(boxes) <= 3  # cheap: there are several in view at once
-    keypad, cradle, _ = boxes
-    assert keypad.x[1] > cradle.x[1]  # the keypad at the front (+x, the user's side)
-    assert cradle.z[1] > keypad.z[1]  # the cradle raised behind it
+    (phone,) = office.things_of_type("phone")
+    assert resting_height(office, phone) > 0.3  # on the boss's desk top
+    keypad, cradle, ear, grip, mouth = BOX_MODELS["phone"]
+    assert cradle.z[1] > keypad.z[1]  # the cradle raised beside the keypad
+    assert cradle.y[0] >= keypad.y[1] - 1e-9  # on the user's left (+y), the keypad right
+    # The handset runs front to back (along x), its ends standing proud of
+    # the narrower grip between them.
+    for part in (ear, grip, mouth):
+        assert part.z[0] >= cradle.z[1] - 1e-9
+    assert ear.x[1] <= grip.x[0] + 1e-9 and grip.x[1] <= mouth.x[0] + 1e-9
+    assert (grip.y[1] - grip.y[0]) < (ear.y[1] - ear.y[0]) and grip.z[1] < ear.z[1]

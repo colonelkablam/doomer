@@ -265,30 +265,34 @@ def _mac_se30() -> tuple[Box, ...]:
 
 
 # --- 1980s desk phone ----------------------------------------------------------------
-# Brown plastic, a low wedge: the front half with the keypad and a column of
-# amber line buttons, a raised cradle at the back with the handset lying
-# across it. Three boxes. Real size ~22 x 20 cm; built ~1.6x, as the Mac is,
-# so it reads. Model +x faces whoever uses it (as the Mac's screen).
+# Brown plastic, low: on the user's left a raised cradle with the handset
+# lying on it front to back (an earpiece and a mouthpiece, wider and deeper,
+# joined by a narrower grip); on the right the keypad and a column of amber
+# line buttons. Five boxes, so only a few in a map (the boss's desk). Real
+# size ~22 x 20 cm; built ~1.6x, as the Mac is, so it reads. Model +x faces
+# whoever uses it (as the Mac's screen); +y is the phone's right, the user's
+# left (they face it, looking along -x).
 
 _PHONE_W, _PHONE_D = 0.065, 0.06  # half-width (y), half-depth (x), cells
 _PHONE_LOW, _PHONE_HIGH = 0.028, 0.042  # walls: the keypad's top, the cradle's
+_CRADLE_Y = 0.015  # the cradle runs from here to the phone's +y edge
 
 
 def phone_keys() -> int:
-    """The phone's front half from above: v runs back to front (+x), u from
-    its left to its right (-y), as the user sees it. A 3 x 4 keypad, and the
-    line buttons in a column on the right, amber."""
+    """The keypad side from above: v runs back to front (+x), u along it to
+    the user's right (-y). A 3 x 4 keypad, the line buttons in a column on
+    the right, amber."""
     c = Canvas()
     c.paint(c.rect(0, 64, 0, 64), WOOD, 4.0)
-    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64) | c.rect(60, 64, 0, 64), WOOD, 3.0)
+    c.paint(c.rect(0, 64, 62, 64) | c.rect(60, 64, 0, 64), WOOD, 3.0)
     for row in range(4):
         for col in range(3):
-            v0, u0 = 8 + row * 13, 10 + col * 12
-            c.paint(c.rect(v0, v0 + 9, u0, u0 + 8), WOOD, 2.0)  # a key
-            c.paint(c.rect(v0, v0 + 2, u0, u0 + 8), GREY, 9.0)  # its pale top edge
+            v0, u0 = 8 + row * 13, 6 + col * 13
+            c.paint(c.rect(v0, v0 + 9, u0, u0 + 9), WOOD, 2.0)  # a key
+            c.paint(c.rect(v0, v0 + 2, u0, u0 + 9), GREY, 9.0)  # its pale top edge
     for k in range(5):
         v0 = 6 + k * 11
-        c.paint(c.rect(v0, v0 + 7, 50, 58), ORANGE, 13.0)  # the line buttons
+        c.paint(c.rect(v0, v0 + 7, 48, 58), ORANGE, 13.0)  # the line buttons
     return _texture(c)
 
 
@@ -299,14 +303,11 @@ def phone_body() -> int:
     return _texture(c)
 
 
-def handset_top() -> int:
-    """The handset from above: a lighter brown than the body, its ear and
-    mouth pieces lighter still, the light along its curve."""
+def handset_plastic() -> int:
+    """The handset: a lighter brown than the body, the light along its back."""
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), WOOD, 6.0)
-    c.paint(c.rect(0, 64, 0, 14) | c.rect(0, 64, 50, 64), WOOD, 7.0)  # ear and mouth pieces
-    c.paint(c.rect(24, 32, 0, 64), WOOD, 8.0)
-    c.paint(c.rect(56, 64, 0, 64), WOOD, 3.0)
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 6.5)
+    c.paint(c.rect(0, 64, 24, 40), WOOD, 8.0)
     return _texture(c)
 
 
@@ -318,14 +319,16 @@ def cradle_top() -> int:
 
 
 def _phone() -> tuple[Box, ...]:
-    keys, body, handset, cradle = phone_keys(), phone_body(), handset_top(), cradle_top()
-    w, d = _PHONE_W, _PHONE_D
-    top = _PHONE_HIGH + 0.022
+    keys, body, plastic, cradle = phone_keys(), phone_body(), handset_plastic(), cradle_top()
+    w, d, h = _PHONE_W, _PHONE_D, _PHONE_HIGH
+    ear = (h, h + 0.024)  # the ear and mouth pieces stand proud of the grip
     return (
-        Box((-0.02, d), (-w, w), (0.0, _PHONE_LOW), (body, body, body, body, keys)),
-        Box((-d, -0.02), (-w, w), (0.0, _PHONE_HIGH), (body, body, body, body, cradle)),
-        # The handset, lying across the cradle and a little beyond its ends.
-        Box((-d - 0.004, -0.016), (-w - 0.01, w + 0.01), (_PHONE_HIGH, top), (handset,) * 5),
+        Box((-d, d), (-w, _CRADLE_Y), (0.0, _PHONE_LOW), (body, body, body, body, keys)),
+        Box((-d, d), (_CRADLE_Y, w), (0.0, h), (body, body, body, body, cradle)),
+        # The handset, front to back along the cradle, a little beyond it.
+        Box((-d - 0.008, -0.03), (_CRADLE_Y + 0.002, w + 0.004), ear, (plastic,) * 5),  # ear
+        Box((-0.03, 0.03), (_CRADLE_Y + 0.012, w - 0.008), (h, h + 0.016), (plastic,) * 5),
+        Box((0.03, d + 0.008), (_CRADLE_Y + 0.002, w + 0.004), ear, (plastic,) * 5),  # mouth
     )
 
 

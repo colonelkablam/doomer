@@ -166,12 +166,6 @@ mac             17.64 6.26  273.1
 mac             17.29 6.76  85.6
 mac             18.65 6.26  261.6
 mac             18.37 6.74  84.4
-# Desk phones on a few desks (one per few, as in a real office), each at the
-# free end of its sitter's half, facing them, a little askew
-phone           10.24 2.2   273
-phone           17.76 2.8   94
-phone           12.22 6.2   268
-phone           16.74 6.8   86
 filing_cabinet  22.84 1.23  180
 filing_cabinet  22.84 1.57  180
 filing_cabinet  22.84 2.33  180
