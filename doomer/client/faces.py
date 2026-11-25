@@ -102,7 +102,7 @@ FEATURES = _below(
 MOUTHS = {  # small and in the middle: never across the face
     "grin": _below(10, "........M..M........", ".........MM........."),
     "flat": _below(11, "........MMMM........"),
-    "stern": _below(10, ".........MM.........", "........M..M........"),
+    "stern": _below(10, ".........MM........."),  # short and straight
 }
 # Shoulders: a jacket (L B S, lapels D) over a white shirt (W); a tie
 # (T, knot K) always comes with a collar (C); without one, an open neck (n).
@@ -147,9 +147,11 @@ def _with(rows: tuple[str, ...], letter: str, cells: list[tuple[int, int]]) -> t
     return tuple("".join(r) for r in out)
 
 
+PARTING_GAP = (3, 7)  # the side parting's one break in symmetry: skin below the line
 _BEHIND = _below(1, *(("....LBBBBBBBBBBS....",) * 5))  # beside the crown, behind the head
 HAIR_TOPS = {
-    "side_part": _t(*_with(_SHORT, "D", [(0, 7), (1, 7), (2, 7)])),  # a parting
+    # A parting: a dark line, then skin showing where the hair divides.
+    "side_part": _t(*_with(_with(_SHORT, "D", [(0, 7), (1, 7), (2, 7)]), ".", [PARTING_GAP])),
     "mullet": _t(*_SHORT),
     "slicked": _below(
         1,

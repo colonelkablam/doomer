@@ -113,13 +113,15 @@ def test_the_body_is_square_on() -> None:
 
 
 def test_hair_is_symmetrical_without_gaps() -> None:
-    from doomer.client.faces import HAIR_BACKS, HAIR_TOPS
+    from doomer.client.faces import HAIR_BACKS, HAIR_TOPS, PARTING_GAP
 
     for name, template in [*HAIR_TOPS.items(), *HAIR_BACKS.items()]:
-        for row in template:
+        for r, row in enumerate(template):
             shape = "".join("." if ch == "." else "x" for ch in row)
+            if name == "side_part" and r == PARTING_GAP[0]:  # the parting's one break
+                shape = shape[: PARTING_GAP[1]] + "x" + shape[PARTING_GAP[1] + 1 :]
             assert shape == shape[::-1], (name, row)  # the same both sides
-    for row in HAIR_TOPS["side_part"][:4]:  # the crown: solid, no holes
+    for row in HAIR_TOPS["mullet"][:4]:  # the crown: solid, no holes
         hair = row.strip(".")
         assert "." not in hair, row
 
@@ -129,4 +131,5 @@ def test_a_side_parting_has_a_dark_parting_left_of_centre() -> None:
 
     parting = [col for row in HAIR_TOPS["side_part"][:3] for col, ch in enumerate(row) if ch == "D"]
     assert parting == [7, 7, 7]  # a line down the crown, left of the middle (9.5)
+    assert HAIR_TOPS["side_part"][3][7] == "."  # skin shows just below it
     assert "D" not in "".join(HAIR_TOPS["mullet"])  # the mullet's crown is plain
