@@ -93,6 +93,24 @@ On the bench, if a fourth slot is ever wanted: **The Temp** (rogue): fast and
 sneaky, staple gun and letter opener (double damage from behind), and
 "Nobody Notices the Temp" (enemies take longer to spot you).
 
+## People
+
+How people look, everywhere a face shows (ID passes, the Employee of the
+Month, the founder's portrait; later the NPCs): early-90s VGA adventure-game
+portraits. Big heads, long faces, strong chins; a dark outline round the
+head; skin in three tones lit from the upper left, plus a highlight; eyes
+with whites, dark pupils and a lid line under heavy brows; a big shaded
+nose; hair one solid shape with a lighter streak and a dark edge. Flat
+colours, no noise. A face is built from stock parts that swap
+(`client/faces.py`, `Face`): skin (fair, tan, dark), hair (side parting,
+slicked back, perm, mullet, bob, bald) and its colour (brown, black, blond,
+ginger, white), glasses (none, big glasses, aviators), facial hair (none,
+moustache, beard), mouth (grin, flat, stern), jacket and tie. The cast so
+far (`CAST`): Gary, Employee of the Month every month (side parting, big
+glasses, moustache, brown suit); the founder (white hair round a bald
+crown, stern); a face per ID pass. New people: a new combination; new
+looks: a new entry in a part's table.
+
 ## Enemies [planned]
 
 Each maps to a classic shooter role, so the AI needs only a handful of
@@ -232,7 +250,8 @@ buttons by the door (G lit).
 
 - **ID passes** [built]: Boomer Industries ID cards in three colours, staff
   (blue), facilities (red), executive (gold), for locked doors. Mostly the
-  pass's colour, BOOMER on a white strip, a photo, the colour's name; a
+  pass's colour, BOOMER on a white strip, a big photo (see People), name
+  lines and a barcode, the colour's name on a dark band; a
   magnetic stripe on the back. Oversized (~4.5x) and full-bright, hovering
   over the desk and slowly turning, so they read as pickups across a dark
   room; the HUD shows the ones held as the same cards. Shared by the team:

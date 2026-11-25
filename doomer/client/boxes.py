@@ -27,6 +27,7 @@ import numpy as np
 import numpy.typing as npt
 
 from doomer.client.areas import AREA_LOOKS
+from doomer.client.faces import CAST, draw_portrait
 from doomer.client.palette import (
     BLUE,
     BRICK,
@@ -344,24 +345,13 @@ def _mountain(c: Canvas) -> None:
 
 
 def employee_of_the_month(month: str) -> int:
-    """A framed photo (the same chap every month: big glasses, moustache,
-    brown suit) over a brass plate with the month on it."""
+    """A framed photo (the same chap every month: CAST["gary"]) over a brass
+    plate with the month on it."""
     c = Canvas()
     c.paint(c.rect(0, 64, 0, 64), WOOD, 5.0)  # the frame
     c.paint(c.rect(3, 61, 3, 61), CREAM, 13.0)  # the mount
-    photo = c.rect(7, 45, 9, 55)
-    c.paint(photo, BLUE, 8.0)  # studio backdrop
-    c.paint(photo & c.ellipse(50, 32, 14, 22), WOOD, 4.0)  # his suit
-    c.paint(photo & c.ellipse(50, 32, 14, 6), CREAM, 14.0)  # shirt
-    c.paint(photo & c.rect(38, 45, 31, 33), BRICK, 9.0)  # tie
-    c.paint(c.ellipse(24, 32, 11, 9), SAND, 12.0)  # face
-    c.paint(c.ellipse(19, 32, 7, 10) & (c.v < 18), WOOD, 3.0)  # hair
-    for u0 in (24, 33):  # big glasses
-        ring = c.rect(21, 27, u0, u0 + 7) & ~c.rect(22, 26, u0 + 1, u0 + 6)
-        c.paint(ring, GREY, 1.0)
-    c.paint(c.rect(22, 23, 31, 33), GREY, 1.0)
-    c.paint(c.rect(29, 31, 27, 37), WOOD, 3.0)  # moustache
-    c.paint(c.rect(32, 33, 29, 35), BRICK, 7.0)  # a grin
+    c.paint(c.rect(6, 46, 8, 56), BLUE, 8.0)  # studio backdrop
+    draw_portrait(c, 6, 12, 40, CAST["gary"], None)
     c.paint(c.rect(47, 60, 7, 57), OCHRE, 11.0)  # the brass plate
     _centred(c, "EMPLOYEE", 48, WOOD, 2.0)
     _centred(c, month, 54, WOOD, 2.0)
@@ -369,22 +359,15 @@ def employee_of_the_month(month: str) -> int:
 
 
 def founder_portrait() -> int:
-    """Oils in a gilt frame: the founder, white-haired, in a dark suit."""
+    """Oils in a gilt frame: the founder (CAST["founder"]), on a dark,
+    varnished background, a brass plaque on the frame."""
     c = Canvas()
     c.paint(c.rect(0, 64, 0, 64), OCHRE, 10.0)  # gilt
     c.paint(c.rect(0, 1, 0, 64) | c.rect(0, 64, 0, 1), OCHRE, 13.0)
     c.paint(c.rect(4, 60, 4, 60), OCHRE, 7.0)
-    canvas = c.rect(6, 58, 6, 58)
-    c.paint(canvas, WOOD, 2.0)  # a dark, varnished background
-    c.paint(canvas & c.ellipse(60, 32, 20, 26), GREY, 2.0)  # suit
-    c.paint(canvas & c.ellipse(60, 32, 20, 7), CREAM, 13.0)  # shirt
-    c.paint(canvas & c.rect(42, 58, 31, 34), BRICK, 8.0)  # tie
-    c.paint(c.ellipse(26, 32, 12, 9), SAND, 11.0)  # face
-    c.paint(c.ellipse(24, 32, 13, 11) & ~c.ellipse(27, 32, 12, 8) & (c.v < 30), CREAM, 14.0)  # hair
-    for u0 in (27, 35):
-        c.paint(c.rect(25, 27, u0, u0 + 3), GREY, 2.0)  # eyes, stern
-    c.paint(c.rect(33, 34, 29, 36), WOOD, 4.0)  # mouth, unsmiling
-    c.paint(c.rect(49, 57, 8, 56), OCHRE, 13.0)  # the plaque
+    c.paint(c.rect(6, 58, 6, 58), WOOD, 2.0)
+    draw_portrait(c, 7, 8, 48, CAST["founder"], None)
+    c.paint(c.rect(50, 57, 14, 50), OCHRE, 13.0)  # the plaque
     _centred(c, "FOUNDER", 51, GREY, 2.0)
     return _texture(c)
 
@@ -1390,19 +1373,22 @@ def _card(c: Canvas, ramp: int) -> BoolArray:
 
 
 def pass_front(colour: str, ramp: int) -> int:
-    """BOOMER on a white strip, a photo, name lines, the colour's name big."""
+    """BOOMER on a white strip, a big photo (CAST["pass_<colour>"]), name
+    lines and a barcode beside it, the colour's name big on a dark band."""
     c = Canvas()
     _card(c, ramp)
-    c.paint(c.rect(4, 7, 24, 40), GREY, 2.0)  # the clip slot
-    c.paint(c.rect(10, 18, 4, 60), CREAM, 15.0)
-    _centred(c, "BOOMER", 12, GREY, 2.0)
-    c.paint(c.rect(21, 41, 6, 28), CREAM, 13.0)  # the photo
-    c.paint(c.ellipse(30, 17, 6, 6), SAND, 12.0)
-    c.paint(c.ellipse(26, 17, 4, 7) & (c.v < 27), WOOD, 3.0)
-    c.paint(c.rect(37, 41, 9, 25), GREY, 3.0)  # shoulders
-    for v0, u1 in ((23, 58), (28, 52), (33, 56)):  # name, department, number
-        c.paint(c.rect(v0, v0 + 2, 32, u1), CREAM, 14.0)
-    _centred(c, colour.upper(), 47, CREAM, 15.0, scale=2)
+    c.paint(c.rect(2, 4, 26, 38), GREY, 2.0)  # the clip slot
+    c.paint(c.rect(6, 14, 3, 61), CREAM, 15.0)
+    _centred(c, "BOOMER", 7, GREY, 2.0)
+    c.paint(c.rect(16, 47, 3, 34), GREY, 2.0)  # the photo's border
+    draw_portrait(c, 17, 4, 29, CAST[f"pass_{colour}"], (STEEL, 12.0))
+    for v0, u1 in ((18, 60), (23, 54), (28, 58)):  # name, department, number
+        c.paint(c.rect(v0, v0 + 2, 37, u1), CREAM, 15.0)
+    bars = c.rect(34, 45, 37, 60) & np.isin(c.u % 5, (0, 2, 3))
+    c.paint(c.rect(33, 46, 36, 61), CREAM, 15.0)
+    c.paint(bars, GREY, 1.0)  # a barcode
+    c.paint(c.rect(49, 62, 2, 62), ramp, 5.0)
+    _centred(c, colour.upper(), 51, CREAM, 15.0, scale=2)
     return _texture(c)
 
 
