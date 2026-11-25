@@ -132,7 +132,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Main breaker: steel switchgear cabinet with louvres, a hazard band, a red-handled lever and a status lamp (red, then green) | yes | [built] |
 | Emergency lighting: until the breaker is thrown, the ceiling panels are dead and the lobby sign is dark; only the exit signs light the way | no | [built] |
 | Exit sign: a green box over a main door, EXIT in bold white, lit from inside on its own battery; the emergency light in a power cut | no | [built] |
-| Lifts: brushed steel doors, a call button (lit amber when called) and a floor indicator (lit with power); a steel car with a handrail behind | no | [built] |
+| Lifts: brushed steel doors, a call button (lit amber when called) and a floor indicator (lit with power); a steel car with a handrail behind, its front framing the doors in steel returns and a transom | no | [built] |
 | Card readers by locked doors: stripe in the pass colour, red/green lamp | no | [built] |
 | Desk phone (box model, `phone`): brown 1980s plastic: on the left a raised cradle with the handset lying front to back (one solid box, its cups and narrower grip painted on: shaded beside the grip from above, a dark shadow under it from the side), on a low cradle, on the right a keypad and a column of amber line buttons; three boxes; on the boss's desk (one more desk later) | no | [built] |
 | Water cooler (box model: cream cabinet, hot and cold taps, an upturned 19-litre bottle nearly as wide as the cabinet, ~1.45 m to its top; faces its map angle) | yes | [built] |
@@ -185,8 +185,10 @@ carpet runner on the treads, each with a metal nosing. Plain raised floors
 Lifts [built]: one cell off the lobby, the brushed stainless doors the
 car's outer wall, in a steel architrave with a sill; a black indicator strip
 above (an amber G, dark without power), a plain call plate beside with one
-round button (glows once called), and inside the car a panel of round
-buttons by the door (G lit).
+round button (glows once called). Inside, the car's front frames the
+doors, set in behind it: a steel return either side (hiding the parked
+leaves) and a steel transom over them, a panel of round buttons on one
+return (G lit).
 
 ## Walls [built]
 

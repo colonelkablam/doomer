@@ -117,3 +117,22 @@ def test_a_lift_has_its_fittings_round_it() -> None:
     # button, and the car's panel: more than the leaves alone.
     assert len(dark) == len(lit) > 8
     assert sum(p.box.glow for p in lit) > sum(p.box.glow for p in dark)  # lit with power
+
+
+def test_inside_the_car_steel_returns_and_a_transom_frame_the_doors() -> None:
+    from doomer.client.boxes import door_boxes
+    from doomer.shared.doors import DOOR_HEIGHT, LIFT, SLIDE, Door
+
+    lift = Door(0, LIFT, 2.5, 2.5, -math.pi / 2, open=1.0)
+    boxes = door_boxes([lift])
+    leaf = SLIDE[LIFT]  # where each parked leaf starts: its strip runs on to the wall
+    # Model x runs out of the car: the front sits just inside the leaves.
+    front = [
+        p.box
+        for p in boxes
+        if p.box.x[1] <= lift.set_back - 0.01 + 1e-9 and p.box.x[0] > 0.3 and p.box.z[0] < 0.3
+    ]
+    returns = sorted(b.y for b in front if b.z == (0.0, DOOR_HEIGHT))
+    assert returns == [(-0.5, -leaf), (leaf, 0.5)]  # hiding the parked leaves, the opening clear
+    transoms = [p.box for p in boxes if p.box.z == (DOOR_HEIGHT - 0.035, DOOR_HEIGHT)]
+    assert [b.y for b in transoms] == [(-0.5, 0.5)]  # over the doors, hiding their tops
