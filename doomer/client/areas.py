@@ -31,6 +31,7 @@ import numpy.typing as npt
 
 from doomer.client.palette import (
     BLUE,
+    BRICK,
     CREAM,
     GREY,
     OCHRE,
@@ -298,6 +299,24 @@ def _frame(cv: float, cu: float, angle: float) -> tuple[FloatArray, FloatArray]:
     return down, across
 
 
+def _pen_mask(cv: float, cu: float, angle: float) -> npt.NDArray[np.bool_]:
+    down, across = _frame(cv, cu, angle)
+    result: npt.NDArray[np.bool_] = (np.abs(across) <= 1.0) & (np.abs(down) <= 4.5)
+    return result
+
+
+def _slip_mask(cv: float, cu: float, angle: float) -> npt.NDArray[np.bool_]:
+    down, across = _frame(cv, cu, angle)
+    result: npt.NDArray[np.bool_] = (np.abs(down) <= 3.4) & (np.abs(across) <= 2.6)
+    return result
+
+
+def _post_it_mask(cv: float, cu: float, angle: float) -> npt.NDArray[np.bool_]:
+    down, across = _frame(cv, cu, angle)
+    result: npt.NDArray[np.bool_] = (np.abs(down) <= 2.2) & (np.abs(across) <= 2.2)
+    return result
+
+
 class _Desk:
     """A desk top being drawn: mahogany laminate, then flat things laid on it
     one over another, each casting a texel of shadow down and to the right.
@@ -344,22 +363,76 @@ class _Desk:
             self.tex,  # its folded top edge
         ).astype(np.uint8)
 
+    def bare(self, mask: npt.NDArray[np.bool_], zone: tuple[int, int, int, int]) -> bool:
+        """Would `mask`, and a texel round it, land on bare laminate inside
+        `zone` (u0, v0, u1, v1)?"""
+        u0, v0, u1, v1 = zone
+        v, u = grid()
+        around = mask.copy()
+        for dv, du in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            around |= np.roll(np.roll(mask, dv, axis=0), du, axis=1)
+        inside = (u >= u0) & (u <= u1) & (v >= v0) & (v <= v1)
+        return bool(mask.any() and (around <= (inside & ((self.tex >> 4) == WOOD))).all())
+
+    def place(
+        self,
+        zone: tuple[int, int, int, int],
+        rng: np.random.Generator,
+        shape: "Callable[[float, float, float], npt.NDArray[np.bool_]]",
+        angles: tuple[float, float] = (-0.4, 0.4),
+    ) -> tuple[float, float, float] | None:
+        """A spot (v, u, angle) in `zone` where `shape` lies on bare desk, or
+        None if there's no room (tries a few dozen at random)."""
+        u0, v0, u1, v1 = zone
+        for _ in range(60):
+            at = (rng.uniform(v0, v1), rng.uniform(u0, u1), rng.uniform(*angles))
+            if self.bare(shape(*at), zone):
+                return at
+        return None
+
     def writing(self, cv: float, cu: float, angle: float, pencil: bool) -> None:
-        """A pencil (yellow, a sharpened point, a pink eraser in its ferrule)
-        or a Bic-style biro (clear barrel, blue cap): one texel wide and
-        seven long, about twice life size so it reads as one."""
+        """A pencil (yellow, sharpened point, pink eraser) or a biro (a blue or
+        red barrel, a darker cap, a white tip): two texels thick and nine
+        long, about twice life size, so it reads as one and doesn't break
+        into stair-steps at an angle."""
         down, across = _frame(cv, cu, angle)
-        body = (np.abs(across) <= 0.55) & (np.abs(down) <= 3.5)
-        self.lay(body, OCHRE if pencil else GREY, 14.0 if pencil else 12.5)
-        tip = body & (down < -2.5)  # the writing end
-        far = body & (down > 2.5)  # eraser / cap
+        body = _pen_mask(cv, cu, angle)
+        tip = body & (down < -3.2)  # the writing end
+        far = body & (down > 3.2)  # eraser / cap
         if pencil:
-            self.tex = np.where(tip, indices(WOOD, 9.0), self.tex).astype(np.uint8)
-            self.tex = np.where(tip & (down < -3.2), indices(GREY, 3.0), self.tex).astype(np.uint8)
-            self.tex = np.where(far, indices(PINK, 10.0), self.tex).astype(np.uint8)
+            self.lay(body, OCHRE, 15.0)
+            self.tex = np.where(body & (across > 0.3), indices(OCHRE, 12.0), self.tex).astype(
+                np.uint8
+            )  # its shaded side
+            self.tex = np.where(tip, indices(WOOD, 10.0), self.tex).astype(np.uint8)
+            self.tex = np.where(tip & (down < -3.9), indices(GREY, 2.0), self.tex).astype(np.uint8)
+            self.tex = np.where(far, indices(PINK, 12.0), self.tex).astype(np.uint8)
         else:
-            self.tex = np.where(tip, indices(GREY, 6.0), self.tex).astype(np.uint8)
-            self.tex = np.where(far, indices(BLUE, 8.0), self.tex).astype(np.uint8)
+            ramp = BLUE if cu < 32 else BRICK
+            self.lay(body, ramp, 10.0)
+            self.tex = np.where(far, indices(ramp, 5.0), self.tex).astype(np.uint8)
+            self.tex = np.where(tip, indices(CREAM, 14.0), self.tex).astype(np.uint8)
+
+    def slip(self, cv: float, cu: float, angle: float) -> None:
+        """A "While You Were Out" phone message slip: pink, a darker printed
+        heading, two short lines of handwriting. (At 7 x 5 texels, little
+        detail reads: more just looks busy.)"""
+        down, across = _frame(cv, cu, angle)
+        paper = _slip_mask(cv, cu, angle)
+        self.lay(paper, PINK, 14.0)
+        heading = paper & (down < -1.9)
+        self.tex = np.where(heading, indices(PINK, 10.0), self.tex).astype(np.uint8)
+        lines = paper & ((np.abs(down - 0.2) < 0.5) | (np.abs(down - 2.0) < 0.5))
+        lines &= (across > -1.8) & (across < 1.0)
+        self.tex = np.where(lines, indices(PINK, 8.0), self.tex).astype(np.uint8)
+
+    def post_it(self, cv: float, cu: float, angle: float) -> None:
+        """A yellow Post-it: plain, its sticky strip a shade darker."""
+        down, _ = _frame(cv, cu, angle)
+        note = _post_it_mask(cv, cu, angle)
+        self.lay(note, OCHRE, 15.0)
+        strip = note & (down < -1.3)
+        self.tex = np.where(strip, indices(OCHRE, 13.0), self.tex).astype(np.uint8)
 
     def open_folder(self, cv: float, cu: float, angle: float) -> None:
         """A manila file opened flat: two panels either side of the crease,
@@ -411,11 +484,24 @@ def desk_top(variant: int) -> U8Array:
         layout = _LAYOUTS[(variant + 2 * half) % len(_LAYOUTS)]  # halves differ
         cu, cv = (u0 + u1) / 2 + rng.uniform(-2, 2), (v0 + v1) / 2 + rng.uniform(-1.5, 1.5)
         layout(desk, cv, cu, rng)
-        # A pen or pencil or two, somewhere in the same free end.
+        # On bare desk in the same free end: a message slip or two, a
+        # Post-it, then a pen or pencil or two (never on the paper, where
+        # they'd be lost).
+        zone = (u0, v0, u1, v1)
         for _ in range(rng.integers(1, 3)):
-            pv = rng.uniform(v0 + 4, v1 - 4)
-            pu = rng.uniform(u0 + 4, u1 - 4)
-            desk.writing(pv, pu, rng.uniform(0, math.pi), pencil=bool(rng.random() < 0.6))
+            at = desk.place(zone, rng, _slip_mask)
+            if at is not None:
+                desk.slip(*at)
+        if rng.random() < 0.7:
+            at = desk.place(zone, rng, _post_it_mask)
+            if at is not None:
+                desk.post_it(*at)
+        for _ in range(rng.integers(1, 3)):
+            # Roughly along or across the desk: a thin line reads best near the axes.
+            square = float(rng.choice([0.0, math.pi / 2]))
+            at = desk.place(zone, rng, _pen_mask, (square - 0.35, square + 0.35))
+            if at is not None:
+                desk.writing(*at, pencil=bool(rng.random() < 0.6))
     return desk.tex
 
 
