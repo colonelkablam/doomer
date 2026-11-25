@@ -24,7 +24,9 @@ from dataclasses import dataclass
 from typing import NamedTuple
 
 import numpy as np
+import numpy.typing as npt
 
+from doomer.client.areas import AREA_LOOKS
 from doomer.client.palette import (
     BLUE,
     BRICK,
@@ -301,17 +303,19 @@ def stair_riser() -> int:
     return _texture(c)
 
 
-def stair_side() -> int:
-    """The side of the staircase, tiled in world units: painted plaster with
-    skirting at the floor (as raised floors' edges)."""
-    rng = np.random.default_rng(14)
-    c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), SAND, 9.0 + (noise(rng, 8) - 0.5) * 0.5)
-    c.paint(c.rect(60, 64, 0, 64), WOOD, 5.0)
-    return _texture(c)
+_TREAD, _RISER = stair_tread(), stair_riser()
 
 
-_TREAD, _RISER, _SIDE = stair_tread(), stair_riser(), stair_side()
+def _texture_of(texture: npt.NDArray[np.uint8]) -> int:
+    """Register an opaque (v, u) wall texture as a box face texture."""
+    _TEXTURES.append(np.ascontiguousarray(texture.T))
+    _OPAQUE.append(np.ones((64, 64), dtype=np.bool_))
+    return len(_TEXTURES) - 1
+
+
+# A staircase's sides look like the walls of the area it stands in (the
+# lobby's stone), as its balcony's front does.
+_AREA_SIDES = {area: _texture_of(look.wall()) for area, look in AREA_LOOKS.items()}
 
 
 def stair_boxes(game_map: GameMap) -> list[PlacedBox]:
@@ -326,12 +330,13 @@ def stair_boxes(game_map: GameMap) -> list[PlacedBox]:
             low = max(0, game_map.floor[cy][cx] - STAIR_RISE) / WALL_UNITS
             steps = max(1, round((top - low) * STEPS_PER_STOREY))
             angle = (game_map.facing_at(cx, cy) - 1) * math.pi / 2  # NORTH = 0 -> -y
+            side = _AREA_SIDES[game_map.area_at(cx, cy)]
             for i in range(steps):
                 box = Box(
                     (-0.5 + i / steps, -0.5 + (i + 1) / steps),
                     (-0.5, 0.5),
                     (0.0, low + (top - low) * (i + 1) / steps),
-                    (_SIDE, _SIDE, _RISER, _SIDE, _TREAD),
+                    (side, side, _RISER, side, _TREAD),
                     tiled_sides=True,
                     riser=(top - low) / steps,
                 )

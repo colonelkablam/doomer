@@ -13,7 +13,10 @@ each axis, sample (i, j) at ((j + 0.5) / S, (i + 0.5) / S) in cells. Each one:
 - fade takes the light smoothly to zero at `cutoff` cells horizontally, so
   there's no ring where a panel's reach ends.
 - visible: the straight line from the panel to the sample, looked at from
-  above, crosses no full wall. Low blocks (desks) don't stop light.
+  above, crosses no full wall and no opaque door's plane (hinged, double,
+  lift: they stand shut, and the map is baked once; glass doors let light
+  through). Only the plane: the doorway either side of it is lit.
+  Low blocks (desks) don't stop light.
 
 Each panel's contribution is kept as its own patch (its reach only), so a
 light can later be switched on or off (flicker, power cuts) by adding or
@@ -31,6 +34,7 @@ import numpy as np
 import numpy.typing as npt
 
 from doomer.client.config import LightingConfig
+from doomer.shared.doors import SLIDING, doors_from_map
 from doomer.shared.mapfile import GameMap
 
 FloatArray = npt.NDArray[np.float64]
@@ -112,11 +116,18 @@ def bake_light_map(game_map: GameMap, config: LightingConfig | None = None) -> L
     floors = np.array(
         [[0.0 if walls[y, x] else game_map.floor_height(x, y) for x in xs] for y in ys]
     )
+    # Shut opaque doors: (axis, at, lo, hi), a plane x = at (axis 0) or
+    # y = at (1), from lo to hi along it.
+    doors = [
+        (0, d.x, d.y - 0.5, d.y + 0.5) if d.across_x else (1, d.y, d.x - 0.5, d.x + 0.5)
+        for d in doors_from_map(game_map)
+        if d.kind != SLIDING
+    ]
     values = np.full((rows, cols), config.ambient)
     unpowered = np.full((rows, cols), config.unpowered_ambient)
     patches = []
     for panel in panels_in(game_map):
-        patch = _patch(panel, config, walls, floors, rows, cols)
+        patch = _patch(panel, config, walls, floors, rows, cols, doors)
         if patch is not None:
             r, c = patch.row0, patch.col0
             h, w = patch.values.shape
@@ -134,6 +145,7 @@ def _patch(
     floors: FloatArray,
     rows: int,
     cols: int,
+    doors: list[tuple[int, float, float, float]] = [],  # noqa: B006 (never mutated)
 ) -> LightPatch | None:
     s = config.samples_per_cell
     reach = config.cutoff
@@ -154,8 +166,27 @@ def _patch(
     distance = np.hypot(horizontal, drop)
     falloff = 1.0 / (1.0 + (distance / config.falloff_radius) ** 2)
     fade = np.clip(1.0 - (horizontal / reach) ** 2, 0.0, 1.0) ** 2
-    light = config.panel_intensity * falloff * fade * _visible(panel, gx, gy, walls)
+    visible = _visible(panel, gx, gy, walls) & ~_behind_doors(panel, gx, gy, doors)
+    light = config.panel_intensity * falloff * fade * visible
     return LightPatch(panel, r0, c0, light)
+
+
+def _behind_doors(
+    panel: Panel, gx: FloatArray, gy: FloatArray, doors: list[tuple[int, float, float, float]]
+) -> npt.NDArray[np.bool_]:
+    """For each sample point, whether the line from the panel to it crosses
+    a shut door: it passes from one side of the door's plane to the other,
+    within the doorway."""
+    hidden = np.zeros(gx.shape, dtype=np.bool_)
+    for axis, at, lo, hi in doors:
+        p_across, p_along = (panel.x, panel.y) if axis == 0 else (panel.y, panel.x)
+        s_across, s_along = (gx, gy) if axis == 0 else (gy, gx)
+        crosses = (p_across - at) * (s_across - at) < 0
+        with np.errstate(divide="ignore", invalid="ignore"):
+            t = (at - p_across) / (s_across - p_across)
+        where = p_along + (s_along - p_along) * t
+        hidden |= crosses & (where >= lo) & (where <= hi)
+    return hidden
 
 
 def _visible(

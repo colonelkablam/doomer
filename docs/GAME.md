@@ -168,8 +168,11 @@ looks like the area you see it from.
 Soffits, the underside of a doorway's lintel, are lined rather than tiled:
 painted plaster framed in timber (office), timber boards in a moulding
 (executive), veined stone in a steel edge (lobby), concrete (service),
-perforated steel (lift car). Balconies and raised floors are fitted blue
-carpet, and the stairs' treads match it, each with its metal nosing.
+perforated steel (lift car). A balcony carries on its room: its front is
+the area's wall (stone in the lobby) and its floor the area's floor
+(terrazzo); the stairs up to it have the area's walls for sides and a blue
+carpet runner on the treads, each with a metal nosing. Plain raised floors
+(`e`) are fitted blue carpet.
 
 Lifts [built]: brushed stainless doors in a doorway lined with polished
 steel (architrave, grooved sill), a floor indicator above (amber G between
@@ -198,7 +201,7 @@ button glows once called), and inside the car a button panel by the door
 | f (15) | Glazed curtain wall: aluminium mullions and glass, two storeys meeting at a transom | Lobby outer walls |
 | g (16) | Main entrance: closed glass double doors, curtain wall above | Lobby entrance |
 | h (17) | Stairs: half a storey per cell ([facing] = up); you walk a smooth slope, drawn as 8 carpeted steps | Lobby stairs |
-| i (18) | Balcony floor: raised floor with a railing along edges that drop away | Lobby balcony |
+| i (18) | Balcony floor: raised floor with a railing along edges that drop away; front and floor dressed by its area | Lobby balcony |
 | k (20) | Lift car walls: brushed stainless panels and a handrail inside the car, a tinted mirror on the back wall (its front: [facing] points into the car); outside, a plain wall dressed by its area | Lift cars |
 | l (21) | Pale polished stone slabs (the lobby look, wherever it's placed) | Round lift doors |
 | j (19) | Desk pair with cubicle screens: as `d`, plus fabric screens to seated head height (~1.25 m) down the middle and across each cell edge (box models; they block you on the desk tops) | Open-plan cubicles |

@@ -24,6 +24,7 @@ from doomer.shared.mapfile import (
     LOBBY,
     OFFICE,
     SERVICE,
+    SOUTH,
     WEST,
     MapError,
     format_map,
@@ -174,3 +175,14 @@ def test_a_bulkhead_looks_like_the_area_it_faces() -> None:
     # From the office, looking back into the lobby, the ceiling steps up:
     # no bulkhead faces you, but the span's look is the office's.
     assert back.ints[fc.UPPER_SLOT, 0, 0] == r._upper_slot(AREA_WALL_TYPE + OFFICE)
+
+
+def test_a_balcony_carries_on_its_rooms_walls_and_floor() -> None:
+    from doomer.client.areas import TOP_KIND
+
+    m = parse_map(
+        "[walls]\n#####\n#iii#\n#...#\n#####\n\n[floor]\n00000\n08880\n\n[areas]\n" + "lllll\n" * 4
+    )
+    r = Renderer(RenderConfig())
+    assert r._face_type(m, 2, 1, SOUTH) == AREA_WALL_TYPE + LOBBY  # its front: stone
+    assert TOP_KIND[18] == FLOOR  # its top: the area's floor (terrazzo)

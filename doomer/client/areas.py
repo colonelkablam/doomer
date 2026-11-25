@@ -52,8 +52,9 @@ MIP_LEVELS = 7  # 64, 32, 16, 8, 4, 2, 1 texels across
 # look of each area: AREA_WALL_TYPE + area.
 AREA_WALL_TYPE = 40
 # Which sides of which wall types are plain walls, taking the look of the
-# area they face: all of `#` (1), and the outside of a lift car (k, 20).
-AREA_FACES: dict[int, tuple[int, ...]] = {1: ALL_SIDES, 20: (BACK,)}
+# area they face: all of `#` (1), a balcony's front (i, 18: it carries on
+# the room's walls below it), and the outside of a lift car (k, 20).
+AREA_FACES: dict[int, tuple[int, ...]] = {1: ALL_SIDES, 18: ALL_SIDES, 20: (BACK,)}
 
 
 # --- floors ------------------------------------------------------------------------
@@ -130,7 +131,7 @@ def blue_carpet(seed: int = 41) -> U8Array:
 
 # Raised surfaces you walk on, by wall type: textured like floors (world-
 # mapped, mipmapped) instead of a flat colour. Desk tops stay flat colours.
-TOP_TEXTURES: dict[int, Callable[[], U8Array]] = {14: blue_carpet, 18: blue_carpet}
+TOP_TEXTURES: dict[int, Callable[[], U8Array]] = {14: blue_carpet}
 
 
 # --- ceilings ----------------------------------------------------------------------
@@ -260,6 +261,7 @@ for _area, _look in AREA_LOOKS.items():
 # TOP_TEXTURES entry, from TOP_KIND.
 FLOOR, CEILING, SOFFIT = range(3)
 TOP_KIND = {wall_type: 3 + k for k, wall_type in enumerate(TOP_TEXTURES)}
+TOP_KIND[18] = FLOOR  # a balcony is floored as the area it's in (the lobby's terrazzo)
 
 
 @dataclass(frozen=True, slots=True)

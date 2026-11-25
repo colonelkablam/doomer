@@ -281,7 +281,8 @@ dm_spawn      1.5   3.5   0
   texel `(frac(x), frac(y)) * 64`. The default floor and ceiling are one
   compiled pass that also shades, lights and dithers (the light map still
   sampled once per 2x2 pixels); ceilings at other heights (the atrium) and
-  the tops of raised floors (`areas.TOP_TEXTURES`: the balcony's carpet;
+  the tops of raised floors (`areas.TOP_KIND`: raised floors' carpet; a
+  balcony takes its area's floor;
   desk tops stay flat colours, with their seams) use the same lookup per
   pixel. Textures come from a table by (area, kind): floor, ceiling, soffit
   (a ceiling lower than a storey, over a doorway: a lining, not ceiling
@@ -477,8 +478,13 @@ maps, simplified). Per map, at load, client-side:
   cells. A two-storey ceiling then gives dimmer, wider pools without a
   special case.
 - **Visibility**: a sample is lit by a panel only if the segment between
-  them crosses no full wall (grid DDA, cell resolution). Low blocks don't
-  block light (the contact shadow under desks already exists).
+  them crosses no full wall (grid DDA, cell resolution) and no shut opaque
+  door (hinged, double, lift: the map is baked once, with doors shut; glass
+  doors let light through). A door blocks at its plane only, so the
+  doorway either side of it is lit (the lift doors' lobby face). Without
+  this, lift cars' panels shone out through their doors and lit the lift
+  wall in patches. Low blocks don't block light (the contact shadow under
+  desks already exists).
 - **Ambient**: a map header value (default ~0.35), with an optional
   `[light]` grid later for per-cell overrides (a dark server room, a lobby
   lit by its glazing).

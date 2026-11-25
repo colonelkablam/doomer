@@ -226,3 +226,22 @@ def test_floor_is_brighter_near_a_panel_and_ceilings_vary_less() -> None:
     ceiling_ratio = (shades["east"][1] + 1) / (shades["west"][1] + 1)
     assert floor_ratio > 1.3
     assert 1.0 < ceiling_ratio < floor_ratio
+
+
+@pytest.mark.parametrize(
+    "door, blocks", [("door_hinged", True), ("door_lift", True), ("door_sliding", False)]
+)
+def test_shut_opaque_doors_stop_light_glass_ones_dont(door: str, blocks: bool) -> None:
+    # Two rooms joined by a doorway at x = 4, a panel in the east room only.
+    two_rooms = parse_map(
+        "[walls]\n#########\n#...#...#\n#.......#\n#...#...#\n#########\n"
+        f"\n[things]\nceiling_light 6.5 2.5 0\n{door} 4.5 2.5 0\n"
+    )
+    light = bake_light_map(two_rooms, LightingConfig())
+    west = float(light.at(np.array([3.0]), np.array([2.5]))[0])
+    beside = float(light.at(np.array([4.7]), np.array([2.5]))[0])  # its own side of the door
+    if blocks:
+        assert west == pytest.approx(LightingConfig().ambient)
+    else:  # 3.5 cells from the panel: dim, but lit
+        assert west > LightingConfig().ambient + 0.02
+    assert beside > LightingConfig().ambient + 0.1  # the doorway on the lit side is lit
