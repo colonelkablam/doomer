@@ -11,6 +11,7 @@ from doomer.client.automap import (
     MARGIN,
     SIZE,
     WALL,
+    WALL_FILL,
     YOU,
     ZOOMS,
     Automap,
@@ -31,6 +32,9 @@ def test_the_floor_image_draws_walls_desks_and_locked_doors() -> None:
     image = floor_image(ROOMS, 4)
     assert image.shape == (5 * 4, 7 * 4)
     assert (image == WALL).any() and (image == LOW).any()
+    # The wall between the rooms is solid: its middle filled, its faces bright.
+    middle = image[2 * 4 + 1 : 3 * 4 - 1, 1 * 4 + 1 : 2 * 4 - 1]
+    assert (middle == WALL_FILL).all()
     assert (image == (BRICK << 4) | 13).any()  # the red-locked door, in red
     assert not (image == DOOR).any()  # it's the only door, and it's locked
     assert (image[1 * 4 + 1 : 2 * 4 - 1, 1 * 4 + 1 : 2 * 4 - 1] == 0).all()  # open floor: nothing
@@ -57,7 +61,7 @@ def test_only_what_you_have_seen_is_drawn_and_the_rest_shows_through() -> None:
     m.seen[:] = True
     m.draw(frame, 1.5, 1.5, 0.0)
     assert (view == WALL).any()
-    assert (view == 0x55).mean() > 0.5  # see-through: mostly the scene still
+    assert (view == 0x55).mean() > 0.2  # see-through where you can walk
 
 
 def test_you_are_in_the_middle_facing_the_way_you_look() -> None:

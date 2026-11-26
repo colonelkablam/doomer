@@ -2,10 +2,11 @@
 
 North up (it doesn't turn with you: "the plant room's at the bottom" stays
 true, and the fire plans on the walls agree), you in the middle with a line
-showing which way you face. See-through: only lines are drawn, walls bright
-green, desks and counters dim, doors as a line (a locked one in its pass's
-colour), lift cars in amber; each line has a dark shadow below and to its
-right so it reads over any background. A faint green border marks the
+showing which way you face. See-through where you can walk: walls are
+solid dark green blocks with bright green faces, desks and counters dim,
+doors as a line (a locked one in its pass's colour), lift cars in amber;
+each has a dark shadow below and to its right, so it reads over any
+background. A faint green border marks the
 display. Only what you've seen is drawn: each frame the cells along a spread
 of rays, out to what the renderer hit, are marked seen.
 
@@ -31,6 +32,7 @@ SEE_FAR = 24.0  # cells: the furthest a glance reveals
 RAY_STRIDE = 4  # every 4th screen column's ray
 
 WALL = (GREEN << 4) | 14
+WALL_FILL = (GREEN << 4) | 4  # inside a wall: solid, darker than its faces
 LOW = (GREEN << 4) | 8  # desks, counters, raised floors
 DOOR = (GREEN << 4) | 11
 LIFT_CAR = (ORANGE << 4) | 13
@@ -69,7 +71,8 @@ def floor_image(game_map: GameMap, zoom: int) -> U8Array:
     open_px = _cells_to_pixels(open_, zoom)
     image = np.zeros((h * zoom, w * zoom), dtype=np.uint8)
     image[low_px & _grow(open_px)] = LOW  # a desk's or counter's outline
-    image[full_px & _grow(open_px | low_px)] = WALL  # walls' faces
+    image[full_px] = WALL_FILL  # walls solid, so rooms read as the spaces between
+    image[full_px & _grow(open_px | low_px)] = WALL  # their faces, bright
     for door in doors_from_map(game_map):
         if door.kind == LIFT:  # the car: outlined in amber
             cx, cy = door.car

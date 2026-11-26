@@ -72,9 +72,9 @@ Planned, roughly in order [planned]:
 ## The automap [built]
 
 Hold **Tab**: a small map in the top-right corner, green on the scene
-(see-through: just lines, each with a dark shadow so it reads over
-anything; a faint green border). North up, you in the middle as a cream dot
-with a line the way you face. Walls bright green, desks and counters dim,
+(see-through where you can walk; walls solid dark green blocks; lines with
+a dark shadow so they read over anything; a faint green border). North up, you in the middle as a cream dot
+with a line the way you face. Wall faces bright green, desks and counters dim,
 doors a line (a locked one in its pass's colour), lift cars amber. Only
 what you've seen: a room appears as you look into it. Zoom with the mouse
 wheel or `-` and `=`: the whole floor, the area round you, close up.
