@@ -161,7 +161,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Card readers by locked doors: stripe in the pass colour, red/green lamp | no | [built] |
 | Desk phone (box model, `phone`): brown 1980s plastic: on the left a raised cradle with the handset lying front to back (one solid box, its cups and narrower grip painted on: shaded beside the grip from above, a dark shadow under it from the side), on a low cradle, on the right a keypad and a column of amber line buttons; three boxes; on the boss's desk and reception's | no | [built] |
 | Late-80s business PC (box model, `pc`): pearly off-white, generic (no badge): a wide system unit lying flat (two 5.25" drives, lamps), a big CRT standing on it (deep bezel, the tube's housing behind), a green-phosphor spreadsheet screen that glows while there's power, a long heavy keyboard in front; five boxes, ~1.9x scale; on the boss's desk, turned a little towards the chair | no | [built] |
-| Water cooler (box model: cream cabinet, hot and cold taps, an upturned 19-litre bottle nearly as wide as the cabinet, ~1.45 m to its top; faces its map angle) | yes | [built] |
+| Water cooler (box model: cream cabinet, hot and cold taps, an upturned 19-litre bottle nearly as wide as the cabinet, ~1.45 m to its top; faces its map angle). Planned: a health dispenser (see Pickups) | yes | [built] |
 | Filing cabinet (box model: five steel drawers with pulls and label cards; faces its map angle) | yes | [built] |
 | Potted ficus (box model: octagonal terracotta pot, a single trunk, a crown of crossed see-through leaf cards drawn as individual drooping leaves in a ragged outline) | yes | [built] |
 | Fluorescent ceiling light (a panel set into the ceiling) | no | [built] |
@@ -170,12 +170,12 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Posters and pictures (box model, `poster`, one thin box on a wall, `kind=`): motivational posters (SYNERGY over an eagle at sunset, "1 + 1 = 3"; TEAMWORK, a rowing crew; EXCELLENCE, a snowy peak); Employee of the Month, three frames, the same moustached chap in big glasses every month; the founder's portrait in oils in a gilt frame (lobby); a DAYS SINCE LAST ACCIDENT: 0 board (plant room); DANGER HIGH VOLTAGE signs (by the plant room door and the breaker: they point the way to the power); a fire plan of the floor itself, a red dot where it hangs | no | [built] |
 | Lobby sofas (box models, `sofa_two`, `sofa_three`, `sofa_corner`): a 1970s-80s modular group in rust velvet, button-tufted seat and back cushions on a brushed steel plinth with a dark wood rim; runs and a corner unit make an L; three boxes a seat | yes | [built] |
 | Coffee table (`coffee_table`): amber glass in a dark frame on four chrome legs, three magazines at one end, upright to someone walking up from the open side: two side by side, one fanned over them, each a masthead band, a picture (a skyline, a chart, a portrait) and cover lines; things rest on it, the fern at the other end. A small fern (`fern`) in a copper bowl, for a table or a desk | yes (the fern: no) | [built] |
-| Coffee cup on the odd desk: a mug, steam optional (one or two boxes; a texture would look flat, so keep it to a few desks) | no | planned |
+| Coffee cup on the odd desk: a mug, steam optional (one or two boxes; a texture would look flat); a pickup, +5 coffee (see Pickups) | no | planned |
 | Kitchen area (kitchenette): a run of counter units with a sink, a kettle, a microwave, a fridge, a few mugs, a "PLEASE WASH YOUR OWN CUPS" sign | yes | planned |
 | Washrooms (loos): toilet cubicles (partitions and doors), basins with a mirror over them, a hand dryer, avocado tiles (the `7` wall) | yes | planned |
 | Photocopier (inert) | yes | planned |
 | Fax machine on stand | yes | planned |
-| Vending machine | yes | planned |
+| Vending machine: lit (on the main circuit), a health dispenser once the power's on (see Pickups) | yes | planned |
 | Coat stand | yes | planned |
 | Ashtray bin | yes | planned |
 | Flip chart | yes | planned |
@@ -270,9 +270,28 @@ buttons by the door (G lit).
   one player picks it up, everyone can use it. A floor's loop: the staff
   pass gets you off the lobby, the facilities pass into the plant room,
   where the power comes on and the lifts wake up (see Game loop).
-- **Health** [planned]: cup of coffee (small), box of doughnuts (large), sick
-  note (full).
-- **Armour** [planned]: shoulder pads.
+- **Health and coffee** [planned]: each player has two meters.
+  - **Health** (0-100): you're out at 0.
+  - **Coffee** (0-100): armour. While you have any, it soaks a third of each
+    hit: that third comes off your coffee, the rest off your health (30
+    damage with coffee at 50: 10 off coffee, 20 off health). Coffee doesn't
+    wear off (a caffeine crash is an option to add if it proves too strong).
+  - **Pickups** (one-off: walk over it, it's gone): a **coffee cup** (+5
+    coffee; small, so cups can be on lots of desks), **biscuits** (+10
+    health), a **box of doughnuts** (+25 health, rare), a **sick note**
+    (full health, very rare).
+  - **Dispensers** (fixed; use with E; each has a budget per player, so one
+    player draining it doesn't empty it for the other): the **water
+    cooler** (1 health a use, 25 a player per floor), the **vending
+    machine** (a snack, 5 health a use, 40 a player; on the main circuit,
+    so it works only once the power's back, a reward for restoring it),
+    later a **coffee machine** (coffee the same way).
+  - **Modes**: co-op, pickups are one-off and budgets last the floor;
+    deathmatch, pickups come back after ~30 s and your budgets refill when
+    you respawn.
+  - Amounts are data (in the thing registry), so tuning is editing numbers.
+- **Armour**: coffee is the armour (above); shoulder pads, if ever, would be
+  a rare big coffee-like boost.
 - **Ammo** [planned]: box of floppies (IT Guy), tea bags (Tea Trolley), fire
   extinguisher refill (Caretaker).
 

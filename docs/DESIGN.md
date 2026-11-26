@@ -92,6 +92,28 @@ means adding a module and registering it, not editing a dozen files.
 - Client-side prediction of own movement only if it still feels laggy.
 - Still to define: mid-game join, disconnect and timeout handling.
 - Later: UDP broadcast so clients find the Pi without typing an IP.
+- **Pickups, dispensers and meters are server state** (GAME.md, Pickups).
+  The server runs the one deterministic `step`; it decides who touched a
+  pickup first, applies damage and coffee's absorption, and hands out from
+  dispensers. Clients predict their own movement only, never pickups or
+  meters: they wait for the server, so a cup can't vanish for two players
+  at once. In the world state:
+  - `PlayerState.health` (there already) and `PlayerState.coffee`.
+  - `World.pickups`: passes already, with a `taken` flag; coffee cups,
+    snacks and the like join them, each pickup type's amounts from the
+    thing registry (`health=`, `coffee=`; config as data).
+  - `World.dispensers`: per dispenser, its type (what it gives, how much a
+    use, the budget per player; from the registry) and what's left for each
+    player, `{player_id: remaining}`. A player who joins later starts with
+    the full budget. On the main circuit (the vending machine), it works
+    only while there's power.
+  - Snapshots carry each client its own meters and budgets (a HUD hint
+    when the cooler's nearly dry) and which pickups are gone; events
+    (`PickedUp`, `Dispensed`, `Hurt`) drive the HUD and, later, sounds.
+  - Deathmatch: pickups respawn (a tick to come back on), budgets refill
+    on respawn.
+  Build order: the data model now or with networking (so snapshots carry it
+  from the start), damage and the HUD meters with weapons (3b).
 
 ## Coordinates
 
@@ -767,8 +789,13 @@ Noted at the end of a session, to pick up next:
   automap (Tab; the fire plan already draws a floor); the lift ride and a
   second floor to arrive on. Enemies, weapons and pickups (milestones 3b,
   4) come after networking.
+- **Health and coffee** (GAME.md, Pickups; Networking above): two meters
+  per player, coffee as armour (soaks a third of each hit), pickups
+  (coffee cups +5, snacks) and per-player dispensers (water cooler,
+  vending machine). The data model with networking, damage with 3b.
 - **Office objects to make** (GAME.md, Office furniture, the `planned`
-  rows): a coffee cup
+  rows): a coffee cup (a coffee pickup: buildable now, it does nothing
+  until the meters exist)
   on the odd desk; a kitchen area (counter, sink, kettle, microwave,
   fridge, mugs); washrooms (cubicles, basins and mirror, hand dryer); and
   the older list: photocopier, fax on a stand, vending machine (lit: on the
