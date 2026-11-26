@@ -882,6 +882,25 @@ Noted at the end of a session, to pick up next:
   a photocopier, a fax
   on a stand, a coat stand, an ashtray bin, a flip chart, an overhead
   projector on a trolley, a fire extinguisher.
+- **Visual fixes** (seen in play):
+  - A rounder moon: it's a 15-texel disc on the 512-texel panorama
+    (`textures.panorama`, ~0.7 degrees a texel, 2-3 screen pixels each), so
+    its edge is a visible staircase. Draw it at a finer scale (its own
+    texture, several texels a panorama texel) or soften the edge with a
+    ring of in-between shades.
+  - Darkness in the plant room: in emergency lighting it's nearly black,
+    and the breaker has to be found in it. Look at how dark the floor's
+    dark is (the ambient level, the exit signs' pools), banding between
+    the 32 light levels, and giving the way to the breaker some light of
+    its own (the beacon over the door, its lamps; see Cosmetic).
+  - Breeze block walls turn to a flat slab up close in the dark: half a
+    cell from the plant room's wall, in emergency lighting, it's one even
+    grey-brown, no joints; a cell further back in the same light the
+    blocks show, and lit it's fine close up. So it isn't the texture: its
+    shades seem to collapse onto one palette index at that light level up
+    close (the light map's value at the wall, the colormap's dark end, or
+    the dither). Reproduce: `render_frame` at (24.45, 16.0) facing west,
+    power off, against (25.2, 16.0).
 - **Cosmetic to-dos**, smaller polish noted along the way:
   - The lift ride's lurch: the car doesn't move (each storey is its own
     map; the ride is the panel counting, then the next map), so sell it
