@@ -11,7 +11,8 @@ editor.
 
 Current state: single-player on the ground floor: a two-storey glazed lobby
 with the main doors, a reception desk and stairs up to a railed balcony; desk
-pods you can jump onto; look up/down, jump and crouch. Networking is next.
+pods you can jump onto; look up/down, jump and crouch. A server runs and
+bots can join it; the game client joining is next.
 
 ## Play (Linux)
 
@@ -30,6 +31,24 @@ toggles full screen; the window can be resized too.
 
 Options: a map path as the first argument (default `maps/office.map`),
 `--mode coop|deathmatch`, `--config client.toml` (see `client.example.toml`).
+
+## Server and bots
+
+The game client can't join a server yet (that's next), but the server runs
+and bots can play in it:
+
+```bash
+.venv/bin/python -m ok_doomer.server --port 5029
+```
+
+```bash
+.venv/bin/python -m ok_doomer.bot --connect 127.0.0.1:5029 --count 3
+```
+
+The server starts on the ground floor in co-op; `--map maps/x.map` plays a
+map instead, `--config server.toml` reads settings (`ServerConfig` in
+`ok_doomer/server/config.py`). Ctrl+C (or SIGTERM) stops it, telling
+everyone. It needs only Python: no install step on the Pi.
 
 ## Develop
 

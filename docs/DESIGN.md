@@ -157,6 +157,31 @@ means adding a module and registering it, not editing a dozen files.
   inputs queued for the old floor are dropped (and acked). Player ids are
   never reused. Names tidied (spaces collapsed, 16 characters, never
   empty). Settings in `server/config.py` (`ServerConfig`).
+- **The transport** (`server/net.py`, `TcpServer`; run with `python -m
+  ok_doomer.server`): asyncio, one thread, so the `GameServer` is never
+  touched by two things at once. `TCP_NODELAY` on every socket (Nagle's
+  algorithm would hold small packets back to batch them); a `Hello`
+  within 5 s; anything that won't decode ends the connection with a
+  `Bye` saying why; a client whose unsent data passes 1 MB is dropped
+  (it can't keep up). The tick loop ticks by the loop's monotonic clock,
+  each tick due `dt` after the last (no drift), skipping ahead after a
+  stall of more than 8 ticks. SIGTERM (systemd stopping it) and Ctrl+C
+  stop it cleanly, a `Bye` to everyone.
+- **Bots** (`ok_doomer/bot`, `python -m ok_doomer.bot --connect HOST:PORT
+  --count N`): standard library and `shared` only, asyncio, many to a
+  process. A `WorldMirror` (`shared/mirror.py`: the client's copy of the
+  world, built from the `Welcome`, kept in step by `Update` and
+  `NewFloor`, numbering inputs and noting the `ack`) and a brain
+  (`bot/brain.py`, `Wanderer`: walk ahead; stuck for 10 ticks, press use
+  and turn a random way). The game client's `NetworkSession` uses the
+  same mirror.
+- **Load, measured** (the cloud VM, bots in the same process as the
+  server): 60 ticks/s held at 4, 8 and 16 bots; tick median 0.96 / 1.32 /
+  2.37 ms, p99 1.28 / 2.38 / 7.33 ms; sent 2.1 / 5.5 / 16.4 Mbit/s.
+  Bandwidth grows with the square of the players (each update carries
+  every player, to every client): fine on a LAN at 8. If the Pi
+  struggles, encode each tick's snapshot once rather than per client
+  (only `ack` differs), then round floats, then deltas.
 - **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
   blocking (a lost packet holds up everything behind it until resent),
   matters on the internet, not here. Framing and encoding stay behind
@@ -1002,8 +1027,8 @@ Noted at the end of a session, to pick up next:
   welcome, reject, input, snapshot, map change, bye), the version, JSON
   lines, events by a registry of their types [done]; (4) [done] the server core,
   socket-free (`GameServer`: join, leave, input, tick -> messages out);
-  `LocalSession` moves onto it once networking works; (5) the asyncio TCP transport
-  (`python -m ok_doomer.server`, `TCP_NODELAY`, timeouts); (6) a bot
+  `LocalSession` moves onto it once networking works; (5) [done] the asyncio TCP transport
+  (`python -m ok_doomer.server`, `TCP_NODELAY`, timeouts); (6) [done] a bot
   client (standard library: the test player and a load test; pulled
   ahead of the game client so there's something to join with, and
   something moving round you once the client can join); (7)
@@ -1021,4 +1046,6 @@ Noted at the end of a session, to pick up next:
 - Windows: native Python (not WSL), venv, launched from `play.bat` which cds to
   its own folder, runs the client with `--host`/`--name` and ends with `pause`.
 - Use the Pi's IP rather than `.local` names (Windows mDNS is unreliable).
-- Server on the Pi: standard library only, no install step.
+- Server on the Pi: standard library only, no install step:
+  `python3 -m ok_doomer.server` from the checkout (port 5029). Bots:
+  `python3 -m ok_doomer.bot --connect HOST:5029 --count 3`.

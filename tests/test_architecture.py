@@ -16,6 +16,7 @@ VIEW = {"pygame", "numpy", "ok_doomer.client", "ok_doomer.editor"}
 RULES: dict[str, set[str]] = {
     "shared": VIEW | {"ok_doomer.server"},
     "server": VIEW,
+    "bot": VIEW | {"ok_doomer.server"},
 }
 
 
