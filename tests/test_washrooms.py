@@ -13,6 +13,7 @@ from ok_doomer.shared.events import CubicleDoorUsed, Event
 from ok_doomer.shared.mapfile import WASHROOM, format_map, load_map, parse_map
 from ok_doomer.shared.player import PlayerInput, PlayerState
 from ok_doomer.shared.sim import step
+from ok_doomer.shared.spawn import spawn_player
 from ok_doomer.shared.things import (
     CUBICLE_DEPTH,
     CUBICLE_WIDTH,
@@ -21,7 +22,7 @@ from ok_doomer.shared.things import (
     RETURN_WIDTH,
     THING_TYPES,
 )
-from ok_doomer.shared.world import World, drain_events, new_world, spawn_player
+from ok_doomer.shared.world import World, drain_events, new_world
 
 FITTINGS = [
     f"{fitting}_{n}"

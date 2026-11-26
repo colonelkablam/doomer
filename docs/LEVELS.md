@@ -58,7 +58,7 @@ units at most). Anything higher with no stairs is unreachable.
 
 | Thing | Purpose | Rules |
 |---|---|---|
-| `coop_start` | Where co-op players arrive | Exactly 1 for co-op. On open floor or a raised floor, never in a full wall |
+| `coop_start` | Where co-op players arrive | Exactly 1 for co-op. On open floor or a raised floor, never in a full wall. The first player stands on it, the others beside it as walls allow (`shared/spawn.py`), so leave a body width (half a cell) clear round it. In a lift car there's no room beside: arriving players share the spot (harmless while players don't collide; a wider car if that changes) |
 | `exit` | Co-op level exit (drawn as a hanging EXIT sign) | Exactly 1 for co-op. Must be reachable on foot from `coop_start` |
 | `dm_spawn` | Deathmatch spawn | At least 4 for deathmatch. Reachable; spread out (see checks) |
 | `desk`, `water_cooler`, `filing_cabinet`, `ficus` | Blocking furniture | Square footprints, half-widths 0.32 / 0.12 / 0.16 / 0.16. Cabinets, coolers and ficuses are box models: against a wall use `at=` (it turns them to face into the room); a ficus in a corner `at=nw` etc.; the ficus's crown spreads wider than its footprint |

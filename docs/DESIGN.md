@@ -20,10 +20,19 @@ module name can't hold).
   and collision. It is standard library only (no pygame, no numpy), so the
   server runs it unchanged. `tests/test_architecture.py` enforces this.
 - **One code path for input**: `PlayerInput` -> `step(world, inputs)`
-  (`shared/sim.py`) -> new world state. Single-player calls it in a
-  `LocalSession`; networked play calls it on the server (and later on the
-  client for prediction). The client game loop talks to a `GameSession`
-  Protocol, so swapping `LocalSession` for a `NetworkSession` doesn't change it.
+  (`shared/sim.py`) -> new world state. Networked play calls it on the
+  server (and later on the client for prediction). The client game loop
+  talks to a `GameSession` Protocol, so swapping `LocalSession` for a
+  `NetworkSession` doesn't change it.
+- **Single-player runs the server in-process** (decided for milestone 3, as
+  Quake III and Minecraft since 1.3 do): `LocalSession` becomes a thin
+  wrapper round the same `GameServer` core the Pi runs, joined by a direct
+  in-memory link instead of a socket (no JSON). One code path for spawning,
+  floor changes and pickups, so single-player exercises the multiplayer
+  code. Hosting from the game is the same plus a TCP listener; the
+  dedicated Pi server is the same core with no client in it. Until then
+  `LocalSession` calls `step` itself; what both need (spawning, the next
+  floor) is in `shared/spawn.py`, not in the client.
 - **Fixed timestep**: the model advances in fixed steps (`shared/timestep.py`).
   Rendering runs as fast as it can and interpolates the camera between the last
   two simulation states, so a 60 Hz simulation looks smooth on a 144 Hz screen.
@@ -84,6 +93,31 @@ means adding a module and registering it, not editing a dozen files.
 
 ## Networking
 
+- **Who does what.** The server owns the one real `World`: each tick it
+  takes every client's queued input, runs `step`, and sends each client a
+  snapshot and the tick's events; it decides anything two players could
+  disagree about (who got the cup, hits, when the lift goes, the next
+  floor), and handles joins, ids and timeouts. The client reads input and
+  sends one input per tick, keeps a copy of the world (built from the map
+  the server sent, its changing state overwritten from each snapshot),
+  renders from it, and turns events into the HUD and sound; it decides
+  nothing. Keeping a whole `World` on the client means every renderer
+  helper works unchanged, and prediction is `step` run on that copy.
+- **Inputs are per tick, numbered, and queued** on the server, one used per
+  tick. "Use" is a press (this tick held, last tick not: `use_held`), so a
+  server that kept only each client's latest input could lose a tap
+  shorter than a tick. A player whose input hasn't arrived gets
+  `sim.idle_input` (stands still, keeps their view and crouch); the server
+  may repeat their last input instead.
+- **Snapshots, measured**: the whole changing state of `office.map` with 4
+  players is ~1.2 KB of JSON (12 doors, 10 cubicle doors, 12 pickups); at
+  60 Hz to 4 clients ~2.3 Mbit/s, fine on a LAN. So full snapshots first,
+  deltas only if a measurement says so. A tick with 4 players took 0.58 ms
+  on the cloud VM (budget 16.7 ms); a Pi 5 is perhaps 2-3x slower.
+- **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
+  blocking (a lost packet holds up everything behind it until resent),
+  matters on the internet, not here. Framing and encoding stay behind
+  `shared/protocol.py`, so UDP stays possible.
 - Join handshake: client sends protocol version and name; server rejects on
   version mismatch, otherwise sends the map file text and the player id.
   (No map hash check: the server is the source of the map.)
@@ -484,10 +518,10 @@ dm_spawn      1.5   3.5   0
   once every player is in a car that's here, shut, unlocked for the team
   and not just arrived, `World.ride` runs for `RIDE_SECONDS`, the occupied
   cars' `car_floor` climbing a floor (the panel counts), then
-  `LevelComplete(next_floor)`. The client loads that floor
-  (`LocalSession.change_floor`: a new world, the player at its
+  `LevelComplete(next_floor)`. The session then moves the team on
+  (`spawn.arrive_on_floor`: a new world, every player at its
   `coop_start` in a car, health and coffee carried, passes not); the
-  server will do the same for everyone. A floor whose `coop_start` is in a
+  server will do the same, and tell the clients. A floor whose `coop_start` is in a
   car is an arrival: that car starts here and opens after
   `ARRIVE_SECONDS`. The map checker treats it as open, and counts a lift
   as a way out only once the team can unlock it.
@@ -917,7 +951,20 @@ Noted at the end of a session, to pick up next:
   with a perm, a tie with a collar already holds, variety across a row);
   the cast (`CAST`) stays hand-picked. Until then the templates are the
   bank: every new template multiplies the faces possible.
-- Also outstanding: networking (milestone 3).
+- **Networking (milestone 3), in order**: (1) [done] prep: spawning and
+  the next floor in `shared/spawn.py`, players spread round a start,
+  `idle_input`; (2) `shared/snapshot.py`: `capture(world)` and
+  `apply(world, snap)`, the changing state only, tested by round trip
+  onto a fresh world; (3) `shared/protocol.py`: the messages (hello,
+  welcome, reject, input, snapshot, map change, bye), the version, JSON
+  lines, events by a registry of their types; (4) the server core,
+  socket-free (`GameServer`: join, leave, input, tick -> messages out);
+  `LocalSession` then runs on it; (5) the asyncio TCP transport
+  (`python -m ok_doomer.server`, `TCP_NODELAY`, timeouts); (6) a bot
+  client (standard library: the test player and a load test); (7)
+  `NetworkSession`: a reader thread into a queue, the world copy, remote
+  players drawn ~2 snapshots behind, `--connect host:port`, a sprite for
+  other players; (8) measure the lag on a LAN, then decide on prediction.
 
 ## Setup
 

@@ -17,7 +17,6 @@ from ok_doomer.client.hud import Hud
 from ok_doomer.client.input import KeyboardMouseInput
 from ok_doomer.client.render import MAX_PITCH, Renderer, make_frame_surface
 from ok_doomer.client.session import GameSession
-from ok_doomer.shared.events import LevelComplete
 
 log = logging.getLogger(__name__)
 
@@ -74,14 +73,10 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
 
             player_input = controls.poll(real_dt)
             now = pygame.time.get_ticks() / 1000.0
+            floor = session.game_map
             events = session.update(real_dt, player_input)
             hud.handle(events, now)
-            arrived = next(
-                (e.next_floor for e in events if isinstance(e, LevelComplete) and e.next_floor),
-                None,
-            )
-            if arrived is not None:  # the lift's there: on to the next floor
-                session.change_floor(arrived)
+            if session.game_map is not floor:  # the lift's arrived on the next floor
                 automap = Automap(session.game_map)
                 controls.angle = session.spawn_angle()
                 hud.arrive(session.game_map, now)

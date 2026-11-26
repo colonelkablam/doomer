@@ -16,8 +16,9 @@ from ok_doomer.shared.events import (
 from ok_doomer.shared.mapfile import parse_map
 from ok_doomer.shared.player import PlayerInput, PlayerState
 from ok_doomer.shared.sim import RIDE_SECONDS, step
+from ok_doomer.shared.spawn import spawn_player
 from ok_doomer.shared.switches import POWER
-from ok_doomer.shared.world import World, drain_events, new_world, spawn_player
+from ok_doomer.shared.world import World, drain_events, new_world
 
 SOUTH, NORTH = math.pi / 2, -math.pi / 2
 G = floor_index("G")
@@ -261,7 +262,7 @@ def test_ride_from_the_ground_floor_to_floor_1() -> None:
     events = tick(SETTLE + RIDE_SECONDS + 0.2, use=True)  # shut the doors; ride up
     (done,) = [e for e in events if isinstance(e, LevelComplete)]
     assert done.next_floor == "1"
-    session.change_floor(done.next_floor)
+    # The session moves on by itself, the same update the ride ended in.
     assert session.game_map.storey == "1" and session.player.health == 63
     assert not session.world.passes  # a floor's passes are its own
     arrival = next(d for d in session.world.doors if d.car_here and d.arrive_in > 0)

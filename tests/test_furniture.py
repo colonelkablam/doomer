@@ -78,7 +78,8 @@ def test_the_reception_desk_blocks_where_it_is_drawn() -> None:
 def test_walking_up_to_the_desk_you_stop_at_its_ledge() -> None:
     from ok_doomer.shared.player import PlayerInput
     from ok_doomer.shared.sim import step
-    from ok_doomer.shared.world import new_world, spawn_player
+    from ok_doomer.shared.spawn import spawn_player
+    from ok_doomer.shared.world import new_world
 
     room = parse_map(
         ROOM + "[things]\ncoop_start 1.5 2.5 0\nexit 8.5 4.5 0\nreception_desk 4.5 2.5 180\n"
@@ -109,7 +110,8 @@ def test_the_red_pass_on_the_boss_desk_can_be_reached_from_the_front() -> None:
     from ok_doomer.shared.mapfile import load_map
     from ok_doomer.shared.player import PlayerInput
     from ok_doomer.shared.sim import step
-    from ok_doomer.shared.world import new_world, spawn_player
+    from ok_doomer.shared.spawn import spawn_player
+    from ok_doomer.shared.world import new_world
 
     world = new_world(load_map("maps/office.map"), "coop")
     p = spawn_player(world, 1, "p")

@@ -18,7 +18,8 @@ from ok_doomer.shared.events import DoorToggled
 from ok_doomer.shared.mapfile import parse_map
 from ok_doomer.shared.player import PlayerInput, PlayerState
 from ok_doomer.shared.sim import step
-from ok_doomer.shared.world import World, drain_events, new_world, spawn_player
+from ok_doomer.shared.spawn import spawn_player
+from ok_doomer.shared.world import World, drain_events, new_world
 
 MOVE = MovementConfig()
 NORTH, SOUTH, EAST = -math.pi / 2, math.pi / 2, 0.0

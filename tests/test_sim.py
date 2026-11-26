@@ -8,9 +8,10 @@ from ok_doomer.shared.events import PlayerSpawned
 from ok_doomer.shared.mapfile import parse_map
 from ok_doomer.shared.player import PlayerInput
 from ok_doomer.shared.sim import step
+from ok_doomer.shared.spawn import spawn_player
 from ok_doomer.shared.things import THING_TYPES, ThingType, register_thing_type
 from ok_doomer.shared.timestep import FixedTimestep
-from ok_doomer.shared.world import ModeNotSupported, World, drain_events, new_world, spawn_player
+from ok_doomer.shared.world import ModeNotSupported, World, drain_events, new_world
 
 ROOM = parse_map(
     """\

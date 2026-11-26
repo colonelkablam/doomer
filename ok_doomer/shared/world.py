@@ -1,6 +1,5 @@
 """The World: everything that changes during play, plus the static map."""
 
-import math
 import random
 from dataclasses import dataclass, field
 
@@ -9,7 +8,7 @@ from ok_doomer.shared.config import SimConfig
 from ok_doomer.shared.cubicles import CubicleDoor, cubicle_doors_from_map
 from ok_doomer.shared.dispensers import Dispenser, dispensers_from_map
 from ok_doomer.shared.doors import Door, doors_from_map
-from ok_doomer.shared.events import Event, PlayerSpawned
+from ok_doomer.shared.events import Event
 from ok_doomer.shared.furniture import footprint_obstacles
 from ok_doomer.shared.mapfile import GameMap
 from ok_doomer.shared.modes import GAME_MODES, missing_requirements
@@ -89,18 +88,6 @@ def new_world(
         flags=initial_flags(game_map),
         passes=set(PASS_COLOURS) if GAME_MODES[mode].all_passes else set(),
     )
-
-
-def spawn_player(world: World, player_id: int, name: str) -> PlayerState:
-    """Place a player at a spawn point for the world's mode."""
-    spawns = world.map.things_of_type(GAME_MODES[world.mode].spawn_thing)
-    # TODO(milestone 3b): deathmatch should pick the spawn farthest from other players.
-    spot = spawns[0] if world.mode == "coop" else world.rng.choice(spawns)
-    floor = world.map.floor_height(math.floor(spot.x), math.floor(spot.y))
-    player = PlayerState(player_id, name, spot.x, spot.y, spot.angle, z=floor)
-    world.players[player_id] = player
-    world.events.append(PlayerSpawned(world.tick, player_id, spot.x, spot.y))
-    return player
 
 
 def drain_events(world: World) -> list[Event]:

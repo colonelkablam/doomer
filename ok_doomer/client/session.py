@@ -9,14 +9,14 @@ from typing import Protocol
 
 from ok_doomer.client.boxes import PlacedBox, cubicle_door_boxes, door_boxes, switch_boxes
 from ok_doomer.client.render import Camera, SpriteInstance, sprites_from_things
-from ok_doomer.shared.building import floor_map_path
-from ok_doomer.shared.events import Event
-from ok_doomer.shared.mapfile import GameMap, load_map
+from ok_doomer.shared.events import Event, LevelComplete
+from ok_doomer.shared.mapfile import GameMap
 from ok_doomer.shared.player import PlayerInput, PlayerState
 from ok_doomer.shared.sim import eye_height, step
+from ok_doomer.shared.spawn import arrive_on_floor, spawn_player
 from ok_doomer.shared.switches import POWER
 from ok_doomer.shared.timestep import FixedTimestep
-from ok_doomer.shared.world import World, drain_events, new_world, spawn_player
+from ok_doomer.shared.world import World, drain_events
 
 EYE_EASE_SPEED = 2.5  # walls per second: standing <-> crouching in ~0.1 s
 
@@ -49,13 +49,10 @@ class GameSession(Protocol):
         """Is the floor's power on (lights, lifts)?"""
         ...
 
-    def change_floor(self, storey: str) -> None:
-        """The lift's arrived: on to that floor of the building, the team
-        in its lift car."""
-        ...
-
     def spawn_angle(self) -> float:
-        """The way the player faced when they arrived on this floor."""
+        """The way the player faced when they arrived on this floor. The
+        session moves on to the next floor itself, when the lift gets
+        there: `game_map` is then a different map."""
         ...
 
 
@@ -82,13 +79,24 @@ class LocalSession:
         return self.world.map
 
     def update(self, real_dt: float, player_input: PlayerInput) -> list[Event]:
+        events: list[Event] = []
         for _ in range(self.timestep.advance(real_dt)):
             self._prev = (self.player.x, self.player.y, self.player.z)
             step(self.world, {self.player.id: player_input})
+            events += drain_events(self.world)
+            arrived = next(
+                (e.next_floor for e in events if isinstance(e, LevelComplete) and e.next_floor),
+                None,
+            )
+            if arrived is not None:  # the lift's there: on to the next floor
+                world = arrive_on_floor(self.world, arrived)
+                self._start(world, world.players[self.player.id])
+                events += drain_events(world)
+                break  # the rest of this frame's time goes to the new floor next frame
         target = eye_height(self.player, self.world.config.movement)
         change = EYE_EASE_SPEED * real_dt
         self._eye += max(-change, min(change, target - self._eye))
-        return drain_events(self.world)
+        return events
 
     def camera(self, view_angle: float, pitch: float = 0.0) -> Camera:
         # Interpolate between the last two simulation states: rendering at 144 fps
@@ -118,17 +126,6 @@ class LocalSession:
 
     def power(self) -> bool:
         return POWER in self.world.flags
-
-    def change_floor(self, storey: str) -> None:
-        """Load that floor (ok_doomer/shared/building.py) and put the player in
-        it, at its start (in the lift car they arrive in), keeping their
-        health and coffee. Passes are a floor's own: the new one starts
-        without."""
-        before = self.player
-        world = new_world(load_map(floor_map_path(storey)), self.world.mode, self.world.config)
-        player = spawn_player(world, before.id, before.name)
-        player.health, player.coffee = before.health, before.coffee
-        self._start(world, player)
 
     def spawn_angle(self) -> float:
         return self._spawn_angle

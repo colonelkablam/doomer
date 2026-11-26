@@ -60,7 +60,7 @@ def step(world: World, inputs: Mapping[int, PlayerInput]) -> None:
     """Advance the world by one fixed tick. Players without input stand still
     (but still fall)."""
     for player_id, player in world.players.items():
-        apply_input(world, player, inputs.get(player_id, PlayerInput(angle=player.angle)))
+        apply_input(world, player, inputs.get(player_id) or idle_input(player))
     positions = [(p.x, p.y) for p in world.players.values()]
     power = POWER in world.flags
     if world.ride < 0.0 and power and positions and _ready_to_ride(world, positions):
@@ -163,29 +163,7 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
         vy = forward * sin_a + strafe * cos_a
         speed = move.walk_speed * (move.crouch_speed_factor if player.crouching else 1.0)
         distance = speed * dt
-        body = body_height(player, move)
-        railed = on_railed_floor(world.map, player, move.radius)
-        # Cubicle screens block you only while you're up on the desks.
-        walls = [
-            ThinWall(sc.axis, sc.at, sc.lo, sc.hi, SCREEN_HALF)
-            for sc in screens_at_height(world.screens, player.z)
-        ]
-        walls += [wall for door in world.doors for wall in door_walls(door)]
-        walls += cubicle_door_walls(world.cubicle_doors)
-        player.x, player.y = move_box(
-            world.map,
-            player.x,
-            player.y,
-            vx * distance,
-            vy * distance,
-            move.radius,
-            obstacles_in_the_way(all_obstacles(world), player.z, move.step_height),
-            lambda cx, cy: (
-                cell_blocks(world.map, cx, cy, player.z, body, move.step_height, player.x, player.y)
-                or (railed and _drops_away(world.map, cx, cy, player, move.step_height))
-            ),
-            walls,
-        )
+        move_player(world, player, vx * distance, vy * distance)
 
     if player_input.jump and player.on_ground:
         player.z_velocity = move.jump_speed
@@ -207,6 +185,42 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
             world.events.append(
                 Refreshed(world.tick, player.id, pickup.type, meter, after - before)
             )
+
+
+def idle_input(player: PlayerState) -> PlayerInput:
+    """A player with no input this tick stands still, still looking and
+    crouching as they were (so a late packet doesn't snap the view level)."""
+    return PlayerInput(angle=player.angle, pitch=player.pitch, crouch=player.crouching)
+
+
+def move_player(world: World, player: PlayerState, dx: float, dy: float) -> None:
+    """Move a player across the floor by (dx, dy), stopped by everything
+    that stops them at their height: walls, steps too high, furniture, doors,
+    cubicle screens (up on the desks) and balcony railings."""
+    move = world.config.movement
+    body = body_height(player, move)
+    railed = on_railed_floor(world.map, player, move.radius)
+    # Cubicle screens block you only while you're up on the desks.
+    walls = [
+        ThinWall(sc.axis, sc.at, sc.lo, sc.hi, SCREEN_HALF)
+        for sc in screens_at_height(world.screens, player.z)
+    ]
+    walls += [wall for door in world.doors for wall in door_walls(door)]
+    walls += cubicle_door_walls(world.cubicle_doors)
+    player.x, player.y = move_box(
+        world.map,
+        player.x,
+        player.y,
+        dx,
+        dy,
+        move.radius,
+        obstacles_in_the_way(all_obstacles(world), player.z, move.step_height),
+        lambda cx, cy: (
+            cell_blocks(world.map, cx, cy, player.z, body, move.step_height, player.x, player.y)
+            or (railed and _drops_away(world.map, cx, cy, player, move.step_height))
+        ),
+        walls,
+    )
 
 
 def _meter(player: PlayerState, meter: str) -> int:

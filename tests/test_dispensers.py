@@ -9,7 +9,8 @@ from ok_doomer.shared.events import Dispensed
 from ok_doomer.shared.mapfile import parse_map
 from ok_doomer.shared.player import PlayerInput, PlayerState
 from ok_doomer.shared.sim import step
-from ok_doomer.shared.world import World, drain_events, new_world, spawn_player
+from ok_doomer.shared.spawn import spawn_player
+from ok_doomer.shared.world import World, drain_events, new_world
 
 # A corridor; the water cooler at its east end, players facing it.
 ROOM = """\

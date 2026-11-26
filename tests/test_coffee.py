@@ -6,7 +6,8 @@ from ok_doomer.shared.mapfile import parse_map
 from ok_doomer.shared.pickups import MAX_COFFEE
 from ok_doomer.shared.player import PlayerInput
 from ok_doomer.shared.sim import step
-from ok_doomer.shared.world import drain_events, new_world, spawn_player
+from ok_doomer.shared.spawn import spawn_player
+from ok_doomer.shared.world import drain_events, new_world
 
 ROOM = """\
 [walls]
