@@ -139,6 +139,13 @@ ceiling_light   4.5   7.5   0
 ceiling_light   6.5   7.5   0
 # The receptionist's Mac is on the emergency circuit: lit in a power cut.
 mac             4.66  3.57   355.2 circuit=emergency
+# Coffee cups (pickups: +5 coffee) on a few desks, beside the keyboards,
+# and one on reception.
+coffee_cup      4.78  3.82  0
+coffee_cup      10.88 2.12  30
+coffee_cup      12.18 2.9   200
+coffee_cup      16.92 6.1   75
+coffee_cup      18.17 6.9   250
 # A seating nook in the lobby's north-west corner: an L of sofas (a
 # three-seater backing onto the balcony's front, a corner unit, a two-seater
 # along the west wall, clear of the entrance), a coffee table, a fern on it.

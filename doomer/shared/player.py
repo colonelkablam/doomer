@@ -14,6 +14,7 @@ class PlayerState:
     crouching: bool = False
     pitch: float = 0.0  # radians, up is positive (for aiming)
     health: int = 100
+    coffee: int = 0  # the armour meter, 0..MAX_COFFEE (GAME.md, Pickups)
     use_held: bool = False  # last tick's use button, so one press is one use
 
 

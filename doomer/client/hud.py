@@ -16,6 +16,7 @@ from doomer.shared.events import (
     LevelComplete,
     LiftNoPower,
     PassPickedUp,
+    Refreshed,
     SwitchThrown,
 )
 
@@ -41,6 +42,8 @@ def _card_image(colour: str) -> pygame.Surface:
 
 
 def message_for(event: Event) -> str | None:
+    if isinstance(event, Refreshed):
+        return f"{event.meter.capitalize()} +{event.amount}" if event.amount else None
     if isinstance(event, PassPickedUp):
         return f"Picked up the {event.colour} pass"
     if isinstance(event, DoorLocked):

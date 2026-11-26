@@ -88,7 +88,11 @@ class LocalSession:
         return Camera(x, y, view_angle, z=z + self._eye, pitch=pitch)
 
     def sprites(self) -> list[SpriteInstance]:
-        lying = [SpriteInstance(p.type, p.x, p.y, p.z) for p in self.world.pickups if not p.taken]
+        lying = [
+            SpriteInstance(p.type, p.x, p.y, p.z, p.angle)
+            for p in self.world.pickups
+            if not p.taken
+        ]
         return self._static_sprites + lying
 
     def boxes(self) -> list[PlacedBox]:

@@ -98,7 +98,10 @@ means adding a module and registering it, not editing a dozen files.
   dispensers. Clients predict their own movement only, never pickups or
   meters: they wait for the server, so a cup can't vanish for two players
   at once. In the world state:
-  - `PlayerState.health` (there already) and `PlayerState.coffee`.
+  - `PlayerState.health` and `PlayerState.coffee` [both there; coffee
+    topped up by cups, `pickups.PICKUP_EFFECTS` ({type: {meter: amount}})
+    and `METER_MAX`; a full meter leaves a pickup lying; `Refreshed`
+    events].
   - `World.pickups`: passes already, with a `taken` flag; coffee cups,
     snacks and the like join them, each pickup type's amounts from the
     thing registry (`health=`, `coffee=`; config as data).
@@ -794,8 +797,7 @@ Noted at the end of a session, to pick up next:
   (coffee cups +5, snacks) and per-player dispensers (water cooler,
   vending machine). The data model with networking, damage with 3b.
 - **Office objects to make** (GAME.md, Office furniture, the `planned`
-  rows): a coffee cup (a coffee pickup: buildable now, it does nothing
-  until the meters exist)
+  rows)
   on the odd desk; a kitchen area (counter, sink, kettle, microwave,
   fridge, mugs); washrooms (cubicles, basins and mirror, hand dryer); and
   the older list: photocopier, fax on a stand, vending machine (lit: on the

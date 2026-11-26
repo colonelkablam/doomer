@@ -31,6 +31,16 @@ class DoorLocked(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class Refreshed(Event):
+    """A player took a pickup that tops up a meter (a coffee cup)."""
+
+    player_id: int
+    pickup: str  # its thing type
+    meter: str
+    amount: int  # what it added (less if the meter filled up)
+
+
+@dataclass(frozen=True, slots=True)
 class PassPickedUp(Event):
     """A player picked up an ID pass; the whole team now holds it."""
 

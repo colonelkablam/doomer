@@ -170,7 +170,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Posters and pictures (box model, `poster`, one thin box on a wall, `kind=`): motivational posters (SYNERGY over an eagle at sunset, "1 + 1 = 3"; TEAMWORK, a rowing crew; EXCELLENCE, a snowy peak); Employee of the Month, three frames, the same moustached chap in big glasses every month; the founder's portrait in oils in a gilt frame (lobby); a DAYS SINCE LAST ACCIDENT: 0 board (plant room); DANGER HIGH VOLTAGE signs (by the plant room door and the breaker: they point the way to the power); a fire plan of the floor itself, a red dot where it hangs | no | [built] |
 | Lobby sofas (box models, `sofa_two`, `sofa_three`, `sofa_corner`): a 1970s-80s modular group in rust velvet, button-tufted seat and back cushions on a brushed steel plinth with a dark wood rim; runs and a corner unit make an L; three boxes a seat | yes | [built] |
 | Coffee table (`coffee_table`): amber glass in a dark frame on four chrome legs, three magazines at one end, upright to someone walking up from the open side: two side by side, one fanned over them, each a masthead band, a picture (a skyline, a chart, a portrait) and cover lines; things rest on it, the fern at the other end. A small fern (`fern`) in a copper bowl, for a table or a desk | yes (the fern: no) | [built] |
-| Coffee cup on the odd desk: a mug, steam optional (one or two boxes; a texture would look flat); a pickup, +5 coffee (see Pickups) | no | planned |
+| Coffee cup (`coffee_cup`, a pickup): a chunky white office mug with a blue band, full of coffee, its handle turned to its map angle; on the odd desk beside the keyboard. Walk up to it: +5 coffee (a HUD message, "Coffee +5"); left lying if your coffee's full. Four boxes and a handle | no | [built] |
 | Kitchen area (kitchenette): a run of counter units with a sink, a kettle, a microwave, a fridge, a few mugs, a "PLEASE WASH YOUR OWN CUPS" sign | yes | planned |
 | Washrooms (loos): toilet cubicles (partitions and doors), basins with a mirror over them, a hand dryer, avocado tiles (the `7` wall) | yes | planned |
 | Photocopier (inert) | yes | planned |
@@ -277,7 +277,8 @@ buttons by the door (G lit).
     damage with coffee at 50: 10 off coffee, 20 off health). Coffee doesn't
     wear off (a caffeine crash is an option to add if it proves too strong).
   - **Pickups** (one-off: walk over it, it's gone): a **coffee cup** (+5
-    coffee; small, so cups can be on lots of desks), **biscuits** (+10
+    coffee; small, so cups can be on lots of desks) [built: the cup and the
+    coffee meter; it soaks damage once there's damage], **biscuits** (+10
     health), a **box of doughnuts** (+25 health, rare), a **sick note**
     (full health, very rare).
   - **Dispensers** (fixed; use with E; each has a budget per player, so one

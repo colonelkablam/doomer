@@ -113,6 +113,8 @@ COFFEE_TABLE = register_thing_type(
         footprints=(Footprint((-0.25, 0.25), (-0.15, 0.15), 0.15),),
     )
 )
+# A coffee cup on a desk: a pickup (doomer/shared/pickups.py), +5 coffee.
+COFFEE_CUP = register_thing_type(ThingType("coffee_cup", "A cup of coffee: +5 coffee"))
 FERN = register_thing_type(ThingType("fern", "A small fern in a copper bowl"))
 
 # A poster or picture on a wall (drawn as a box by doomer/client/boxes.py),

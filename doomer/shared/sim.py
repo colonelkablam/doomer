@@ -22,10 +22,11 @@ from doomer.shared.events import (
     LevelComplete,
     LiftNoPower,
     PassPickedUp,
+    Refreshed,
     SwitchThrown,
 )
 from doomer.shared.mapfile import RAIL_HEIGHT, RAILING_WALL_TYPE, GameMap
-from doomer.shared.pickups import take_pickups
+from doomer.shared.pickups import METER_MAX, Pickup, take_pickups
 from doomer.shared.player import PlayerInput, PlayerState
 from doomer.shared.screens import SCREEN_HALF, screens_at_height
 from doomer.shared.switches import POWER, try_switch
@@ -124,11 +125,27 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
         player.z_velocity = move.jump_speed
         player.on_ground = False
     _apply_gravity(world.map, player, move, dt)
-    for pickup in take_pickups(world.pickups, player.x, player.y, player.z):
+
+    def wants(pickup: Pickup) -> bool:
+        return all(_meter(player, m) < METER_MAX[m] for m in pickup.effects)
+
+    for pickup in take_pickups(world.pickups, player.x, player.y, player.z, wants):
         colour = pickup.pass_colour
         if colour is not None and colour not in world.passes:
             world.passes.add(colour)
             world.events.append(PassPickedUp(world.tick, player.id, colour))
+        for meter, amount in pickup.effects.items():
+            before = _meter(player, meter)
+            after = min(METER_MAX[meter], before + amount)
+            setattr(player, meter, after)
+            world.events.append(
+                Refreshed(world.tick, player.id, pickup.type, meter, after - before)
+            )
+
+
+def _meter(player: PlayerState, meter: str) -> int:
+    value: int = getattr(player, meter)
+    return value
 
 
 def _all_in_lifts(world: World, positions: list[tuple[float, float]]) -> bool:

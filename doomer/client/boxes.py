@@ -825,6 +825,38 @@ def _fern() -> tuple[Box, ...]:
     return (*bowl, *cards, flat)
 
 
+# --- A coffee cup (a pickup: +5 coffee) ---------------------------------------------
+# A chunky office mug, white with a blue band, full of coffee, its handle out
+# to one side. About 1.6x real size (13 cm across), as the desk things are.
+_MUG_R, _MUG_H = 0.024, 0.055  # cells (its inradius), walls
+
+
+def mug_side() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), CREAM, 14.0)
+    c.paint(c.rect(22, 36, 0, 64), BLUE, 8.0)  # the band
+    c.paint(c.rect(0, 6, 0, 64), CREAM, 15.0)  # its lit rim
+    c.paint(c.rect(56, 64, 0, 64), CREAM, 11.0)  # shadowed foot
+    return _texture(c)
+
+
+def coffee_top() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 3.0)  # coffee
+    c.paint(c.ellipse(24, 26, 10, 14), WOOD, 5.0)  # a bit of crema catching the light
+    c.paint(~c.rect(6, 58, 6, 58), CREAM, 14.0)  # the rim round it
+    return _texture(c)
+
+
+def _coffee_cup() -> tuple[Box, ...]:
+    side = mug_side()
+    body = _octagon(_MUG_R, (0.0, _MUG_H), (side, coffee_top()))
+    white = _plain_texture(CREAM, 13.0)
+    # The handle: a loop out to one side, as a box (its hole too small to show).
+    handle = Box((-0.006, 0.006), (_MUG_R, _MUG_R + 0.018), (0.012, _MUG_H - 0.01), (white,) * 5)
+    return (*body, handle)
+
+
 # --- Late-80s business PC (the boss's): green screen on a flat system unit -----------
 # Generic (no maker's badge), in the pearly off-white of the time: a wide
 # system unit lying flat, a big 14" CRT standing on it (a deep bezel box,
@@ -2603,6 +2635,7 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "sofa_corner": tuple(_sofa_unit(0.0, backs=("-x", "-y"))),
     "coffee_table": _coffee_table(),
     "fern": _fern(),
+    "coffee_cup": _coffee_cup(),
     **SERVER_MODELS,
     **PASS_MODELS,
     **{f"poster:{k}": _poster(*v) for k, v in _POSTER_KINDS.items()},
