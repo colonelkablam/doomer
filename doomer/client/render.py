@@ -39,6 +39,7 @@ different number of steps), so it stays in Python, 320 iterations a frame.
 Everything per-pixel is whole-array numpy, which runs in C.
 """
 
+import dataclasses
 import functools
 import math
 from collections.abc import Iterable
@@ -175,6 +176,7 @@ class SpriteInstance:
     y: float
     z: float = 0.0  # height of its base (a desk top; for hanging things, ceiling - 1)
     angle: float = 0.0  # which way it faces (radians), for sprites with views
+    emergency: bool = False  # on the emergency circuit (screens stay on in a power cut)
 
 
 def sprites_from_things(game_map: GameMap) -> list[SpriteInstance]:
@@ -191,7 +193,8 @@ def sprites_from_things(game_map: GameMap) -> list[SpriteInstance]:
         # A thing with a kind (a poster) draws as "type:kind" (BOX_MODELS).
         kind = t.prop("kind")
         name = f"{t.type}:{kind}" if kind else t.type
-        out.append(SpriteInstance(name, t.x, t.y, z, t.angle))
+        emergency = t.prop("circuit") == "emergency"
+        out.append(SpriteInstance(name, t.x, t.y, z, t.angle, emergency))
     return out
 
 
@@ -200,9 +203,22 @@ def _placed(s: SpriteInstance, box: Box, now: float) -> PlacedBox:
     by the clock."""
     spin = SPINNING.get(s.name)
     if spin is None:
-        return PlacedBox(s.x, s.y, s.z, s.angle, box)
+        return PlacedBox(s.x, s.y, s.z, s.angle, box, s.emergency)
     rate, bob = spin
-    return PlacedBox(s.x, s.y, s.z + bob * math.sin(now * rate), s.angle + now * rate, box)
+    z, angle = s.z + bob * math.sin(now * rate), s.angle + now * rate
+    return PlacedBox(s.x, s.y, z, angle, box, s.emergency)
+
+
+def _powered(p: PlacedBox, power: bool, now: float) -> PlacedBox | None:
+    """A box as it is with the floor's `power` (its own circuit: the
+    emergency one is always on): an unlit indicator lamp isn't drawn
+    (None); a screen on a dead circuit shows its blank faces, unlit."""
+    live = power or p.emergency
+    if p.box.indicator and not lit_now(p.box, p.x, p.y, now, live):
+        return None
+    if not live and p.box.mains and p.box.off_faces is not None:
+        return p._replace(box=dataclasses.replace(p.box, faces=p.box.off_faces, glow=False))
+    return p
 
 
 def make_frame_surface(config: RenderConfig) -> pygame.Surface:
@@ -661,8 +677,8 @@ class Renderer:
                 if (s.x - camera.x) ** 2 + (s.y - camera.y) ** 2 < MAX_BOX_DISTANCE**2
             ]
         )
-        # Indicator lamps: only while lit (a blink's off half, no mains power).
-        boxes = [p for p in boxes if not p.box.indicator or lit_now(p.box, p.x, p.y, now, power)]
+        # Lamps only while lit, screens blank on a dead circuit.
+        boxes = [q for p in boxes if (q := _powered(p, power, now)) is not None]
         self._draw_boxes(frame, zbuffer, camera, boxes, horizon, eye)
         self._draw_sprites(frame, zbuffer, camera, sprites, horizon, eye)
         self.zbuffer = zbuffer
@@ -1502,7 +1518,8 @@ class Renderer:
         depths: list[FloatArray] = []
         texels: list[npt.NDArray[np.uint8]] = []
         solid: list[npt.NDArray[np.bool_]] = []  # False: see-through (leaves)
-        glow_b = np.array([p.box.glow and (self._power or not p.box.mains) for p in boxes])
+        live = [self._power or p.emergency or not p.box.mains for p in boxes]
+        glow_b = np.array([p.box.glow and on for p, on in zip(boxes, live, strict=True)])
         glows: list[npt.NDArray[np.bool_]] = []  # lit signs: full brightness
         lights: list[FloatArray] = []
 

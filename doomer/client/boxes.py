@@ -98,6 +98,9 @@ class Box:
     # behind it showing otherwise. Unlit when it's on the mains (`mains`)
     # and there's no power, or in the off half of its blink.
     indicator: bool = False
+    # Its faces when its circuit is dead (a screen: blank glass); drawn then
+    # without its glow. None: the same either way.
+    off_faces: tuple[int, int, int, int, int] | None = None
     # Blinking (an indicator): seconds per on-off cycle (0: steady), and
     # where in the cycle it starts (0..1); things of a model are offset by
     # where they stand, so a row of them doesn't blink in step.
@@ -123,6 +126,7 @@ class PlacedBox(NamedTuple):
     z: float
     angle: float
     box: Box
+    emergency: bool = False  # on the emergency circuit: powered in a power cut
 
 
 _TEXTURES: list[U8Array] = []
@@ -165,19 +169,9 @@ def mac_front() -> int:
     c = _platinum(13.0)
     c.paint(c.rect(4, 34, 6, 58), PLATINUM, 9.0)  # screen bezel, recessed
     c.paint(c.rect(5, 33, 7, 57), PLATINUM, 7.0)
-    # The screen: a System 6 desktop. Grey desktop, white menu bar, a window.
-    c.paint(c.rect(6, 31, 9, 55), GREY, 9.0)
-    c.paint(c.rect(6, 8, 9, 55), GREY, 14.0)  # menu bar
-    c.paint(c.rect(8, 9, 9, 55), GREY, 1.0)
-    for u0, u1 in ((11, 13), (16, 21), (24, 28), (31, 36)):  # menu titles
-        c.paint(c.rect(6, 7, u0, u1), GREY, 2.0)
-    c.paint(c.rect(11, 28, 13, 45), GREY, 1.0)  # window frame
-    c.paint(c.rect(12, 27, 14, 44), GREY, 14.0)
-    c.paint(c.rect(12, 14, 14, 44), GREY, 5.0)  # striped title bar
-    for v0, length in ((16, 20), (19, 26), (22, 14), (25, 22)):  # text
-        c.paint(c.rect(v0, v0 + 1, 16, 16 + length), GREY, 3.0)
-    c.paint(c.rect(11, 15, 48, 53), GREY, 14.0)  # hard disk icon
-    c.paint(c.rect(13, 14, 49, 52), GREY, 2.0)
+    # The screen itself is a box of its own (mac_screen), just proud of this:
+    # behind it, dark glass.
+    c.paint(c.rect(6, 31, 9, 55), GREY, 2.0)
     # Floppy drive slot, right of centre.
     c.paint(c.rect(40, 44, 33, 53), PLATINUM, 10.0)
     c.paint(c.rect(41, 43, 34, 52), GREY, 1.0)
@@ -189,6 +183,39 @@ def mac_front() -> int:
     c.paint(c.rect(49, 50, 16, 34), PLATINUM, 8.0)  # "Macintosh SE/30"
     _foot(c)
     return _texture(c)
+
+
+_MAC_SCREEN_UV = (6, 31, 9, 55)  # v0, v1, u0, u1: the screen on the front texture
+
+
+def mac_screen() -> int:
+    """The screen, powered: a System 6 desktop. Grey desktop, white menu bar,
+    a window with a striped title bar and lines of text, the hard disk icon."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 9.0)
+    c.paint(c.rect(0, 6, 0, 64), GREY, 14.0)  # menu bar
+    c.paint(c.rect(6, 8, 0, 64), GREY, 1.0)
+    for u0, u1 in ((3, 6), (10, 17), (21, 27), (31, 38)):  # menu titles
+        c.paint(c.rect(2, 4, u0, u1), GREY, 2.0)
+    c.paint(c.rect(13, 56, 6, 50), GREY, 1.0)  # window frame
+    c.paint(c.rect(15, 54, 8, 48), GREY, 14.0)
+    c.paint(c.rect(15, 20, 8, 48), GREY, 5.0)  # striped title bar
+    for v0, length in ((25, 28), (32, 36), (39, 20), (46, 30)):  # text
+        c.paint(c.rect(v0, v0 + 2, 11, 11 + length), GREY, 3.0)
+    c.paint(c.rect(12, 22, 53, 61), GREY, 14.0)  # hard disk icon
+    c.paint(c.rect(17, 19, 54, 60), GREY, 2.0)
+    return _texture(c)
+
+
+def blank_screen() -> int:
+    """A screen with no power: dark glass, a faint reflection across it."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 2.0)
+    c.paint(c.rect(0, 64, 0, 64) & (np.abs(c.u - c.v - 10) < 4), GREY, 3.0)
+    return _texture(c)
+
+
+_BLANK_SCREEN = blank_screen()
 
 
 def mac_side(vents_at_left: bool) -> int:
@@ -264,6 +291,19 @@ def _mac_se30() -> tuple[Box, ...]:
         (0.0, _MAC_H),
         (front, mac_side(vents_at_left=True), back, mac_side(vents_at_left=False), top),
     )
+    # The screen: lit (full brightness) with power, blank glass without.
+    v0, v1, u0, u1 = _MAC_SCREEN_UV
+    half = _MAC_W / 2
+    edge = (plain(9.0),) * 4
+    screen = Box(
+        (_MAC_D / 2, _MAC_D / 2 + 0.002),
+        (half - u1 / 64 * _MAC_W, half - u0 / 64 * _MAC_W),
+        (_MAC_H * (1 - v1 / 64), _MAC_H * (1 - v0 / 64)),
+        (mac_screen(), *edge),
+        glow=True,
+        mains=True,
+        off_faces=(_BLANK_SCREEN, *edge),
+    )
     case = plain(11.0)
     gap = 0.02
     k0 = _MAC_D / 2 + gap
@@ -282,7 +322,7 @@ def _mac_se30() -> tuple[Box, ...]:
         (0.0, _MOUSE_H),
         (case, case, case, case, mouse_top()),
     )
-    return mac, keyboard, mouse
+    return mac, screen, keyboard, mouse
 
 
 # --- Posters and pictures ---------------------------------------------------------------
@@ -732,6 +772,7 @@ def _pc() -> tuple[Box, ...]:
             (pc_screen(), *(_PC_GLASS_EDGE,) * 4),
             glow=True,
             mains=True,
+            off_faces=(_BLANK_SCREEN, *(_PC_GLASS_EDGE,) * 4),
         ),
         Box(
             (k0, k0 + kd), (-kw / 2, kw / 2), (0.0, kh), (side, side, side, side, pc_keyboard_top())

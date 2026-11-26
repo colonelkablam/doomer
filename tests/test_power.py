@@ -153,3 +153,31 @@ def test_the_plant_room_breaker_and_servers_stand_on_solid_walls() -> None:
         bx, by = t.x - 0.05 * math.cos(t.angle), t.y - 0.05 * math.sin(t.angle)
         cell = (math.floor(bx), math.floor(by))
         assert office.is_full_wall(*cell) and office.walls[cell[1]][cell[0]] != 4  # not a window
+
+
+def test_screens_are_blank_on_a_dead_circuit_and_lit_on_a_live_one() -> None:
+    from doomer.client.boxes import BOX_MODELS, PlacedBox
+    from doomer.client.render import _powered
+
+    for name in ("mac", "pc"):
+        screen = next(b for b in BOX_MODELS[name] if b.off_faces is not None)
+        assert screen.glow and screen.mains
+        main = PlacedBox(1.5, 1.5, 0.0, 0.0, screen)
+        backup = main._replace(emergency=True)
+        on = _powered(main, True, 0.0)
+        off = _powered(main, False, 0.0)
+        assert on is not None and on.box is screen  # lit, as drawn
+        assert off is not None and not off.box.glow and off.box.faces == screen.off_faces
+        stays = _powered(backup, False, 0.0)
+        assert stays is not None and stays.box is screen  # the emergency circuit stays live
+
+
+def test_things_on_the_emergency_circuit_carry_it_to_their_boxes() -> None:
+    from doomer.client.boxes import BOX_MODELS
+    from doomer.client.render import _placed, sprites_from_things
+    from doomer.shared.mapfile import load_map
+
+    office = load_map("maps/office.map")
+    reception = [s for s in sprites_from_things(office) if s.name == "mac" and s.emergency]
+    assert len(reception) == 1  # the receptionist's Mac: lit in a power cut
+    assert all(_placed(reception[0], b, 0.0).emergency for b in BOX_MODELS["mac"])

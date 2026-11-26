@@ -16,7 +16,7 @@ OPEN = parse_map("[walls]\n###########\n#.........#\n#.........#\n#.........#\n#
 PILLAR = parse_map("[walls]\n###########\n#.........#\n#..#......#\n#.........#\n###########\n")
 R = Renderer(RenderConfig())
 CAM = Camera(1.5, 2.5, 0.0)  # looking east along the middle row
-MAC, _KEYBOARD, _MOUSE = BOX_MODELS["mac"]
+MAC, _SCREEN, _KEYBOARD, _MOUSE = BOX_MODELS["mac"]
 CENTRE = 160  # a column whose ray is (almost) straight ahead
 
 

@@ -77,7 +77,11 @@ for _name, _description, _blocking, _radius in (
     # stand on; angle = the way its sitter faces.
     ("chair", "Office swivel chair", True, 0.1),
 ):
-    register_thing_type(ThingType(_name, _description, _blocking, _radius))
+    # Things with screens are on a circuit: the main one (dark in a power
+    # cut) unless `circuit=emergency`.
+    screen = _name in ("terminal", "mac", "pc")
+    properties = {"circuit": ("main", "emergency")} if screen else {}
+    register_thing_type(ThingType(_name, _description, _blocking, _radius, properties))
 
 # A poster or picture on a wall (drawn as a box by doomer/client/boxes.py),
 # `kind=` which; plan: the floor's fire plan, drawn from the map, a red dot

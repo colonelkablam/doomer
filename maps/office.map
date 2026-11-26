@@ -137,7 +137,8 @@ door_lift       6.5   7.5   270
 ceiling_light   2.5   7.5   0
 ceiling_light   4.5   7.5   0
 ceiling_light   6.5   7.5   0
-mac             4.66  3.57   355.2
+# The receptionist's Mac is on the emergency circuit: lit in a power cut.
+mac             4.66  3.57   355.2 circuit=emergency
 chair           5.23  3.55  181
 ficus           1.5   1.5   0
 ficus           5.5   5.5   0

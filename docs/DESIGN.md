@@ -431,6 +431,16 @@ dm_spawn      1.5   3.5   0
   bulkhead drawing; with lighting on, a ceiling lower than a storey (the
   lintel's soffit) takes the plain light times `soffit_shade` (0.85), not
   the square root other ceilings get, so it sits in shadow like the walls.
+- **Circuits and powered things**: a thing is on the main circuit unless
+  its map line says `circuit=emergency` (ceiling lights, and things with
+  screens: `mac`, `pc`, `terminal`). Its boxes carry that
+  (`PlacedBox.emergency`, from `SpriteInstance.emergency`), and the
+  renderer decides per box whether it's live: the floor has power, or
+  it's on the emergency circuit (`render._powered`). A dead box on the
+  mains with `off_faces` (a screen) shows those, unlit; a dead indicator
+  lamp isn't drawn; a dead mains glow (a lit sign) is lit like anything
+  else. Screens are boxes of their own over the case (the Mac's too), so
+  only they change.
 - **Indicator lamps** (`Box.indicator`, `blink`, `blink_phase`;
   `boxes.lit_now`): a small lit box on a panel, drawn only while lit, the
   dark socket painted on the panel behind showing otherwise. Unlit when it's
