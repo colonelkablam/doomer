@@ -768,7 +768,7 @@ Noted at the end of a session, to pick up next:
   second floor to arrive on. Enemies, weapons and pickups (milestones 3b,
   4) come after networking.
 - **Office objects to make** (GAME.md, Office furniture, the `planned`
-  rows): lobby sofas and a low coffee table with magazines; a coffee cup
+  rows): a coffee cup
   on the odd desk; a kitchen area (counter, sink, kettle, microwave,
   fridge, mugs); washrooms (cubicles, basins and mirror, hand dryer); and
   the older list: photocopier, fax on a stand, vending machine (lit: on the

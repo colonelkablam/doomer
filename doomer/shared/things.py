@@ -83,6 +83,38 @@ for _name, _description, _blocking, _radius in (
     properties = {"circuit": ("main", "emergency")} if screen else {}
     register_thing_type(ThingType(_name, _description, _blocking, _radius, properties))
 
+# Lobby seating (drawn by doomer/client/boxes.py, sizes matching): a modular
+# sofa in runs of two or three seats and a corner unit (backs on two sides),
+# to make an L; angle = the way the sitters face, its back(s) behind them
+# (a corner's second back on its left as you sit: model -y). Each seat
+# 0.28 wide, 0.32 deep. A coffee table (things rest on its top) and a
+# small fern in a bowl, for a table or a desk.
+for _name, _description, _seats in (
+    ("sofa_two", "Modular sofa: two seats", 2),
+    ("sofa_three", "Modular sofa: three seats", 3),
+    ("sofa_corner", "Modular sofa: a corner unit", 1),
+):
+    _half = 0.14 * _seats
+    register_thing_type(
+        ThingType(
+            _name,
+            _description,
+            blocking=True,
+            radius=max(0.16, _half),
+            footprints=(Footprint((-0.16, 0.16), (-_half, _half), 0.29),),
+        )
+    )
+COFFEE_TABLE = register_thing_type(
+    ThingType(
+        "coffee_table",
+        "Low coffee table, amber glass on chrome legs",
+        blocking=True,
+        radius=0.25,
+        footprints=(Footprint((-0.25, 0.25), (-0.15, 0.15), 0.15),),
+    )
+)
+FERN = register_thing_type(ThingType("fern", "A small fern in a copper bowl"))
+
 # A poster or picture on a wall (drawn as a box by doomer/client/boxes.py),
 # `kind=` which; plan: the floor's fire plan, drawn from the map, a red dot
 # where it hangs. Put it at the wall's face, its angle out of the wall.

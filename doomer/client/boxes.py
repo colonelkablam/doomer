@@ -624,6 +624,156 @@ def _chair() -> tuple[Box, ...]:
     )
 
 
+# --- Lobby seating: a modular sofa, a coffee table, a fern ------------------------------
+# A 1970s-80s modular sofa (as the reference: a lobby's corner group): seat
+# units in rust velvet, button-tufted, on a brushed steel plinth with a dark
+# wood rim. Each unit is three boxes (plinth, seat cushion, back cushion);
+# runs of two and three, and a corner unit with backs on two sides, make an
+# L. Model +x is the way the sitter faces, the backs at -x; a run's seats
+# side by side along y. Sizes match the footprints in shared/things.py.
+
+SOFA_SEAT_W, SOFA_HALF_D = 0.28, 0.16  # cells: a unit's width, half its depth
+_SOFA_PLINTH, _SOFA_SEAT, _SOFA_BACK = 0.055, 0.155, 0.29  # walls: their tops
+_SOFA_BACK_D = 0.08  # cells: the back cushion's depth
+VELVET = ORANGE
+
+
+def _tufted(base: float, buttons: tuple[tuple[int, int], ...]) -> int:
+    """Rust velvet: piping round the edge, buttons pulling the cushion in."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), VELVET, base)
+    c.paint(~c.rect(3, 61, 3, 61), VELVET, base - 2.0)  # piping
+    for v, u in buttons:
+        c.paint(c.ellipse(v, u, 7, 7), VELVET, base - 1.0)  # the dimple
+        c.paint(c.ellipse(v, u, 2.5, 2.5), VELVET, base - 3.0)  # the button
+    return _texture(c)
+
+
+def sofa_plinth() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 11.0)  # brushed steel
+    c.paint(c.rect(0, 64, 0, 64) & (c.u % 6 == 0), GREY, 12.0)
+    c.paint(c.rect(0, 14, 0, 64), WOOD, 3.0)  # the dark wood rim
+    return _texture(c)
+
+
+_SEAT_TOP = _tufted(11.0, ((32, 20), (32, 44)))
+_SEAT_SIDE = _tufted(10.0, ())
+_BACK_FRONT = _tufted(11.0, ((22, 20), (22, 44)))
+_BACK_TOP = _tufted(12.0, ())
+_PLINTH = sofa_plinth()
+
+
+def _sofa_unit(y: float, backs: tuple[str, ...] = ("-x",)) -> list[Box]:
+    """One seat unit centred at y across the run; its back cushions on the
+    sides named (-x: behind; -y: to one side, for a corner)."""
+    d, w = SOFA_HALF_D, SOFA_SEAT_W / 2
+    ys = (y - w, y + w)
+    plinth_faces = (_PLINTH, _PLINTH, _PLINTH, _PLINTH, _PLINTH)
+    out = [Box((-d, d), ys, (0.0, _SOFA_PLINTH), plinth_faces)]
+    seat_x = (-d + _SOFA_BACK_D if "-x" in backs else -d, d)
+    seat_y = (ys[0] + _SOFA_BACK_D, ys[1]) if "-y" in backs else ys
+    seat = (_SEAT_SIDE, _SEAT_SIDE, _SEAT_SIDE, _SEAT_SIDE, _SEAT_TOP)
+    out.append(Box(seat_x, seat_y, (_SOFA_PLINTH, _SOFA_SEAT), seat))
+    back = (_BACK_FRONT, _SEAT_SIDE, _SEAT_SIDE, _SEAT_SIDE, _BACK_TOP)
+    if "-x" in backs:
+        out.append(Box((-d, -d + _SOFA_BACK_D), ys, (_SOFA_PLINTH, _SOFA_BACK), back))
+    if "-y" in backs:  # its front (+x face) can't face the sitter: tufts on all sides
+        side_back = (_BACK_FRONT,) * 4 + (_BACK_TOP,)
+        out.append(
+            Box((-d, d), (ys[0], ys[0] + _SOFA_BACK_D), (_SOFA_PLINTH, _SOFA_BACK), side_back)
+        )
+    return out
+
+
+def _sofa(seats: int) -> tuple[Box, ...]:
+    offset = (seats - 1) / 2
+    return tuple(b for k in range(seats) for b in _sofa_unit((k - offset) * SOFA_SEAT_W))
+
+
+# The coffee table: an amber glass top in a dark frame on four chrome legs,
+# a fan of magazines at one end (BOOMER NEWS on top).
+TABLE_HALF = (0.25, 0.15)  # cells: half its length (x), half its width (y)
+TABLE_TOP = 0.15  # walls
+_LEG = 0.012
+
+
+def table_glass() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), ORANGE, 12.0)  # amber glass
+    c.paint(c.rect(0, 64, 0, 64) & ((c.u + c.v) % 40 < 2), ORANGE, 13.0)  # faint reflections
+    c.paint(~c.rect(2, 62, 2, 62), GREY, 2.0)  # the frame
+    for k, (ramp, shade) in enumerate(((BLUE, 8.0), (CREAM, 14.0), (CREAM, 15.0))):
+        v0, u0 = 8 + k * 4, 6 + k * 5  # fanned, each a little further over
+        c.paint(c.rect(v0, v0 + 22, u0, u0 + 16), ramp, shade)
+        c.paint(c.rect(v0, v0 + 4, u0, u0 + 16), BRICK if k != 1 else BLUE, 10.0)  # mastheads
+    c.text("NEWS", 21, 18, GREY, 3.0)
+    return _texture(c)
+
+
+def _coffee_table() -> tuple[Box, ...]:
+    hx, hy = TABLE_HALF
+    frame = _plain_texture(GREY, 2.0)
+    chrome = _plain_texture(GREY, 13.0)
+    top = Box((-hx, hx), (-hy, hy), (TABLE_TOP - 0.02, TABLE_TOP), (frame,) * 4 + (table_glass(),))
+    legs = tuple(
+        Box((x - _LEG, x + _LEG), (y - _LEG, y + _LEG), (0.0, TABLE_TOP - 0.02), (chrome,) * 5)
+        for x in (-hx + 0.02, hx - 0.02)
+        for y in (-hy + 0.02, hy - 0.02)
+    )
+    return (top, *legs)
+
+
+def _plain_texture(ramp: int, shade: float) -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), ramp, shade)
+    return _texture(c)
+
+
+# A small fern (a bird's nest fern) in a copper bowl, for a table or desk:
+# fronds arching up and out, drooping at their tips; crossed see-through
+# cards, and one flat card seen from above.
+_FERN_R, _FERN_Z = 0.12, (0.05, 0.17)
+
+
+def fronds(seed: int, flat: bool = False) -> int:
+    rng = np.random.default_rng(seed)
+    c = Canvas()
+    count = 9 if flat else 7
+    for k in range(count):
+        a = (k / count) * 2 * math.pi if flat else math.radians(-75 + 150 * k / (count - 1))
+        a += rng.uniform(-0.15, 0.15)
+        for t in np.linspace(0.05, 1.0, 40):
+            if flat:  # from the middle, out in every direction
+                u, v = 32 + math.cos(a) * t * 30, 32 + math.sin(a) * t * 30
+            else:  # from the bowl, up and out, the tip drooping
+                u = 32 + math.sin(a) * t * 30
+                v = 63 - math.cos(a) * t * 50 + (t**2) * 22 * abs(math.sin(a))
+            width = 3.0 * (1 - t) + 1.0
+            leaf = c.ellipse(v, u, width, width)
+            c.paint(leaf, GREEN, 8.0 + 3.0 * (1 - t) + (1.0 if k % 2 else 0.0))
+            c.paint(c.ellipse(v, u, 0.6, 0.6), GREEN, 12.5)  # the midrib
+    return _texture(c)
+
+
+def _fern() -> tuple[Box, ...]:
+    copper, earth = _plain_texture(ORANGE, 9.0), soil()
+    bowl = (
+        *_octagon(0.045, (0.0, 0.04), (copper, earth)),
+        *_octagon(0.06, (0.04, 0.06), (_plain_texture(ORANGE, 11.0), earth)),
+    )
+    edge = _texture(Canvas())  # see-through
+    r = (-_FERN_R, _FERN_R)
+    cards = tuple(
+        Box((-0.003, 0.003), r, _FERN_Z, (tex, edge, tex, edge, edge), turn=turn)
+        for turn, tex in zip(
+            (0.0, math.pi / 3, 2 * math.pi / 3), (fronds(61), fronds(62), fronds(63)), strict=True
+        )
+    )
+    flat = Box(r, r, (0.09, 0.094), (edge,) * 4 + (fronds(64, flat=True),), turn=0.4)
+    return (*bowl, *cards, flat)
+
+
 # --- Late-80s business PC (the boss's): green screen on a flat system unit -----------
 # Generic (no maker's badge), in the pearly off-white of the time: a wide
 # system unit lying flat, a big 14" CRT standing on it (a deep bezel box,
@@ -2397,6 +2547,11 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "phone": _phone(),
     "pc": _pc(),
     "chair": _chair(),
+    "sofa_two": _sofa(2),
+    "sofa_three": _sofa(3),
+    "sofa_corner": tuple(_sofa_unit(0.0, backs=("-x", "-y"))),
+    "coffee_table": _coffee_table(),
+    "fern": _fern(),
     **SERVER_MODELS,
     **PASS_MODELS,
     **{f"poster:{k}": _poster(*v) for k, v in _POSTER_KINDS.items()},

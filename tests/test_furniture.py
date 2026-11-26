@@ -177,3 +177,24 @@ def test_every_sitter_has_a_chair_at_their_mac_and_the_aisles_stay_passable() ->
     # for a player past the chairs.
     north = [c for c in chairs if 1.0 < c.y < 2.0]
     assert north and min(c.y - radius for c in north) - 1.0 >= 2 * MovementConfig().radius
+
+
+@pytest.mark.parametrize("name", ["sofa_two", "sofa_three", "sofa_corner", "coffee_table"])
+def test_lobby_seating_footprints_match_their_models(name: str) -> None:
+    from doomer.client.boxes import BOX_MODELS
+
+    boxes = BOX_MODELS[name]
+    (fp,) = THING_TYPES[name].footprints
+    assert min(b.x[0] for b in boxes) == pytest.approx(fp.x[0])
+    assert max(b.x[1] for b in boxes) == pytest.approx(fp.x[1])
+    assert min(b.y[0] for b in boxes) == pytest.approx(fp.y[0])
+    assert max(b.y[1] for b in boxes) == pytest.approx(fp.y[1])
+    assert max(b.z[1] for b in boxes) == pytest.approx(fp.top)
+
+
+def test_the_lobby_nook_fern_stands_on_the_coffee_table() -> None:
+    from doomer.shared.mapfile import load_map
+
+    office = load_map("maps/office.map")
+    (fern,) = office.things_of_type("fern")
+    assert resting_height(office, fern) == pytest.approx(0.15)  # the table's top
