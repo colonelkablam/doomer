@@ -113,7 +113,7 @@ def test_the_red_pass_on_the_boss_desk_can_be_reached_from_the_front() -> None:
 
     world = new_world(load_map("maps/office.map"), "coop")
     p = spawn_player(world, 1, "p")
-    p.x, p.y = 5.5, 12.0
+    p.x, p.y = 5.5, 18.0
     red = next(k for k in world.pickups if k.type == "pass_red")
     for _ in range(120):  # walk west, into the desk's front
         step(world, {1: PlayerInput(forward=1.0, angle=math.pi)})
@@ -126,7 +126,12 @@ def test_phones_sit_on_the_boss_and_reception_desks_handsets_front_to_back() -> 
     from doomer.shared.mapfile import load_map
 
     office = load_map("maps/office.map")
-    boss, reception = sorted(office.things_of_type("phone"), key=lambda t: t.x)
+    phones = office.things_of_type("phone")
+    (desk,) = office.things_of_type("executive_desk")
+    (counter,) = office.things_of_type("reception_desk")
+    boss = min(phones, key=lambda t: math.hypot(t.x - desk.x, t.y - desk.y))
+    reception = min(phones, key=lambda t: math.hypot(t.x - counter.x, t.y - counter.y))
+    assert all(resting_height(office, t) > 0.2 for t in phones)  # all on desks
     assert resting_height(office, boss) > 0.3  # on the boss's desk top
     assert resting_height(office, reception) == pytest.approx(0.27)  # reception's work surface
     keypad, cradle, handset = BOX_MODELS["phone"]  # three boxes
@@ -162,12 +167,12 @@ def test_a_swivel_chair_is_four_boxes_its_base_a_painted_star() -> None:
 
 
 def test_every_sitter_has_a_chair_at_their_mac_and_the_aisles_stay_passable() -> None:
+    # (Chairs without a Mac too: round the lounge and meeting room tables.)
     from doomer.shared.config import MovementConfig
     from doomer.shared.mapfile import load_map
 
     office = load_map("maps/office.map")
     macs, chairs = office.things_of_type("mac"), office.things_of_type("chair")
-    assert len(chairs) == len(macs)
     radius = THING_TYPES["chair"].radius
     for mac in macs:
         chair = min(chairs, key=lambda c: math.hypot(c.x - mac.x, c.y - mac.y))
@@ -192,9 +197,11 @@ def test_lobby_seating_footprints_match_their_models(name: str) -> None:
     assert max(b.z[1] for b in boxes) == pytest.approx(fp.top)
 
 
-def test_the_lobby_nook_fern_stands_on_the_coffee_table() -> None:
+def test_the_nooks_ferns_stand_on_their_coffee_tables() -> None:
     from doomer.shared.mapfile import load_map
 
     office = load_map("maps/office.map")
-    (fern,) = office.things_of_type("fern")
-    assert resting_height(office, fern) == pytest.approx(0.15)  # the table's top
+    ferns = office.things_of_type("fern")
+    assert len(ferns) == len(office.things_of_type("coffee_table")) >= 2  # lobby, lounge
+    for fern in ferns:
+        assert resting_height(office, fern) == pytest.approx(0.15)  # the table's top

@@ -1,6 +1,14 @@
 name: Ground Floor
+# The first floor of the game, made by hand: learn the moves, get the power
+# on, take the lift up. North: the two-storey lobby (west: entrance,
+# reception, lifts), the open plan, two offices. A corridor the width of the
+# floor. South: the secretary's office and the boss's through it, the
+# lounge, the meeting room, the plant room (servers; the breaker in the
+# switch room behind). The route: blue pass (reception) -> open plan ->
+# corridor -> red pass (the boss's desk) -> plant room -> breaker -> lifts.
 # [floor] values on wall cells make low blocks, in eighths of a wall:
-# 2 = desk (0.68 m), 3 = counter (1 m). Wall types: b = executive desk,
+# 2 = desk (0.68 m), 3 = counter (1 m). Wall types: a = table, b = executive desk,
+# c = single steel desk,
 # d = two 1980s steel desks back to back, j = the same with cubicle screens,
 # k = lift car walls (steel inside, the area's look outside)
 # on top. [facing] says which way a desk's
@@ -10,94 +18,134 @@ name: Ground Floor
 # (floors, ceilings, and how plain # walls look from each side). See docs/GAME.md.
 
 [walls]
-1fffffff1444444444444441
-fiiiiiii1..............4
-f......h1.jjj...jjj....4
-g......h1..............4
-g......................4
-f.......1..............4
-f.......1.jjj...jjj....4
-2k.k.k.k1..............4
-4kkkkkkk1..............4
-4kkkkkkk1..............4
-4.......1111.1111111.111
-4......................4
-4.......111.11.........4
-4.......1....1.66......4
-4.......1....1.66......4
-144444442444444444444441
+1fffffff144444444444444144444441
+fiiiiiii1..............1.......4
+f......h1.jjj...jjj....1...c...4
+g......h1..............1.......4
+g..............................4
+f.......1..............111111111
+f.......1.jjj...jjj....1.......4
+2k.k.k.k1...................c..4
+4kkkkkkk1..............1.......4
+4kkkkkkk1..............1.......4
+4.......1111.1111111.11111111111
+4....c.........................4
+4.......1......................4
+4.......1111..11111.1111111.1111
+4111.1111.......1......1.......1
+4.......1.......1......1.......1
+4.......1.......1......1.......1
+4.......1.......1......1.......1
+4.......1..a....1.aaaa.111111.11
+4.......1.......1......1.......1
+4.......1....a..1......1.......1
+4.......1.......1......1.......1
+4.......1.......1......1.......1
+14444444144444441444444111111111
 
 [floor]
-000000000000000000000000
-088888880000000000000000
-000000080022200022200000
-000000040000000000000000
-000000000000000000000000
-000000000000000000000000
-000000000022200022200000
-000000000000000000000000
-000000000000000000000000
-000000000000000000000000
-000000000000000000000000
-000000000000000000000000
-000000000000000000000000
-000000000000000000000000
-000000000000000000000000
-000000000000000000000000
+00000000000000000000000000000000
+08888888000000000000000000000000
+00000008002220002220000000020000
+00000004000000000000000000000000
+00000000000000000000000000000000
+00000000000000000000000000000000
+00000000002220002220000000000000
+00000000000000000000000000002000
+00000000000000000000000000000000
+00000000000000000000000000000000
+00000000000000000000000000000000
+00000200000000000000000000000000
+00000000000000000000000000000000
+00000000000000000000000000000000
+00000000000000000000000000000000
+00000000000000000000000000000000
+00000000000000000000000000000000
+00000000000000000000000000000000
+00000000000200000022220000000000
+00000000000000000000000000000000
+00000000000002000000000000000000
+00000000000000000000000000000000
+00000000000000000000000000000000
+00000000000000000000000000000000
 
 [ceiling]
-888888888888888888888888
-8ggggggg8888888888888888
-8ggggggg8888888888888888
-8ggggggg8888888888888888
-8ggggggg6888888888888888
-8ggggggg8888888888888888
-8ggggggg8888888888888888
-886868688888888888888888
-888888888888888888888888
-888888888888888888888888
-888888888888688888888888
-888888886888888888888888
-888888888886888888888888
-888888888888888888888888
-888888888888888888888888
-888888888888888888888888
+88888888888888888888888888888888
+8ggggggg888888888888888888888888
+8ggggggg888888888888888888888888
+8ggggggg888888888888888888888888
+8ggggggg688888888888888688888888
+8ggggggg888888888888888888888888
+8ggggggg888888888888888888888888
+88686868888888888888888688888888
+88888888888888888888888888888888
+88888888888888888888888888888888
+88888888888868888888888888888888
+88888888688888888888888888888888
+88888888888888888888888888888888
+88888888888866888886888888868888
+88886888888888888888888888888888
+88888888888888888888888888888888
+88888888888888888888888888888888
+88888888888888888888888888888888
+88888888888888888888888888888688
+88888888888888888888888888888888
+88888888888888888888888888888888
+88888888888888888888888888888888
+88888888888888888888888888888888
+88888888888888888888888888888888
 
 [facing]
-........................
-........................
-.......n..nnn...nnn.....
-.......n................
-........................
-........................
-..........nnn...nnn.....
-........................
-..n.n.n.................
-.nnnnnnn................
-........................
-........................
-........................
-........................
-........................
-........................
+................................
+................................
+.......n..nnn...nnn........e....
+.......n........................
+................................
+................................
+..........nnn...nnn.............
+............................e...
+..n.n.n.........................
+.nnnnnnn........................
+................................
+.....w..........................
+................................
+................................
+................................
+................................
+................................
+................................
+................................
+................................
+................................
+................................
+................................
+................................
 
 [areas]
-lllllllll
-lllllllll
-lllllllll
-lllllllll
-lllllllll
-lllllllll
-lllllllll
-llclclcll
-lllllllll
-lllllllll
-eeeeeeee
-eeeeeeee
-eeeeeeee
-eeeeeeee.ssss
-eeeeeeee.ssss
-eeeeeeee
+lllllllll.......................
+lllllllll.......................
+lllllllll.......................
+lllllllll.......................
+lllllllll.......................
+lllllllll.......................
+lllllllll.......................
+llclclcll.......................
+lllllllll.......................
+lllllllll.......................
+eeeeeeee........................
+eeeeeeee........................
+eeeeeeee........................
+eeeeeeee........................
+eeeeeeee................sssssss.
+eeeeeeee................sssssss.
+eeeeeeee................sssssss.
+eeeeeeee................sssssss.
+eeeeeeee................sssssss.
+eeeeeeee................sssssss.
+eeeeeeee................sssssss.
+eeeeeeee................sssssss.
+eeeeeeee................sssssss.
+................................
 
 [things]
 # The floor starts on emergency lighting (the exit signs' glow) until the
@@ -106,24 +154,10 @@ eeeeeeee
 # Entrance lobby: two storeys, glazed, entrance doors on the west, the
 # reception desk facing them, stairs up to a railed balcony along the north
 coop_start      1.5   3.5   0
-# Doors (prototype): glass doors from the lobby into the offices (staff
-# pass: blue, on the reception counter), and a
-# double office doors between the corridor and the open plan: flush with the
-# open plan, swinging out (south) into their recess off the corridor
+# Glass doors from the lobby into the open plan (staff pass: blue, on the
+# reception counter): the way into the rest of the floor
 door_sliding    8.5   4.5   0     lock=blue
-door_double     12.5  10.5  90
-# The plant room (for now, the small room south of the corridor): facilities
-# pass (red), which is on the boss's desk
-door_hinged     11.5  12.5  270   lock=red
-# The plant room's main breaker, on its solid west wall facing the room:
-# restores the power. The servers along the east wall, opposite.
-breaker         9.5   14.1  0     at=w
-server          12.5  13.4  0     kind=tape at=e
-server          12.5  13.78 0     kind=disk at=e
-server          12.5  14.16 0     kind=tape at=e
-server          12.5  14.54 0     kind=disk at=e
 pass_blue       4.37  4.4   0
-pass_red        3.3   12.0  0
 reception_desk  4.6   4.0   180
 phone           4.68  4.47  6
 # On the wall behind reception, above the glass doors (the wall's face is x = 8)
@@ -139,9 +173,6 @@ ceiling_light   4.5   7.5   0
 ceiling_light   6.5   7.5   0
 # The receptionist's Mac is on the emergency circuit: lit in a power cut.
 mac             4.66  3.57   355.2 circuit=emergency
-# A vending machine in the corridor (a health dispenser, working once the
-# power's back), against its north wall where the corridor widens.
-vending_machine 15.5  11.5  0     at=n
 # Coffee cups (pickups: +5 coffee) on a few desks, beside the keyboards,
 # and one on reception.
 coffee_cup      4.78  3.82  0
@@ -229,27 +260,7 @@ ficus           9.5   1.5   0     at=nw
 ficus           22.5  9.5   0     at=se
 ficus           14.5  4.5   0
 dm_spawn        21.5  6.5   180
-# The boss's double doors, at the end of the corridor: flush with the office's
-# panelling, swinging out (east) into their recess off the corridor, under a
-# lintel (ceiling 6)
-door_double     8.5   11.5  0
-# Boss office: the boss's absurd desk, mid-room, the boss's back to the
-# west windows; the Mac on it faces the boss
-executive_desk  3.0   12.5  0
-pc              3.08  12.95 195
-phone           2.8   11.85 182
-filing_cabinet  1.28  10.5  0     at=n
-filing_cabinet  1.62  10.5  0     at=n
-filing_cabinet  2.38  10.5  0     at=n
-filing_cabinet  2.72  10.5  0     at=n
-ficus           7.5   14.5  0     at=se
-dm_spawn        2.5   13.5  270
-# Lower corridor, washroom, lift lobby
-water_cooler    22.5  11.5  180   at=ne
-ficus           17.5  14.5  0     at=sw
-dm_spawn        17.5  11.5  180
-dm_spawn        10.5  13.5  0
-# Ceiling lights: panels set into the ceiling, roughly every 2 cells
+# Ceiling lights (lobby): panels set into the ceiling
 ceiling_light   2.5   3.5   0
 ceiling_light   5.5   3.5   0
 ceiling_light   2.5   5.5   0
@@ -263,15 +274,6 @@ ceiling_light   14.5  4.5   0
 ceiling_light   20.5  4.5   0
 ceiling_light   14.5  8.5   0
 ceiling_light   20.5  8.5   0
-ceiling_light   9.5   11.5  0
-ceiling_light   12.5  11.5  0
-ceiling_light   15.5  11.5  0
-ceiling_light   18.5  11.5  0
-ceiling_light   21.5  11.5  0
-ceiling_light   2.5   10.5  0
-ceiling_light   5.5   12.5  0
-ceiling_light   10.5  13.5  0
-ceiling_light   20.5  13.5  0
 # Exit signs over the main doors: on their own batteries, the only light in a
 # power cut, so they mark the way out (office -> lobby -> street) and the way
 # through to the plant room. Each at the face of the wall over its doorway.
@@ -285,10 +287,157 @@ poster          15.5  9.5   0     kind=employee_apr at=s
 poster          15.8  9.5   0     kind=employee_mar at=s
 poster          7.5   5.5   0     kind=founder at=e
 poster          7.5   6.6   0     kind=plan at=e
-poster          10.5  11.5  0     kind=high_voltage at=s
-poster          9.5   13.45 0     kind=high_voltage at=w
-poster          9.8   13.5  0     kind=accident at=n
 exit_sign       1.02  4.0   0     kind=transom
 exit_sign       9.02  4.5   0
+# --- The east offices, off the open plan (doors at its east wall, flush
+# with each office, swinging out into their recesses) ---
+door_hinged     23.5  4.5   180
+door_hinged     23.5  7.5   180
+# North office: a manager at a single desk, facing the door
+mac             27.74 2.45  4
+phone           27.42 2.16  2
+chair           28.31 2.52  188
+filing_cabinet  25.32 4.5   0     at=s
+filing_cabinet  25.66 4.5   0     at=s
+ficus           24.5  1.5   0     at=nw
+ficus           30.5  1.5   0     at=ne
+poster          24.5  2.4   0     kind=excellence at=w
+ceiling_light   26.5  2.5   0
+dm_spawn        25.5  3.0   0
+# South office
+mac             28.74 7.52  357
+chair           29.3  7.56  171
+coffee_cup      28.62 7.16  120
+filing_cabinet  25.3  6.5   0     at=n
+filing_cabinet  25.64 6.5   0     at=n
+filing_cabinet  26.4  6.5   0     at=n
+ficus           30.5  9.5   0     at=se
+poster          26.5  9.5   0     kind=synergy at=s
+ceiling_light   26.5  7.5   0
+# --- The corridor: two cells wide, the length of the floor, the open plan's
+# double doors and an opening on its north side; the secretary's doors at
+# its west end, the lounge, meeting room and plant room off its south side.
+door_double     12.5  10.5  90
+water_cooler    30.5  12.5  0     at=se
+poster          16.5  12.5  0     kind=plan at=s
+poster          26.4  12.5  0     kind=high_voltage at=s
+ceiling_light   9.5   11.5  0
+ceiling_light   12.5  11.5  0
+ceiling_light   15.5  11.5  0
+ceiling_light   18.5  11.5  0
+ceiling_light   21.5  11.5  0
+ceiling_light   24.5  11.5  0
+ceiling_light   27.5  11.5  0
+ceiling_light   30.5  11.5  0
+dm_spawn        17.5  11.5  180
+dm_spawn        25.5  12.5  180
 exit_sign       12.5  11.02 90
-exit_sign       11.5  13.02 90
+# --- The executive suite: the secretary's office, and through it the boss's.
+# The secretary's double doors, at the corridor's end: flush with the
+# office's panelling, swinging out (east) into their recess
+door_double     8.5   11.5  0
+exit_sign       7.98  11.5  180
+# The secretary at a single desk facing the way in, a phone at hand; a sofa
+# for visitors kept waiting
+mac             5.27  11.58 184
+phone           5.52  11.17 178
+chair           4.68  11.56 9
+coffee_cup      5.66  11.84 40
+sofa_two        6.5   10.5  0     at=n
+filing_cabinet  1.28  10.5  0     at=n
+filing_cabinet  1.62  10.5  0     at=n
+filing_cabinet  2.38  10.5  0     at=n
+filing_cabinet  2.72  10.5  0     at=n
+ficus           1.5   13.5  0     at=sw
+ceiling_light   2.5   11.5  0
+ceiling_light   5.5   12.5  0
+# The boss's double doors: flush with the boss's office (the more private
+# room), swinging out (north) into the secretary's
+door_double     4.5   14.5  270
+exit_sign       4.5   15.02 90
+# The boss's absurd desk, mid-room, the boss's back to the west windows;
+# the PC on it faces the boss. The facilities (red) pass is on it.
+executive_desk  3.0   18.5  0
+pc              3.08  18.95 195
+phone           2.8   17.85 182
+pass_red        3.3   18.0  0
+sofa_three      7.5   19.5  0     at=e
+filing_cabinet  1.28  15.5  0     at=n
+filing_cabinet  1.62  15.5  0     at=n
+ficus           7.5   15.5  0     at=ne
+ficus           7.5   22.5  0     at=se
+ficus           1.5   22.5  0     at=sw
+poster          5.6   15.5  0     kind=founder at=n
+ceiling_light   4.5   16.5  0
+ceiling_light   4.5   20.5  0
+dm_spawn        5.5   21.5  270
+# --- The lounge: open to the corridor. Snacks (working once the power's
+# back) and water, two tables, an L of sofas in the far corner.
+vending_machine 9.5   15.5  0     at=w
+water_cooler    9.5   17.2  0     at=w
+chair           11.46 17.69 94
+chair           11.55 19.32 262
+chair           10.69 18.46 6
+chair           12.31 18.55 171
+chair           13.52 19.68 83
+chair           13.44 21.31 276
+chair           12.7  20.46 352
+chair           14.32 20.52 189
+coffee_cup      11.3  18.28 30
+coffee_cup      13.7  20.62 200
+sofa_corner     15.84 22.84 180
+sofa_two        15.84 22.4  180
+sofa_three      15.26 22.84 270
+coffee_table    15.2  22.28 180
+fern            15.05 22.28 0
+ficus           15.5  14.5  0     at=ne
+ficus           9.5   22.5  0     at=sw
+poster          10.5  14.5  0     kind=teamwork at=n
+poster          14.4  14.5  0     kind=employee_may at=n
+ceiling_light   12.5  16.5  0
+ceiling_light   12.5  20.5  0
+dm_spawn        11.5  15.5  90
+# --- The meeting room: a long table across the middle, chairs round it
+door_hinged     19.5  13.5  270
+exit_sign       19.5  14.02 90
+chair           18.47 17.69 92
+chair           19.55 17.71 85
+chair           20.46 17.68 97
+chair           21.53 17.7  88
+chair           18.52 19.31 268
+chair           19.45 19.3  275
+chair           20.54 19.32 263
+chair           21.48 19.29 271
+chair           17.7  18.47 3
+chair           22.3  18.54 182
+coffee_cup      19.42 18.24 60
+coffee_cup      21.38 18.79 250
+ficus           17.5  14.5  0     at=nw
+ficus           22.5  22.5  0     at=se
+poster          17.5  18.5  0     kind=plan at=w
+ceiling_light   19.5  16.5  0
+ceiling_light   20.5  20.5  0
+dm_spawn        21.5  21.5  180
+# --- The plant room (facilities pass: red, on the boss's desk). In front,
+# the servers along the east wall, dark; through the opening at the back,
+# the switch room and the main breaker on its solid west wall: it restores
+# the power.
+door_hinged     27.5  13.5  270   lock=red
+exit_sign       27.5  14.02 90
+server          30.5  14.35 0     kind=tape at=e
+server          30.5  14.73 0     kind=disk at=e
+server          30.5  15.11 0     kind=tape at=e
+server          30.5  15.49 0     kind=disk at=e
+server          30.5  15.87 0     kind=disk at=e
+server          30.5  16.25 0     kind=tape at=e
+server          30.5  16.63 0     kind=disk at=e
+server          30.5  17.01 0     kind=tape at=e
+poster          25.2  14.5  0     kind=accident at=n
+ceiling_light   27.5  15.5  0
+exit_sign       29.5  19.02 90
+breaker         24.5  20.6  0     at=w
+poster          24.5  19.6  0     kind=high_voltage at=w
+filing_cabinet  27.32 22.5  0     at=s
+filing_cabinet  27.66 22.5  0     at=s
+ceiling_light   26.5  20.5  0
+dm_spawn        28.5  21.5  180

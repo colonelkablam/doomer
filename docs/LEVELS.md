@@ -177,9 +177,10 @@ crosses each grid line. Not needed for the rules above.
 
 ## Performance budget
 
-60 fps means 16.7 ms per frame. Current costs on the office map: corridors
-~5 ms, desk pods with Macs ~10 ms, the two-storey lobby with stairs and
-balcony ~16 ms (on the cloud VM; faster desktops have more headroom).
+60 fps means 16.7 ms per frame. Current costs on the ground floor (32 x 24):
+rooms and corridors ~6-8 ms, desk pods with Macs ~11 ms, the two-storey
+lobby with stairs and balcony ~16 ms (on the cloud VM; faster desktops have
+more headroom).
 What costs:
 
 - **Changes along a ray.** Every time a ray crosses into a different kind of

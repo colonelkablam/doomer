@@ -815,9 +815,8 @@ Rules that have come out of it (details in the sections above):
 
 Noted at the end of a session, to pick up next:
 
-- **To close the single-player loop**, in order: the full-size ground floor
-  (~32 x 24, laid out for the loop; the current map is the test bed); the
-  lift ride and a second floor to arrive on. Enemies, weapons and pickups (milestones 3b,
+- **To close the single-player loop**: the lift ride and a second floor to
+  arrive on (the full ground floor is built: GAME.md, Game loop). Enemies, weapons and pickups (milestones 3b,
   4) come after networking.
 - **Health and coffee** (GAME.md, Pickups; Networking above): two meters
   per player, coffee as armour (soaks a third of each hit). Built: the

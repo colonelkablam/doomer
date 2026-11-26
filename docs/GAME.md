@@ -31,13 +31,53 @@ Suggested floor order:
 | 5 | Executive floor, wood panelling | The Boss (mini-boss) |
 | P | Penthouse boardroom | The CEO (final boss) |
 
+Rooms on a floor. Every office floor has the same bones, so the loop and
+the player's bearings carry from floor to floor; the theme fills the rest:
+
+- **Lift lobby**: where you arrive and leave (later a stairwell too).
+- **Circulation**: corridors at least two cells wide (LEVELS.md), joining
+  everything; a long one is a sightline to fight along.
+- **The floor's work area**: open plan, accounts, the server hall... (the
+  theme in the table above). The bulk of the floor and most of the fights.
+- **The locked rooms of the loop**: whoever holds the pass (the boss, the
+  head of department) and the room it opens (the plant room on the ground
+  floor; on later floors whatever blocks the way up).
+- **A break area**: a lounge or kitchenette with a water cooler and
+  vending machine (the health dispensers), somewhere to regroup. Sofas.
+- **Smaller rooms that give a floor its life**: offices, a meeting room,
+  a secretary's office, stores; washrooms [planned] once their fittings
+  exist.
+
+The ground floor has all but the washrooms: the lobby, the open plan, two
+offices, the corridor, the secretary's and the boss's offices, the lounge,
+the meeting room and the plant room (servers, and the switch room).
+
 ## Game loop
 
 Each floor is a short puzzle-and-fight route: find passes, open the way to
 the plant room, restore power, take the lift up. The team shares passes and
 power, so in co-op anyone can do each step.
 
-The ground floor, as built [built]:
+The ground floor (`maps/office.map`, 32 x 24, made by hand) [built] is
+the game's first level: you learn the moves on it, get the power on and
+start the climb. Its plan:
+
+```
++---------+------------------+--------+
+|  LOBBY  |    OPEN PLAN     | OFFICE |
+|         |    four pods     +--------+
+|reception=  blue door       | OFFICE |
+|  lifts  |                  |        |
++---------+---| |------| |---+--------+
+|SECRETARY=  CORRIDOR, two cells wide |
+|         |                           |
++---| |---+---|  |---+--| |--+-|red|--+
+|  BOSS   | LOUNGE   |MEETING|SERVERS |
+|red pass | vending  | table +--| |---+
+|         | cooler   |       |SWITCH: |
+|         | sofas    |       |breaker |
++---------+----------+-------+--------+
+```
 
 1. Start in the lobby on emergency lighting: the ceiling panels are dead,
    only the green EXIT signs over the main doors glow, each with a dim pool
@@ -45,18 +85,18 @@ The ground floor, as built [built]:
    sign is dark, the lifts are dead.
 2. The **staff (blue) pass** lies on the reception desk. It opens the sliding
    glass doors into the open-plan office.
-3. The **facilities (red) pass** is on the boss's desk. It opens the plant
-   room's door.
-4. Throw the **main breaker** in the plant room (use, E; its red lamp
-   blinks until you do, then shows green): the power comes
-   back. The lights come on, the sign lights up, the lifts get power.
+3. Through the open plan to the corridor. The **facilities (red) pass** is
+   on the boss's desk, through the secretary's office at the corridor's
+   west end. It opens the plant room's door at the east end.
+4. Past the dark servers, round into the switch room: throw the **main
+   breaker** (use, E; its red lamp blinks until you do, then shows green):
+   the power comes back, the servers' lamps start blinking.
+   On the way back the lounge's vending machine is lit and working. The lights come on, the sign lights up, the lifts get power.
 5. **Call a lift** (E at its doors), step into the car. When every player is
    in a lift car the doors close: "GROUND FLOOR COMPLETE".
 
 Planned, roughly in order [planned]:
 
-- **A full-size ground floor**: about 32 x 24 cells, laid out for the loop
-  above (the current map is the test bed).
 - **The lift ride**: the doors close, a short ride (indicator counting up,
   maybe a lift-music sting), then the next floor loads with the team in its
   lift lobby. Until then the floor just ends on the banner.
