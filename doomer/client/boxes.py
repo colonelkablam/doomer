@@ -70,6 +70,10 @@ from doomer.shared.things import (
     BASIN_DEPTH,
     BASIN_PITCH,
     BASIN_TOP,
+    BIN_HALF_X,
+    BIN_HALF_Y,
+    BIN_KINDS,
+    BIN_TOP,
     CISTERN_HALF,
     CISTERN_TOP,
     CISTERN_X,
@@ -3176,6 +3180,68 @@ def _wet_floor_sign() -> tuple[Box, ...]:
     )
 
 
+# --- Office bins ------------------------------------------------------------------
+# A rectangular box, its front (+x) and back with RUBBISH on, an open top
+# (a black hole in a rim). Styles by `kind=` (shared/things.py BIN_KINDS):
+# (body ramp, body shade, lettering ramp, lettering shade, flap top).
+_BIN_STYLES: dict[str, tuple[int, float, int, float, bool]] = {
+    "steel": (GREY, 5.0, CREAM, 15.0, False),  # charcoal stove enamel, white stencil
+    "wood": (WOOD, 6.0, CREAM, 13.0, False),  # brown wood-effect, cream letters
+    "orange": (ORANGE, 10.0, CREAM, 15.0, False),  # moulded 1970s-80s plastic
+    "chrome": (STEEL, 11.0, GREY, 2.0, True),  # brushed steel, a swing flap: washrooms
+}
+
+
+def bin_side(kind: str, lettered: bool) -> int:
+    ramp, shade, text_ramp, text_shade, _ = _BIN_STYLES[kind]
+    rng = np.random.default_rng(49)
+    c = Canvas()
+    if kind == "wood":
+        grain = np.sin(c.u * 0.9 + noise(rng, 4) * 2) * 0.35  # faint vertical streaks
+        c.paint(c.rect(0, 64, 0, 64), ramp, shade + grain)
+    elif kind == "chrome":
+        c.paint(c.rect(0, 64, 0, 64), ramp, shade + (noise(rng, 64)[:1, :] - 0.5) * 1.5)
+    else:
+        c.paint(c.rect(0, 64, 0, 64), ramp, shade)
+    c.paint(c.rect(0, 4, 0, 64), ramp, shade + 2.0)  # the rim, catching the light
+    c.paint(c.rect(4, 5, 0, 64), ramp, shade - 1.5)
+    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64), ramp, shade - 1.0)  # its corners
+    c.paint(c.rect(59, 64, 0, 64), ramp, shade - 2.0)  # the foot, in shadow
+    if lettered:
+        word = "RUBBISH"
+        c.text(word, 24, (64 - c.text_width(word, 2)) // 2, text_ramp, text_shade, scale=2)
+    return _texture(c)
+
+
+def bin_top(kind: str) -> int:
+    """From above: the rim round a black hole, a screwed-up sheet of paper in
+    it; or, for a flap bin, a lid with a black slot across its swing flap."""
+    ramp, shade, _, _, flap = _BIN_STYLES[kind]
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), ramp, shade + 1.5)
+    if flap:
+        c.paint(c.rect(18, 46, 8, 56), ramp, shade - 1.0)  # the flap
+        c.paint(c.rect(18, 22, 8, 56), GREY, 0.0)  # the slot as it swings
+        c.paint(c.rect(46, 47, 8, 56), ramp, shade + 3.0)
+    else:
+        c.paint(c.rect(6, 58, 6, 58), GREY, 0.0)  # the hole
+        c.paint(c.ellipse(38, 24, 7, 9), GREY, 13.0)  # screwed-up paper
+        c.paint(c.ellipse(36, 22, 3, 4), GREY, 10.0)
+    return _texture(c)
+
+
+def _bin(kind: str) -> tuple[Box, ...]:
+    word, plain = bin_side(kind, True), bin_side(kind, False)
+    return (
+        Box(
+            (-BIN_HALF_X, BIN_HALF_X),
+            (-BIN_HALF_Y, BIN_HALF_Y),
+            (0.0, BIN_TOP),
+            (word, plain, word, plain, bin_top(kind)),
+        ),
+    )
+
+
 # Keyed by thing type name, like SPRITES.
 BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "mac": _mac_se30(),
@@ -3208,6 +3274,8 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     **{f"urinals_{w}": _urinals(n) for n, w in ((2, "two"), (3, "three"), (4, "four"))},
     **{f"basins_{w}": _basins(n) for n, w in ((2, "two"), (3, "three"), (4, "four"))},
     "hand_dryer": _hand_dryer(),
+    "bin": _bin("steel"),
+    **{f"bin:{kind}": _bin(kind) for kind in BIN_KINDS},
     "wet_floor_sign": _wet_floor_sign(),
 }
 BOX_TEXTURES: U8Array = np.stack(_TEXTURES)  # [texture][u][v]

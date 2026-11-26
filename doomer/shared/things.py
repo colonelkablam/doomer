@@ -331,6 +331,23 @@ for _n, _word in ((2, "two"), (3, "three"), (4, "four")):
             footprints=(Footprint((0.0, BASIN_DEPTH), (-_half, _half), BASIN_TOP),),
         )
     )
+# An office bin (drawn by doomer/client/boxes.py, sizes matching): a
+# rectangular box, an open top, RUBBISH on its front and back. `kind=` its
+# style: steel (charcoal), wood (brown wood-effect), orange (plastic),
+# chrome (brushed steel, a swing flap on top: washrooms). Small, but you
+# bump into it (and could hop onto it).
+BIN_KINDS = ("steel", "wood", "orange", "chrome")
+BIN_HALF_X, BIN_HALF_Y, BIN_TOP = 0.065, 0.09, 0.19
+BIN = register_thing_type(
+    ThingType(
+        "bin",
+        "An office bin",
+        blocking=True,
+        radius=BIN_HALF_Y,
+        properties={"kind": BIN_KINDS},
+        footprints=(Footprint((-BIN_HALF_X, BIN_HALF_X), (-BIN_HALF_Y, BIN_HALF_Y), BIN_TOP),),
+    )
+)
 HAND_DRYER = register_thing_type(ThingType("hand_dryer", "Hand dryer on a wall"))
 WET_FLOOR_SIGN = register_thing_type(
     ThingType("wet_floor_sign", "A yellow CAUTION WET FLOOR A-frame", blocking=True, radius=0.08)
