@@ -36,12 +36,13 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
         renderer = Renderer(rc, config.lighting if config.lighting.enabled else None)
         hud = Hud(font)
         automap = Automap(session.game_map)
+        show_map = False
         controls = KeyboardMouseInput(config.controls, start_angle, MAX_PITCH)
         controls.set_captured(True)
         clock = pygame.time.Clock()
         log.info(
             "running %r; Esc releases the mouse, Esc again quits; F11 full screen; "
-            "hold Tab for the map (mouse wheel or -/= to zoom)",
+            "Tab shows or hides the map (mouse wheel or -/= to zoom)",
             session.game_map.name,
         )
 
@@ -64,6 +65,8 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
                     controls.set_captured(False)
                 elif event.type == pygame.MOUSEWHEEL and event.y:
                     automap.change_zoom(1 if event.y > 0 else -1)
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
+                    show_map = not show_map
                 elif event.type == pygame.KEYDOWN and event.key in _ZOOM_KEYS:
                     automap.change_zoom(_ZOOM_KEYS[event.key])
 
@@ -81,9 +84,9 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
                 session.power(),
                 now,
             )
-            # The automap: what's in view is now seen; held Tab shows it.
+            # The automap: what's in view is now seen; Tab shows or hides it.
             automap.observe(camera.x, camera.y, *renderer.eye_level_rays(RAY_STRIDE))
-            if pygame.key.get_pressed()[pygame.K_TAB]:
+            if show_map:
                 pixels = pygame.surfarray.pixels2d(frame)
                 automap.draw(pixels, camera.x, camera.y, camera.angle)
                 del pixels  # unlock the surface

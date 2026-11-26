@@ -1,4 +1,4 @@
-"""The automap: a small green map in the top corner while Tab is held.
+"""The automap: a small green map in the top corner, Tab to show or hide it.
 
 North up (it doesn't turn with you: "the plant room's at the bottom" stays
 true, and the fire plans on the walls agree), you in the middle with a line

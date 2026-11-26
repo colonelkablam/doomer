@@ -71,7 +71,7 @@ Planned, roughly in order [planned]:
 
 ## The automap [built]
 
-Hold **Tab**: a small map in the top-right corner, green on the scene
+Press **Tab** to show the map (again to hide it): a small map in the top-right corner, green on the scene
 (see-through where you can walk; walls solid dark green blocks; lines with
 a dark shadow so they read over anything; a faint green border). North up, you in the middle as a cream dot
 with a line the way you face. Wall faces bright green, desks and counters dim,
