@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from doomer.client.palette import MAGENTA
-from doomer.client.textures import (
+from ok_doomer.client.palette import MAGENTA
+from ok_doomer.client.textures import (
     DEFAULT_WALL_TEXTURES,
     TEX_MASK,
     TEX_SIZE,

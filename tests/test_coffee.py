@@ -1,12 +1,12 @@
 """Coffee cups: a pickup that tops up the coffee meter (the armour)."""
 
-from doomer.client.hud import message_for
-from doomer.shared.events import Event, Refreshed
-from doomer.shared.mapfile import parse_map
-from doomer.shared.pickups import MAX_COFFEE
-from doomer.shared.player import PlayerInput
-from doomer.shared.sim import step
-from doomer.shared.world import drain_events, new_world, spawn_player
+from ok_doomer.client.hud import message_for
+from ok_doomer.shared.events import Event, Refreshed
+from ok_doomer.shared.mapfile import parse_map
+from ok_doomer.shared.pickups import MAX_COFFEE
+from ok_doomer.shared.player import PlayerInput
+from ok_doomer.shared.sim import step
+from ok_doomer.shared.world import drain_events, new_world, spawn_player
 
 ROOM = """\
 [walls]
@@ -50,8 +50,8 @@ def test_coffee_tops_out_and_a_full_meter_leaves_the_cup() -> None:
 
 
 def test_the_office_has_cups_on_its_desks() -> None:
-    from doomer.shared.furniture import resting_height
-    from doomer.shared.mapfile import load_map
+    from ok_doomer.shared.furniture import resting_height
+    from ok_doomer.shared.mapfile import load_map
 
     office = load_map("maps/office.map")
     cups = office.things_of_type("coffee_cup")

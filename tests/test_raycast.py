@@ -2,8 +2,8 @@ import math
 
 import pytest
 
-from doomer.shared.mapfile import EAST, NORTH, SOUTH, WEST, parse_map
-from doomer.shared.raycast import Side, cast_ray
+from ok_doomer.shared.mapfile import EAST, NORTH, SOUTH, WEST, parse_map
+from ok_doomer.shared.raycast import Side, cast_ray
 
 # 7x5 room; interior x in [1, 6), y in [1, 4). Wall type 2 on the east side.
 ROOM = parse_map(

@@ -5,8 +5,8 @@ import math
 import numpy as np
 import pytest
 
-from doomer.client import fastcast as fc
-from doomer.client.areas import (
+from ok_doomer.client import fastcast as fc
+from ok_doomer.client.areas import (
     AREA_WALL_TYPE,
     CEILING,
     FLOOR,
@@ -15,10 +15,10 @@ from doomer.client.areas import (
     build_surfaces,
     mipmaps,
 )
-from doomer.client.config import LightingConfig, RenderConfig
-from doomer.client.palette import BLUE, STEEL, WARM_GREY, WOOD
-from doomer.client.render import Camera, Renderer
-from doomer.shared.mapfile import (
+from ok_doomer.client.config import LightingConfig, RenderConfig
+from ok_doomer.client.palette import BLUE, STEEL, WARM_GREY, WOOD
+from ok_doomer.client.render import Camera, Renderer
+from ok_doomer.shared.mapfile import (
     EAST,
     EXECUTIVE,
     LOBBY,
@@ -80,8 +80,8 @@ def test_other_wall_types_keep_their_own_textures() -> None:
 
 
 def test_a_window_is_cut_into_the_wall_of_the_area_it_faces() -> None:
-    from doomer.client.areas import window_type
-    from doomer.client.textures import DEFAULT_WALL_TEXTURES, GLASS
+    from ok_doomer.client.areas import window_type
+    from ok_doomer.client.textures import DEFAULT_WALL_TEXTURES, GLASS
 
     rooms = ROOMS.replace("#...#...#\n#....", "#...4...#\n#....", 1)
     m = parse_map(rooms.replace("lllll\n" * 5, "lllllssss\n" * 5))
@@ -100,9 +100,9 @@ def test_a_window_is_cut_into_the_wall_of_the_area_it_faces() -> None:
 def test_through_glass_the_city_is_far_off_and_lights_itself() -> None:
     import math as m_
 
-    from doomer.client.palette import OCHRE
-    from doomer.client.render import Camera
-    from doomer.client.textures import GLASS, PANORAMA_ROWS, panorama
+    from ok_doomer.client.palette import OCHRE
+    from ok_doomer.client.render import Camera
+    from ok_doomer.client.textures import GLASS, PANORAMA_ROWS, panorama
 
     pano = panorama()
     assert (pano[:, 0] == pano[0, 0]).all()  # the ground: flat, one colour
@@ -230,7 +230,7 @@ def test_a_bulkhead_looks_like_the_area_it_faces() -> None:
 
 
 def test_a_balcony_carries_on_its_rooms_walls_and_floor() -> None:
-    from doomer.client.areas import TOP_KIND
+    from ok_doomer.client.areas import TOP_KIND
 
     m = parse_map(
         "[walls]\n#####\n#iii#\n#...#\n#####\n\n[floor]\n00000\n08880\n\n[areas]\n" + "lllll\n" * 4
@@ -241,7 +241,7 @@ def test_a_balcony_carries_on_its_rooms_walls_and_floor() -> None:
 
 
 def test_desk_pairs_get_paperwork_tops_turned_to_their_facing() -> None:
-    from doomer.client.areas import DESK_VARIANTS, cell_tops
+    from ok_doomer.client.areas import DESK_VARIANTS, cell_tops
 
     surfaces = build_surfaces()
     m = parse_map("[walls]\n######\n#dddd#\n#jj..#\n######\n\n[facing]\n......\n.nnee.\n.ee...\n")
@@ -254,7 +254,7 @@ def test_desk_pairs_get_paperwork_tops_turned_to_their_facing() -> None:
 
 
 def test_paperwork_keeps_clear_of_the_macs() -> None:
-    from doomer.client.areas import desk_top
+    from ok_doomer.client.areas import desk_top
 
     # Each sitter's Mac and keyboard: north half round (0.68, 0.25) of the
     # cell, south half round (0.32, 0.75), in texels. Bare laminate there.
@@ -265,8 +265,8 @@ def test_paperwork_keeps_clear_of_the_macs() -> None:
 
 
 def test_one_desk_variant_has_a_pencil() -> None:
-    from doomer.client.areas import DESK_VARIANTS, PENCIL_VARIANT, desk_top
-    from doomer.client.palette import PINK
+    from ok_doomer.client.areas import DESK_VARIANTS, PENCIL_VARIANT, desk_top
+    from ok_doomer.client.palette import PINK
 
     # The pencil's eraser is a pink no message slip uses.
     eraser = (PINK << 4) | 12
@@ -276,8 +276,8 @@ def test_one_desk_variant_has_a_pencil() -> None:
 
 
 def test_one_desk_variant_has_two_square_notes() -> None:
-    from doomer.client.areas import DESK_VARIANTS, NOTE_VARIANT, desk_top
-    from doomer.client.palette import OCHRE, PINK
+    from ok_doomer.client.areas import DESK_VARIANTS, NOTE_VARIANT, desk_top
+    from ok_doomer.client.palette import OCHRE, PINK
 
     for variant in range(DESK_VARIANTS):
         top = desk_top(variant)
@@ -294,7 +294,7 @@ def test_one_desk_variant_has_two_square_notes() -> None:
 
 
 def test_a_doorways_side_walls_are_lined() -> None:
-    from doomer.client.areas import REVEAL_WALL_TYPE
+    from ok_doomer.client.areas import REVEAL_WALL_TYPE
 
     m = parse_map(ROOMS + "\n[things]\ndoor_hinged 4.5 2.5 0\n")
     r = Renderer(RenderConfig())
@@ -304,8 +304,8 @@ def test_a_doorways_side_walls_are_lined() -> None:
 
 
 def test_a_big_moon_hangs_low_in_the_west() -> None:
-    from doomer.client.palette import CREAM
-    from doomer.client.textures import MOON_COLUMN, MOON_ROW, panorama
+    from ok_doomer.client.palette import CREAM
+    from ok_doomer.client.textures import MOON_COLUMN, MOON_ROW, panorama
 
     pano = panorama()
     assert pano[MOON_COLUMN, MOON_ROW] >> 4 == CREAM  # its middle: clear of towers

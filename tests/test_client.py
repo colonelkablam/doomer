@@ -3,16 +3,16 @@ import math
 import pygame
 import pytest
 
-from doomer.client.config import ClientConfig, ControlsConfig, RenderConfig
-from doomer.client.input import Action, compose_input, look, turn
-from doomer.client.palette import GREEN, MAGENTA, PINK, WOOD
-from doomer.client.render import Camera, Renderer
-from doomer.client.screenshot import render_frame
-from doomer.client.session import LocalSession
-from doomer.shared.config import from_dict
-from doomer.shared.mapfile import parse_map
-from doomer.shared.player import PlayerInput
-from doomer.shared.world import new_world
+from ok_doomer.client.config import ClientConfig, ControlsConfig, RenderConfig
+from ok_doomer.client.input import Action, compose_input, look, turn
+from ok_doomer.client.palette import GREEN, MAGENTA, PINK, WOOD
+from ok_doomer.client.render import Camera, Renderer
+from ok_doomer.client.screenshot import render_frame
+from ok_doomer.client.session import LocalSession
+from ok_doomer.shared.config import from_dict
+from ok_doomer.shared.mapfile import parse_map
+from ok_doomer.shared.player import PlayerInput
+from ok_doomer.shared.world import new_world
 
 ROOM = parse_map(
     """\

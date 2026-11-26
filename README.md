@@ -20,7 +20,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ```
 
 ```bash
-.venv/bin/python -m doomer.client
+.venv/bin/python -m ok_doomer.client
 ```
 
 Controls: mouse to look around (including up and down), WASD to move, arrow
@@ -44,5 +44,5 @@ Options: a map path as the first argument (default `maps/office.map`),
 Render a frame without a display:
 
 ```bash
-.venv/bin/python -m doomer.client.screenshot maps/office.map --at 20.5,11.2,90 --out out/frame.png
+.venv/bin/python -m ok_doomer.client.screenshot maps/office.map --at 20.5,11.2,90 --out out/frame.png
 ```

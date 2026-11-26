@@ -1,5 +1,5 @@
-"""The compiled caster (doomer/client/fastcast.py) agrees exactly with the
-reference one (doomer/shared/raycast.py), ray for ray, and adds the camera's
+"""The compiled caster (ok_doomer/client/fastcast.py) agrees exactly with the
+reference one (ok_doomer/shared/raycast.py), ray for ray, and adds the camera's
 own space as the renderer expects."""
 
 import math
@@ -8,11 +8,11 @@ import random
 import numpy as np
 import pytest
 
-from doomer.client import fastcast as fc
-from doomer.client.config import RenderConfig
-from doomer.client.render import Renderer
-from doomer.shared.mapfile import STAIRS_WALL_TYPE, GameMap, load_map, parse_map
-from doomer.shared.raycast import RayHit, Side, cast_ray, start_heights
+from ok_doomer.client import fastcast as fc
+from ok_doomer.client.config import RenderConfig
+from ok_doomer.client.render import Renderer
+from ok_doomer.shared.mapfile import STAIRS_WALL_TYPE, GameMap, load_map, parse_map
+from ok_doomer.shared.raycast import RayHit, Side, cast_ray, start_heights
 
 OFFICE = load_map("maps/office.map")
 

@@ -5,7 +5,8 @@ Raspberry Pi 5 server), with co-op, deathmatch and a level editor. Set in a
 1980s office block. This file is the engine and code design; the setting,
 characters, enemies and furniture are in [GAME.md](GAME.md); level design
 rules and limits in [LEVELS.md](LEVELS.md). The Python
-package keeps the short name `doomer`.
+package is `ok_doomer` (the project name, `ok-doomer`, with the hyphen a
+module name can't hold).
 
 ## Architecture
 
@@ -15,7 +16,7 @@ package keeps the short name `doomer`.
 - **Clients**: render locally with pygame-ce (numpy for per-pixel maths,
   numba to compile the ray casting).
   They send inputs and receive state snapshots. Never pixels.
-- **Model/view/input separation**: `doomer/shared` holds the map, player state
+- **Model/view/input separation**: `ok_doomer/shared` holds the map, player state
   and collision. It is standard library only (no pygame, no numpy), so the
   server runs it unchanged. `tests/test_architecture.py` enforces this.
 - **One code path for input**: `PlayerInput` -> `step(world, inputs)`
@@ -561,7 +562,7 @@ dm_spawn      1.5   3.5   0
   (`Renderer.eye_level_rays`) and the cells it crosses are marked.
   Client-side state.
 - **The map checker** (`shared/validate.py`, `check_floor`; on the command
-  line `python -m doomer.shared.validate maps/*.map`): can a co-op floor
+  line `python -m ok_doomer.shared.validate maps/*.map`): can a co-op floor
   be finished? It floods the space a player can reach from the co-op start
   on a quarter-cell grid of positions, each step tested with the
   simulation's own `move_box` and height rules (steps, a jump onto a desk,
@@ -747,7 +748,7 @@ surface is still a single lookup.
    under a panel than between; a wall blocks light; a two-storey room is
    dimmer under its panels); a top-down PNG of the map for tuning:
    `client/lighting.py`, `LightingConfig`, `python -m
-   doomer.client.lightmap_png maps/office.map --out out/light.png`. ~0.2 s
+   ok_doomer.client.lightmap_png maps/office.map --out out/light.png`. ~0.2 s
    for the office. Panels also fade smoothly to nothing at the cutoff, so
    there's no ring. First bake: the lobby and offices have pools; the open
    plan (a panel every 2 cells) saturates past 1 everywhere, so phase 3
@@ -818,7 +819,7 @@ are the fix.
 How decisions get made here, so a new session carries on the same way:
 
 1. **Look before judging.** Render the view in question headless
-   (`doomer.client.headless`, or a script calling `Renderer.render` and
+   (`ok_doomer.client.headless`, or a script calling `Renderer.render` and
    `save_png`), crop and enlarge the problem area, and look at it. Measure
    when it's numeric (frame times with a fixed set of views; shade counts;
    light-map values at points) before saying what's wrong.
@@ -921,7 +922,7 @@ Noted at the end of a session, to pick up next:
 ## Setup
 
 - Linux: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`,
-  then `.venv/bin/python -m doomer.client` (single-player: the ground floor,
+  then `.venv/bin/python -m ok_doomer.client` (single-player: the ground floor,
   `maps/office.map`; or name a map, e.g. `maps/floor1.map`).
 - Client settings: copy `client.example.toml` to `client.toml` and pass
   `--config client.toml`.

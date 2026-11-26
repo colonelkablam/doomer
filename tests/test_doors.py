@@ -1,11 +1,11 @@
-"""Doors (doomer/shared/doors.py): opening, closing, collision, drawing."""
+"""Doors (ok_doomer/shared/doors.py): opening, closing, collision, drawing."""
 
 import math
 
 import pytest
 
-from doomer.shared.config import MovementConfig
-from doomer.shared.doors import (
+from ok_doomer.shared.config import MovementConfig
+from ok_doomer.shared.doors import (
     DOOR_HALF,
     DOOR_SET,
     HINGED,
@@ -14,11 +14,11 @@ from doomer.shared.doors import (
     door_walls,
     doors_from_map,
 )
-from doomer.shared.events import DoorToggled
-from doomer.shared.mapfile import parse_map
-from doomer.shared.player import PlayerInput, PlayerState
-from doomer.shared.sim import step
-from doomer.shared.world import World, drain_events, new_world, spawn_player
+from ok_doomer.shared.events import DoorToggled
+from ok_doomer.shared.mapfile import parse_map
+from ok_doomer.shared.player import PlayerInput, PlayerState
+from ok_doomer.shared.sim import step
+from ok_doomer.shared.world import World, drain_events, new_world, spawn_player
 
 MOVE = MovementConfig()
 NORTH, SOUTH, EAST = -math.pi / 2, math.pi / 2, 0.0
@@ -139,9 +139,9 @@ def test_sliding_doors_open_as_you_come_and_close_behind_you() -> None:
 def test_a_shut_door_hides_what_is_behind_it_and_an_open_one_doesnt() -> None:
     import dataclasses
 
-    from doomer.client.boxes import door_boxes
-    from doomer.client.config import RenderConfig
-    from doomer.client.render import Camera, Renderer
+    from ok_doomer.client.boxes import door_boxes
+    from ok_doomer.client.config import RenderConfig
+    from ok_doomer.client.render import Camera, Renderer
 
     game_map = parse_map(ROOMS)
     r = Renderer(RenderConfig())
@@ -157,7 +157,7 @@ def test_a_shut_door_hides_what_is_behind_it_and_an_open_one_doesnt() -> None:
 
 
 def test_double_doors_block_open_on_use_and_let_you_through() -> None:
-    from doomer.shared.doors import DOUBLE
+    from ok_doomer.shared.doors import DOUBLE
 
     double = ROOMS.replace("door_hinged 3.5 4.5 270", "door_double 3.5 4.5 270")
     world = new_world(parse_map(double), "coop")
@@ -175,7 +175,7 @@ def test_double_doors_block_open_on_use_and_let_you_through() -> None:
 def test_double_door_leaves_swing_from_their_hinges_towards_the_facing() -> None:
     import dataclasses
 
-    from doomer.client.boxes import door_boxes
+    from ok_doomer.client.boxes import door_boxes
 
     door = doors_from_map(parse_map(ROOMS.replace("door_hinged", "door_double")))[0]
     for fraction in (0.0, 1.0):
@@ -230,8 +230,8 @@ def test_an_open_door_lets_you_walk_through_either_way(start: float, angle: floa
 def test_the_boss_door_opens_from_either_side_once_youre_against_it(
     start: tuple[float, float], angle: float
 ) -> None:
-    from doomer.shared.events import DoorToggled
-    from doomer.shared.mapfile import load_map
+    from ok_doomer.shared.events import DoorToggled
+    from ok_doomer.shared.mapfile import load_map
 
     world = new_world(load_map("maps/office.map"), "coop")
     p = spawn_player(world, 1, "p")

@@ -2,15 +2,15 @@ import math
 
 import pytest
 
-from doomer.shared.collision import Obstacle, move_box
-from doomer.shared.config import ConfigError, MovementConfig, SimConfig, from_dict
-from doomer.shared.events import PlayerSpawned
-from doomer.shared.mapfile import parse_map
-from doomer.shared.player import PlayerInput
-from doomer.shared.sim import step
-from doomer.shared.things import THING_TYPES, ThingType, register_thing_type
-from doomer.shared.timestep import FixedTimestep
-from doomer.shared.world import ModeNotSupported, World, drain_events, new_world, spawn_player
+from ok_doomer.shared.collision import Obstacle, move_box
+from ok_doomer.shared.config import ConfigError, MovementConfig, SimConfig, from_dict
+from ok_doomer.shared.events import PlayerSpawned
+from ok_doomer.shared.mapfile import parse_map
+from ok_doomer.shared.player import PlayerInput
+from ok_doomer.shared.sim import step
+from ok_doomer.shared.things import THING_TYPES, ThingType, register_thing_type
+from ok_doomer.shared.timestep import FixedTimestep
+from ok_doomer.shared.world import ModeNotSupported, World, drain_events, new_world, spawn_player
 
 ROOM = parse_map(
     """\

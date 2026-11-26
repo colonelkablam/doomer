@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from doomer.shared.mapfile import (
+from ok_doomer.shared.mapfile import (
     DEFAULT_CEILING,
     DEFAULT_FLOOR,
     NORTH,
@@ -16,7 +16,7 @@ from doomer.shared.mapfile import (
     load_map,
     parse_map,
 )
-from doomer.shared.modes import missing_requirements, supported_modes
+from ok_doomer.shared.modes import missing_requirements, supported_modes
 
 MAPS = Path(__file__).resolve().parent.parent / "maps"
 

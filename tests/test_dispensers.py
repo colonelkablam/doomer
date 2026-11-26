@@ -3,13 +3,13 @@ allowance for each player."""
 
 import math
 
-from doomer.client.hud import message_for
-from doomer.shared.dispensers import DISPENSERS
-from doomer.shared.events import Dispensed
-from doomer.shared.mapfile import parse_map
-from doomer.shared.player import PlayerInput, PlayerState
-from doomer.shared.sim import step
-from doomer.shared.world import World, drain_events, new_world, spawn_player
+from ok_doomer.client.hud import message_for
+from ok_doomer.shared.dispensers import DISPENSERS
+from ok_doomer.shared.events import Dispensed
+from ok_doomer.shared.mapfile import parse_map
+from ok_doomer.shared.player import PlayerInput, PlayerState
+from ok_doomer.shared.sim import step
+from ok_doomer.shared.world import World, drain_events, new_world, spawn_player
 
 # A corridor; the water cooler at its east end, players facing it.
 ROOM = """\
@@ -97,7 +97,7 @@ breaker 2.5 1.01 90
 
 
 def test_the_vending_machine_needs_the_power_on() -> None:
-    from doomer.shared.switches import POWER
+    from ok_doomer.shared.switches import POWER
 
     world = new_world(parse_map(VENDING), "coop")
     p = spawn_player(world, 1, "p")
@@ -114,7 +114,7 @@ def test_the_vending_machine_needs_the_power_on() -> None:
 
 
 def test_the_office_has_a_vending_machine_on_a_solid_wall() -> None:
-    from doomer.shared.mapfile import load_map
+    from ok_doomer.shared.mapfile import load_map
 
     office = load_map("maps/office.map")
     (machine,) = office.things_of_type("vending_machine")

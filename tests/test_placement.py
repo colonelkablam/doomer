@@ -1,11 +1,11 @@
-"""Placing things against walls with `at=` (doomer/shared/placement.py)."""
+"""Placing things against walls with `at=` (ok_doomer/shared/placement.py)."""
 
 import math
 
 import pytest
 
-from doomer.shared.furniture import placed_footprints
-from doomer.shared.mapfile import MapError, Thing, format_map, load_map, parse_map
+from ok_doomer.shared.furniture import placed_footprints
+from ok_doomer.shared.mapfile import MapError, Thing, format_map, load_map, parse_map
 
 ROOM = "[walls]\n#####\n#...#\n#...#\n#...#\n#####\n\n[things]\n"
 

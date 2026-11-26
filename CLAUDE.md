@@ -18,11 +18,11 @@ the [built]/[planned] markers in GAME.md).
 
 ## Layout
 
-- `doomer/shared/`: world model (maps, player state, collision). Standard library
+- `ok_doomer/shared/`: world model (maps, player state, collision). Standard library
   only, no pygame or numpy. The server imports it unchanged.
-- `doomer/client/`: pygame-ce rendering and input. numpy allowed.
-- `doomer/server/`: asyncio server. Standard library + `doomer.shared` only.
-- `doomer/editor/`: level editor (pygame-ce).
+- `ok_doomer/client/`: pygame-ce rendering and input. numpy allowed.
+- `ok_doomer/server/`: asyncio server. Standard library + `ok_doomer.shared` only.
+- `ok_doomer/editor/`: level editor (pygame-ce).
 - `maps/`: `*.map` files (format in `docs/DESIGN.md`).
 - `tests/`: pytest.
 
@@ -45,7 +45,7 @@ All four checks must pass before committing. CI runs them on Linux and Windows.
 
 - The cloud VM is headless: tests set `SDL_VIDEODRIVER=dummy` (see
   `tests/conftest.py`). To check rendering visually, render a frame and save it
-  with `doomer.client.headless.save_png`, then look at the PNG.
+  with `ok_doomer.client.headless.save_png`, then look at the PNG.
 - Angles: radians in code, degrees in map files. `y` increases downward.
 - Pin dependency versions in `requirements*.txt`.
 - British English in docs and user-facing text.

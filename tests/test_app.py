@@ -3,14 +3,14 @@
 import pygame
 import pytest
 
-from doomer.client.app import run
-from doomer.client.config import ClientConfig, ControlsConfig, RenderConfig
-from doomer.client.input import KeyboardMouseInput
-from doomer.client.session import LocalSession
-from doomer.shared.events import Event
-from doomer.shared.mapfile import load_map
-from doomer.shared.player import PlayerInput
-from doomer.shared.world import new_world
+from ok_doomer.client.app import run
+from ok_doomer.client.config import ClientConfig, ControlsConfig, RenderConfig
+from ok_doomer.client.input import KeyboardMouseInput
+from ok_doomer.client.session import LocalSession
+from ok_doomer.shared.events import Event
+from ok_doomer.shared.mapfile import load_map
+from ok_doomer.shared.player import PlayerInput
+from ok_doomer.shared.world import new_world
 from tests.test_mapfile import MAPS
 
 
@@ -66,7 +66,7 @@ def test_mouse_capture_falls_back_when_relative_mode_unavailable(
 def test_the_picture_fills_the_window_keeping_its_shape(
     window: tuple[int, int], integer: bool, expected: tuple[int, int, int, int]
 ) -> None:
-    from doomer.client.app import view_rect
+    from ok_doomer.client.app import view_rect
 
     assert tuple(view_rect(window, (320, 200), integer)) == expected
 

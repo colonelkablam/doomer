@@ -1,5 +1,5 @@
 # Copy to client.toml, change what you like, and run with:
-#   python -m doomer.client --config client.toml
+#   python -m ok_doomer.client --config client.toml
 # Anything you leave out keeps its default. Unknown keys are an error.
 
 [render]

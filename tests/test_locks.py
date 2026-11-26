@@ -4,12 +4,12 @@ import math
 
 import pytest
 
-from doomer.shared.doors import HINGED, OPEN_SECONDS, SLIDING
-from doomer.shared.events import DoorLocked, DoorToggled, PassPickedUp
-from doomer.shared.mapfile import parse_map
-from doomer.shared.player import PlayerInput, PlayerState
-from doomer.shared.sim import step
-from doomer.shared.world import World, drain_events, new_world, spawn_player
+from ok_doomer.shared.doors import HINGED, OPEN_SECONDS, SLIDING
+from ok_doomer.shared.events import DoorLocked, DoorToggled, PassPickedUp
+from ok_doomer.shared.mapfile import parse_map
+from ok_doomer.shared.player import PlayerInput, PlayerState
+from ok_doomer.shared.sim import step
+from ok_doomer.shared.world import World, drain_events, new_world, spawn_player
 
 NORTH, SOUTH, EAST, WEST = -math.pi / 2, math.pi / 2, 0.0, math.pi
 
@@ -141,8 +141,8 @@ def test_deathmatch_starts_with_every_pass() -> None:
 
 
 def test_card_readers_by_locked_doors_light_once_the_team_can_open_them() -> None:
-    from doomer.client.boxes import door_boxes
-    from doomer.shared.doors import doors_from_map
+    from ok_doomer.client.boxes import door_boxes
+    from ok_doomer.shared.doors import doors_from_map
 
     doors = doors_from_map(parse_map(LOCKED))
     readers = [b for b in door_boxes(doors) if b.box.z[0] > 0.3]
@@ -153,7 +153,7 @@ def test_card_readers_by_locked_doors_light_once_the_team_can_open_them() -> Non
 
 
 def test_taken_passes_are_no_longer_drawn() -> None:
-    from doomer.client.session import LocalSession
+    from ok_doomer.client.session import LocalSession
 
     session = LocalSession(new_world(parse_map(LOCKED), "coop"), "p")
     assert sum(s.name.startswith("pass_") for s in session.sprites()) == 2
@@ -170,7 +170,7 @@ def test_taken_passes_are_no_longer_drawn() -> None:
     ],
 )
 def test_hud_messages(event: object, text: str | None) -> None:
-    from doomer.client.hud import message_for
+    from ok_doomer.client.hud import message_for
 
     assert message_for(event) == text  # type: ignore[arg-type]
 
@@ -185,8 +185,8 @@ def test_a_pass_deep_in_a_counter_is_out_of_reach_from_the_floor() -> None:
 
 
 def test_the_office_passes_can_be_reached() -> None:
-    from doomer.shared.mapfile import load_map
-    from doomer.shared.pickups import REACH
+    from ok_doomer.shared.mapfile import load_map
+    from ok_doomer.shared.pickups import REACH
 
     office = load_map("maps/office.map")
     for t in office.things:
@@ -198,8 +198,8 @@ def test_the_office_passes_can_be_reached() -> None:
 
 
 def test_a_pass_is_a_card_that_turns_and_bobs_by_the_clock() -> None:
-    from doomer.client.boxes import BOX_MODELS, SPINNING
-    from doomer.client.render import SpriteInstance, _placed
+    from ok_doomer.client.boxes import BOX_MODELS, SPINNING
+    from ok_doomer.client.render import SpriteInstance, _placed
 
     (card,) = BOX_MODELS["pass_red"]
     assert card.glow and card.z[0] > 0  # lit by itself, hovering
@@ -215,7 +215,7 @@ def test_a_pass_is_a_card_that_turns_and_bobs_by_the_clock() -> None:
 def test_the_hud_shows_passes_held_as_the_same_cards() -> None:
     import pygame
 
-    from doomer.client.hud import CARD_SIZE, Hud
+    from ok_doomer.client.hud import CARD_SIZE, Hud
 
     pygame.font.init()
     window = pygame.Surface((320, 200))

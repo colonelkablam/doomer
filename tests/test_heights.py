@@ -6,9 +6,9 @@ import math
 
 import numpy as np
 
-from doomer.client.config import RenderConfig
-from doomer.client.render import EYE_HEIGHT, MAX_PITCH, Camera, Renderer
-from doomer.shared.mapfile import parse_map
+from ok_doomer.client.config import RenderConfig
+from ok_doomer.client.render import EYE_HEIGHT, MAX_PITCH, Camera, Renderer
+from ok_doomer.shared.mapfile import parse_map
 
 CFG = RenderConfig()
 R = Renderer(CFG)
@@ -136,7 +136,7 @@ def test_from_on_a_desk_the_high_ceiling_still_carries_on() -> None:
 
 
 def test_ceiling_light_panel_is_drawn_into_the_ceiling() -> None:
-    from doomer.client.palette import CREAM
+    from ok_doomer.client.palette import CREAM
 
     lit = parse_map("[walls]\n#######\n#.....#\n#######\n\n[things]\nceiling_light 3.5 1.5 0\n")
     # Looking along x and up, a little off the cell's centre line: the column
@@ -224,7 +224,7 @@ def test_stairs_are_drawn_as_steps_even_above_eye_level() -> None:
 
 
 def test_no_railing_or_step_at_the_top_of_the_stairs_when_standing_on_them() -> None:
-    from doomer.client.render import Renderer as _R
+    from ok_doomer.client.render import Renderer as _R
 
     # Balcony (i, a storey up) along y = 1, stairs up to it at x = 3 (y = 2, 3).
     room = parse_map(
@@ -242,7 +242,7 @@ def test_no_railing_or_step_at_the_top_of_the_stairs_when_standing_on_them() -> 
 
 
 def test_balusters_drawn_on_the_edge_of_the_balcony_cell_you_stand_in() -> None:
-    from doomer.client.render import Renderer as _R
+    from ok_doomer.client.render import Renderer as _R
 
     # Balcony along y = 1 dropping to the floor at y = 2. Stand on it near the
     # edge, looking down at the railing in your own cell.

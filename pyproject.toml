@@ -18,4 +18,4 @@ select = ["E", "W", "F", "I", "UP", "B", "SIM"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["doomer", "tests"]
+files = ["ok_doomer", "tests"]
