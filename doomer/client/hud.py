@@ -12,6 +12,7 @@ import pygame
 from doomer.client.boxes import pass_card_rgba
 from doomer.shared.dispensers import DISPENSERS
 from doomer.shared.events import (
+    CubicleDoorUsed,
     Dispensed,
     DoorLocked,
     Event,
@@ -62,6 +63,8 @@ def message_for(event: Event) -> str | None:
         return f"Locked: you need the {event.lock} pass"
     if isinstance(event, SwitchThrown) and event.flag == "power":
         return "The power is back on"
+    if isinstance(event, CubicleDoorUsed) and event.engaged:
+        return "Engaged: someone's in there"
     if isinstance(event, LiftNoPower):
         return "The lift has no power"
     return None

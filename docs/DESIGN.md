@@ -108,7 +108,8 @@ means adding a module and registering it, not editing a dozen files.
   - `World.dispensers` [built: `shared/dispensers.py`]: per dispenser, its
     type (`DISPENSERS`: the meter, how much a use, the allowance per player)
     and what it has given each player, `{player_id: given}`. Used with E
-    (switches first, then dispensers, then doors); `Dispensed` events,
+    (switches first, then dispensers, then cubicle doors, then doors);
+    `Dispensed` events,
     with a `reason` when nothing's given ("full", "empty", "no power"). A player who joins later starts with
     the full budget. On the main circuit (the vending machine), it works
     only while there's power.
@@ -438,6 +439,18 @@ dm_spawn      1.5   3.5   0
   thin boxes with see-through leaf textures, four upright at 45 degrees to
   each other and two flat, as games have long done for plants. Big
   furniture stays as map cells.
+- **Cubicle doors** (`shared/cubicles.py`, drawn by
+  `boxes.cubicle_door_boxes`): each run of toilet cubicles has a door per
+  cubicle in `World.cubicle_doors`, how far open (0-1, swinging over 0.4 s)
+  and whether it's locked (ENGAGED: the second of each run, for good). Use
+  (E) toggles a vacant one; a locked one emits `CubicleDoorUsed` with
+  `engaged` and the HUD says someone's in there. They swing inwards, as
+  real ones do, so open or shut they never reach into the room: nothing to
+  collide with, and the run's footprint is the same either way. The run's
+  fixed parts (partitions, headrail, toilets, the feet under the engaged
+  door) are an ordinary box model; the doors are drawn from their state, a
+  box turned about the model origin by the swing, offset so it turns on its
+  hinge.
 - **Doors** (prototype; `shared/doors.py`, drawn by `boxes.door_boxes`): a
   door is a thing in a doorway cell (open floor between two wall cells),
   standing at one end of it, `DOOR_SET` (0.45) from the cell's middle:

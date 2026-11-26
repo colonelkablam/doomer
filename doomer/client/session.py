@@ -7,7 +7,7 @@ interpolates snapshots, so the game loop doesn't change.
 
 from typing import Protocol
 
-from doomer.client.boxes import PlacedBox, door_boxes, switch_boxes
+from doomer.client.boxes import PlacedBox, cubicle_door_boxes, door_boxes, switch_boxes
 from doomer.client.render import Camera, SpriteInstance, sprites_from_things
 from doomer.shared.events import Event
 from doomer.shared.mapfile import GameMap
@@ -97,7 +97,8 @@ class LocalSession:
 
     def boxes(self) -> list[PlacedBox]:
         doors = door_boxes(self.world.doors, self.world.passes)
-        return doors + switch_boxes(self.world.switches)
+        cubicles = cubicle_door_boxes(self.world.cubicle_doors)
+        return doors + switch_boxes(self.world.switches) + cubicles
 
     def passes(self) -> frozenset[str]:
         return frozenset(self.world.passes)

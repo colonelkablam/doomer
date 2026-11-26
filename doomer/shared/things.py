@@ -6,7 +6,6 @@ thing looks is the client's business (doomer/client/sprites.py), keyed by the
 same name.
 """
 
-import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
@@ -258,31 +257,27 @@ for _name, _description in (
 
 # Washroom fittings (drawn by doomer/client/boxes.py, sizes matching), each
 # against a wall (`at=`), +x out of it. A run of cubicles: laminate
-# partitions raised off the floor, a door each (one ajar, one ENGAGED); a
+# partitions raised off the floor, a door each (one open, one ENGAGED); a
 # run of urinals with screens between; a vanity unit with basins and a
-# mirror over it. Runs of two, three or four, like the sofas.
-CUBICLE_WIDTH, CUBICLE_DEPTH, CUBICLE_TOP = 0.34, 0.55, 0.74
-CUBICLE_DOOR_AJAR = math.radians(55)  # the first cubicle's door, swung out
-URINAL_PITCH, URINAL_DEPTH = 0.32, 0.24
-BASIN_PITCH, BASIN_DEPTH, BASIN_TOP = 0.24, 0.2, 0.3
+# mirror over it. Runs of two, three or four, like the sofas. The cubicles'
+# doors open on use (doomer/shared/cubicles.py); `kind=gents` or `ladies`.
+CUBICLE_WIDTH, CUBICLE_DEPTH, CUBICLE_TOP = 0.25, 0.55, 0.74  # four to a cell
+URINAL_PITCH, URINAL_DEPTH = 0.36, 0.26  # a screen's depth
+BASIN_PITCH, BASIN_DEPTH, BASIN_TOP = 0.3, 0.26, 0.3
 for _n, _word in ((2, "two"), (3, "three"), (4, "four")):
     _half = _n * CUBICLE_WIDTH / 2
-    _hinge = _half - CUBICLE_WIDTH  # the open door hangs from here
-    _door = Footprint(
-        (CUBICLE_DEPTH, CUBICLE_DEPTH + CUBICLE_WIDTH * math.sin(CUBICLE_DOOR_AJAR)),
-        (_hinge, _hinge + CUBICLE_WIDTH * math.cos(CUBICLE_DOOR_AJAR)),
-        0.7,
-    )
     register_thing_type(
         ThingType(
             f"cubicles_{_word}",
             f"Toilet cubicles: a run of {_word}",
             blocking=True,
             radius=_half,
-            footprints=(Footprint((0.0, CUBICLE_DEPTH), (-_half, _half), CUBICLE_TOP), _door),
+            # Whose they are: the shoes under the ENGAGED door.
+            properties={"kind": ("gents", "ladies")},
+            footprints=(Footprint((0.0, CUBICLE_DEPTH), (-_half, _half), CUBICLE_TOP),),
         )
     )
-for _n, _word in ((2, "two"), (3, "three")):
+for _n, _word in ((2, "two"), (3, "three"), (4, "four")):
     _half = _n * URINAL_PITCH / 2
     register_thing_type(
         ThingType(

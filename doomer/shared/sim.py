@@ -15,9 +15,15 @@ from collections.abc import Mapping
 
 from doomer.shared.collision import ThinWall, move_box
 from doomer.shared.config import MovementConfig
+from doomer.shared.cubicles import (
+    cubicle_door_in_reach,
+    update_cubicle_doors,
+    use_cubicle_door,
+)
 from doomer.shared.dispensers import dispense, dispenser_in_reach
 from doomer.shared.doors import LIFT, door_walls, try_use, update_doors
 from doomer.shared.events import (
+    CubicleDoorUsed,
     Dispensed,
     DoorLocked,
     DoorToggled,
@@ -55,6 +61,7 @@ def step(world: World, inputs: Mapping[int, PlayerInput]) -> None:
         power,
         departing,
     )
+    update_cubicle_doors(world.cubicle_doors, world.config.dt)
     if departing and not world.complete and _lifts_shut(world, positions):
         world.complete = True
         world.events.append(LevelComplete(world.tick))
@@ -86,9 +93,19 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
             world.events.append(
                 Dispensed(world.tick, player.id, tap.type, meter, amount, left, reason)
             )
-        used = (
+        cubicle = (
             None
             if thrown or tap
+            else cubicle_door_in_reach(world.cubicle_doors, player.x, player.y, player.angle)
+        )
+        if cubicle is not None:
+            moved = use_cubicle_door(cubicle)
+            world.events.append(
+                CubicleDoorUsed(world.tick, cubicle.id, player.id, cubicle.opening, not moved)
+            )
+        used = (
+            None
+            if thrown or tap or cubicle
             else try_use(world.doors, player.x, player.y, player.angle, world.passes, power)
         )
         if thrown is not None:

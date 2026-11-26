@@ -22,6 +22,17 @@ class DoorToggled(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class CubicleDoorUsed(Event):
+    """A player used a toilet cubicle's door: it's now `opening` (or
+    shutting); or it's `engaged` (locked: someone's in) and didn't move."""
+
+    door_id: int
+    player_id: int
+    opening: bool
+    engaged: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class DoorLocked(Event):
     """A player tried a locked door without its pass."""
 

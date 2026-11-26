@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from doomer.shared.collision import Obstacle
 from doomer.shared.config import SimConfig
+from doomer.shared.cubicles import CubicleDoor, cubicle_doors_from_map
 from doomer.shared.dispensers import Dispenser, dispensers_from_map
 from doomer.shared.doors import Door, doors_from_map
 from doomer.shared.events import Event, PlayerSpawned
@@ -44,6 +45,8 @@ class World:
     # Dispensers (the water cooler) and what each has given whom
     # (doomer/shared/dispensers.py).
     dispensers: list[Dispenser] = field(default_factory=list)
+    # Toilet cubicle doors, open or shut (doomer/shared/cubicles.py).
+    cubicle_doors: list[CubicleDoor] = field(default_factory=list)
     flags: set[str] = field(default_factory=set)
     complete: bool = False  # everyone left by lift (LevelComplete)
 
@@ -79,6 +82,7 @@ def new_world(
         pickups=pickups_from_map(game_map),
         switches=switches_from_map(game_map),
         dispensers=dispensers_from_map(game_map),
+        cubicle_doors=cubicle_doors_from_map(game_map),
         flags=initial_flags(game_map),
         passes=set(PASS_COLOURS) if GAME_MODES[mode].all_passes else set(),
     )

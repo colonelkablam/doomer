@@ -13,7 +13,7 @@ use_dummy_video()
 
 import pygame  # noqa: E402
 
-from doomer.client.boxes import door_boxes, switch_boxes  # noqa: E402
+from doomer.client.boxes import cubicle_door_boxes, door_boxes, switch_boxes  # noqa: E402
 from doomer.client.config import LightingConfig, RenderConfig  # noqa: E402
 from doomer.client.render import (  # noqa: E402
     Camera,
@@ -21,6 +21,7 @@ from doomer.client.render import (  # noqa: E402
     make_frame_surface,
     sprites_from_things,
 )
+from doomer.shared.cubicles import cubicle_doors_from_map  # noqa: E402
 from doomer.shared.doors import Door, doors_from_map  # noqa: E402
 from doomer.shared.mapfile import GameMap, load_map  # noqa: E402
 from doomer.shared.switches import POWER, initial_flags, switches_from_map  # noqa: E402
@@ -49,6 +50,8 @@ def render_frame(
     for sw in switches:
         sw.on = powered
     boxes = door_boxes(shown, passes) + switch_boxes(switches) if things else []
+    if things:  # the cubicles' doors as the map starts them
+        boxes += cubicle_door_boxes(cubicle_doors_from_map(game_map))
     Renderer(config, lighting).render(frame, game_map, camera, sprites, boxes, powered)
     return frame
 

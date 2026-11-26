@@ -310,20 +310,29 @@ door_hinged     25.5  10.5  90
 door_hinged     29.5  10.5  90
 poster          24.7  11.5  0     kind=gents at=n
 poster          28.7  11.5  0     kind=ladies at=n
-# Gents: two cubicles, three urinals, two basins under a mirror, a dryer,
-# a WET FLOOR sign someone left out
-cubicles_two    24.4  6.5   0     at=n
-urinals_three   26.5  7.4   0     at=e
-basins_two      24.5  8.4   0     at=w
-hand_dryer      24.35 9.5   0     at=s
+# Gents: four cubicles (one door open, one ENGAGED), eight urinals in two
+# runs, four basins under a mirror, four dryers by the door, a WET FLOOR
+# sign someone left out
+cubicles_four   24.5  6.5   0     kind=gents at=n
+urinals_four    26.5  6.73  0     at=e
+urinals_four    26.5  8.17  0     at=e
+basins_four     24.5  8.2   0     at=w
+hand_dryer      24.15 9.5   0     at=s
+hand_dryer      24.38 9.5   0     at=s
+hand_dryer      24.61 9.5   0     at=s
+hand_dryer      24.84 9.5   0     at=s
 poster          26.3  9.5   0     kind=wash_hands at=s
 wet_floor_sign  25.6  8.0   20
 ceiling_light   25.5  7.5   0
-# Ladies: four cubicles, three basins, a dryer
-cubicles_four   29.5  6.5   0     at=n
-basins_three    28.5  8.3   0     at=w
-hand_dryer      28.35 9.5   0     at=s
-poster          30.3  9.5   0     kind=wash_hands at=s
+# Ladies: eight cubicles in two runs, four basins, four dryers
+cubicles_four   28.5  6.5   0     kind=ladies at=n
+cubicles_four   29.5  6.5   0     kind=ladies at=n
+basins_four     28.5  8.2   0     at=w
+hand_dryer      30.15 9.5   0     at=s
+hand_dryer      30.38 9.5   0     at=s
+hand_dryer      30.61 9.5   0     at=s
+hand_dryer      30.84 9.5   0     at=s
+poster          28.4  9.5   0     kind=wash_hands at=s
 ceiling_light   29.5  7.5   0
 # --- The corridor: two cells wide, the length of the floor, the open plan's
 # double doors and an opening on its north side; the secretary's doors at
