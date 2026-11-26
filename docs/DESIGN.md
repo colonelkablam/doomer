@@ -801,8 +801,7 @@ Noted at the end of a session, to pick up next:
 
 - **To close the single-player loop**, in order: the full-size ground floor
   (~32 x 24, laid out for the loop; the current map is the test bed); the
-  lift ride and a
-  second floor to arrive on. Enemies, weapons and pickups (milestones 3b,
+  lift ride and a second floor to arrive on. Enemies, weapons and pickups (milestones 3b,
   4) come after networking.
 - **Health and coffee** (GAME.md, Pickups; Networking above): two meters
   per player, coffee as armour (soaks a third of each hit). Built: the
@@ -810,12 +809,10 @@ Noted at the end of a session, to pick up next:
   that needs power: `DispenserType.needs_power`). To do: snack pickups,
   damage and absorption with 3b, the meters on the HUD.
 - **Office objects to make** (GAME.md, Office furniture, the `planned`
-  rows)
-  on the odd desk; a kitchen area (counter, sink, kettle, microwave,
-  fridge, mugs); washrooms (cubicles, basins and mirror, hand dryer); and
-  the older list: photocopier, fax on a stand, vending machine (lit: on the
-  main circuit), coat stand, ashtray bin, flip chart, overhead projector on
-  a trolley, fire extinguisher.
+  rows): a kitchen area (counter, sink, kettle, microwave, fridge, mugs);
+  washrooms (cubicles, basins and mirror, hand dryer); a photocopier, a fax
+  on a stand, a coat stand, an ashtray bin, a flip chart, an overhead
+  projector on a trolley, a fire extinguisher.
 - **Cosmetic to-dos**, smaller polish noted along the way:
   - A flashing amber beacon over the plant room door (an indicator lamp,
     `blink`), drawing players to the power.
@@ -843,8 +840,7 @@ Noted at the end of a session, to pick up next:
   the cast (`CAST`) stays hand-picked. Until then the templates are the
   bank: every new template multiplies the faces possible.
 - Also outstanding: the `corner=` property for things (LEVELS.md);
-  the lift
-  ride to the next floor; networking (milestone 3).
+  networking (milestone 3).
 
 ## Setup
 
