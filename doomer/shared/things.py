@@ -265,9 +265,12 @@ for _name, _description in (
 # Cubicles are big enough for a player (0.5 wide): five across a 3-cell wall.
 CUBICLE_WIDTH, CUBICLE_DEPTH, CUBICLE_TOP = 0.6, 0.9, 0.8
 PARTITION_HALF = 0.012  # half a partition's thickness
+# The front's fixed returns: a strip each side of every partition, so each
+# door is narrower than its cubicle (0.52: still wider than a player).
+RETURN_WIDTH, RETURN_DEPTH = 0.028, 0.02
 # The toilet in each cubicle, in the run's frame (x out of the wall): the pan
 # with its lid down (stand on it: a jump), the cistern against the wall.
-PAN_X, PAN_HALF, PAN_TOP = (0.06, 0.36), 0.085, 0.18
+PAN_X, PAN_HALF, PAN_TOP = (0.06, 0.36), 0.1, 0.18
 CISTERN_X, CISTERN_HALF, CISTERN_TOP = (0.0, 0.08), 0.12, 0.38
 URINAL_PITCH, URINAL_DEPTH = 0.36, 0.26  # a screen's depth
 BASIN_PITCH, BASIN_DEPTH, BASIN_TOP = 0.3, 0.26, 0.3
@@ -275,14 +278,19 @@ CUBICLE_RUNS = {f"cubicles_{w}": n for n, w in ((2, "two"), (3, "three"), (4, "f
 
 
 def _cubicle_footprints(n: int) -> tuple[Footprint, ...]:
-    """A run's floor plan: each partition (thin), and each toilet's pan and
-    cistern. The doors are the World's (doomer/shared/cubicles.py)."""
+    """A run's floor plan: each partition (thin) and its returns across the
+    front, and each toilet's pan and cistern. The doors are the World's
+    (doomer/shared/cubicles.py); the loo roll holders are too small to
+    matter."""
     half = n * CUBICLE_WIDTH / 2
     out = []
     for k in range(n + 1):
         y = half - k * CUBICLE_WIDTH
         y0, y1 = max(y - PARTITION_HALF, -half), min(y + PARTITION_HALF, half)
         out.append(Footprint((0.0, CUBICLE_DEPTH), (y0, y1), CUBICLE_TOP))
+        reach = PARTITION_HALF + RETURN_WIDTH
+        r0, r1 = max(y - reach, -half), min(y + reach, half)
+        out.append(Footprint((CUBICLE_DEPTH - RETURN_DEPTH, CUBICLE_DEPTH), (r0, r1), CUBICLE_TOP))
     for k in range(n):
         cy = half - (k + 0.5) * CUBICLE_WIDTH
         out.append(Footprint(PAN_X, (cy - PAN_HALF, cy + PAN_HALF), PAN_TOP))

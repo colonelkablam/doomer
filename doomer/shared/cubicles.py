@@ -1,7 +1,8 @@
 """Toilet cubicle doors: use one (E) to open or shut it, unless someone's in.
 
 A run of cubicles (`cubicles_two` .. `_five`: doomer/shared/things.py) has a
-door at the front of each, hinged on the cubicle's +y side (the run's own
+door at the front of each, between fixed returns (a strip either side, so
+the door's narrower than the cubicle), hinged on the cubicle's +y side (the run's own
 frame: x out of the wall; on your left as you face the run), its latch on
 the -y side. So the first door of a run, swung open, folds back against
 the wall at the run's end. Doors swing outwards,
@@ -23,7 +24,13 @@ from dataclasses import dataclass
 
 from doomer.shared.collision import Obstacle, ThinWall
 from doomer.shared.mapfile import GameMap
-from doomer.shared.things import CUBICLE_DEPTH, CUBICLE_RUNS, CUBICLE_WIDTH, PARTITION_HALF
+from doomer.shared.things import (
+    CUBICLE_DEPTH,
+    CUBICLE_RUNS,
+    CUBICLE_WIDTH,
+    PARTITION_HALF,
+    RETURN_WIDTH,
+)
 
 DOOR_SECONDS = 0.3  # shut to open
 OPEN_ANGLE = math.pi / 2  # outwards, at full open
@@ -51,11 +58,11 @@ class CubicleDoor:
         """The hinge, on the run's y axis (its x is CUBICLE_DEPTH); the
         door runs from it towards -y."""
         half = self.count * CUBICLE_WIDTH / 2
-        return half - self.index * CUBICLE_WIDTH - PARTITION_HALF
+        return half - self.index * CUBICLE_WIDTH - PARTITION_HALF - RETURN_WIDTH
 
     @property
     def width(self) -> float:
-        return CUBICLE_WIDTH - 2 * PARTITION_HALF
+        return CUBICLE_WIDTH - 2 * (PARTITION_HALF + RETURN_WIDTH)
 
     def to_world(self, mx: float, my: float) -> tuple[float, float]:
         """A point in the run's frame, in the world."""

@@ -18,6 +18,7 @@ from doomer.shared.things import (
     CUBICLE_WIDTH,
     PAN_TOP,
     PARTITION_HALF,
+    RETURN_WIDTH,
     THING_TYPES,
 )
 from doomer.shared.world import World, drain_events, new_world, spawn_player
@@ -73,6 +74,7 @@ def test_a_cubicle_fits_a_player() -> None:
     # Between partitions, wider than a player's 0.5; deep enough in front of
     # the toilet's pan to stand with the door shut.
     assert CUBICLE_WIDTH - 2 * PARTITION_HALF > 0.5
+    assert CUBICLE_WIDTH - 2 * (PARTITION_HALF + RETURN_WIDTH) > 0.5  # the doorway too
     pan = [f for f in THING_TYPES["cubicles_two"].footprints if f.top == PAN_TOP][0]
     assert CUBICLE_DEPTH - pan.x[1] > 0.5
 
@@ -102,7 +104,8 @@ def test_a_cubicle_door_hangs_from_its_hinge_and_swings_out(open_: float) -> Non
     (placed,) = cubicle_door_boxes([door])
     corners = _corners(placed.box)
     half = 4 * CUBICLE_WIDTH / 2
-    hinge = (CUBICLE_DEPTH, half - PARTITION_HALF)  # the first cubicle's +y side
+    # The first cubicle's +y side, at the edge of its return.
+    hinge = (CUBICLE_DEPTH, half - PARTITION_HALF - RETURN_WIDTH)
     assert min(math.dist(c, hinge) for c in corners) < 0.012
     if open_ == 0.0:
         assert max(c[0] for c in corners) <= CUBICLE_DEPTH + 1e-6  # across the front
@@ -224,9 +227,19 @@ def test_the_ground_floor_has_gents_and_ladies_off_the_corridor() -> None:
     sizes = {"two": 2, "three": 3, "four": 4, "five": 5}
     assert count("cubicles_", "gents", sizes) == 5
     assert count("cubicles_", "ladies", sizes) == 5
-    assert count("urinals_", "gents", sizes) == 8
+    assert count("urinals_", "gents", sizes) == 6
     assert count("basins_", "gents", sizes) == count("basins_", "ladies", sizes) == 4
     dryers = office.things_of_type("hand_dryer")
     for kind in ("gents", "ladies"):
         x0, x1 = rooms[kind]
         assert sum(x0 <= d.x < x1 + 1 for d in dryers) == 4
+
+
+def test_loo_rolls_are_drawn_but_never_in_the_way() -> None:
+    rolls = [b for b in BOX_MODELS["cubicles_five"] if b.z == (0.25, 0.32)]
+    assert len(rolls) == 5  # one a cubicle
+    for roll in rolls:
+        for f in THING_TYPES["cubicles_five"].footprints:
+            inside_x = f.x[0] < roll.x[1] and roll.x[0] < f.x[1]
+            inside_y = f.y[0] < roll.y[1] - 1e-9 and roll.y[0] + 1e-9 < f.y[1]
+            assert not (inside_x and inside_y)

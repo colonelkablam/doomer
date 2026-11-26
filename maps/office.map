@@ -311,12 +311,12 @@ door_hinged     29.5  10.5  90
 poster          24.7  11.5  0     kind=gents at=n
 poster          28.7  11.5  0     kind=ladies at=n
 # Gents: five cubicles across the north end (one door open, one ENGAGED;
-# step in, shut the door, stand on the loo and you're hidden), eight
-# urinals in two runs down the east wall, four basins under a mirror on the
+# step in, shut the door, stand on the loo and you're hidden), six
+# urinals in two runs down the east wall, clear of the cubicle doors, four basins under a mirror on the
 # west, four dryers by the door, a WET FLOOR sign someone left out
 cubicles_five   25.5  6.5   0     kind=gents at=n
-urinals_four    26.5  7.67  0     at=e
-urinals_four    26.5  9.11  0     at=e
+urinals_three   26.5  8.14  0     at=e
+urinals_three   26.5  9.22  0     at=e
 basins_four     24.5  8.15  0     at=w
 hand_dryer      24.15 9.5   0     at=s
 hand_dryer      24.38 9.5   0     at=s

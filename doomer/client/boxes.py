@@ -83,6 +83,8 @@ from doomer.shared.things import (
     PAN_X,
     PARTITION_HALF,
     POSTER_KINDS,
+    RETURN_DEPTH,
+    RETURN_WIDTH,
     URINAL_DEPTH,
     URINAL_PITCH,
 )
@@ -2818,40 +2820,27 @@ _DOOR_FACES = {state: cubicle_door(state) for state in ("vacant", "engaged", "in
 _DOOR_EDGE = _plain_texture(*_CHROME)
 
 
-def pan_front() -> int:
-    """A WC pan from the front: the bowl's rim the full width at the top, a
-    narrower pedestal under it, flaring to its foot. See-through round it."""
-    c = Canvas()
-    across = np.abs(c.u + 0.5 - 32)
-    bowl = (c.v < 22) & (across < 32 - np.maximum(c.v - 12, 0) * 0.9)
-    pedestal = (c.v >= 18) & (across < 13 + np.maximum(c.v - 54, 0) * 1.0)
-    c.paint(bowl | pedestal, *_PORCELAIN)
-    c.paint((bowl | pedestal) & (across > 9) & (c.v >= 18), GREY, 12.0)  # its rounded sides
-    c.paint(c.rect(0, 3, 0, 64) & bowl, GREY, 15.0)  # the rim, catching the light
-    return _texture(c)
-
-
 def pan_side() -> int:
-    """From the side: the bowl over a pedestal set in from both ends (drawn
-    symmetric, so it's right whichever side you see)."""
+    """A WC pan, front or side: one solid block of white porcelain, the rim
+    lit along the top, a shadow line under it, the foot darker."""
     c = Canvas()
-    across = np.abs(c.u + 0.5 - 32)
-    bowl = c.v < 24
-    pedestal = (c.v >= 18) & (across < 20 + np.maximum(c.v - 54, 0) * 0.8)
-    c.paint(bowl | pedestal, *_PORCELAIN)
-    c.paint(pedestal & ~bowl & (across > 14), GREY, 12.0)
-    c.paint(c.rect(0, 3, 0, 64), GREY, 15.0)
+    c.paint(c.rect(0, 64, 0, 64), *_PORCELAIN)
+    c.paint(c.rect(0, 4, 0, 64), GREY, 15.0)  # the rim, catching the light
+    c.paint(c.rect(10, 12, 0, 64), GREY, 11.5)  # shadow under the rim
+    c.paint(c.rect(12, 64, 0, 3) | c.rect(12, 64, 61, 64), GREY, 12.5)  # rounded corners
+    c.paint(c.rect(58, 64, 0, 64), GREY, 11.0)  # the foot, in shadow
     return _texture(c)
 
 
-def lid_top() -> int:
-    """The lid, down, seen from above (its front at the bottom): black
-    plastic, rounded at the front, hinged at the back, a highlight."""
+def pan_top() -> int:
+    """The pan from above (its front at the bottom): the white rim round a
+    black lid, down, rounded at the front, two chrome hinges at the back."""
     c = Canvas()
-    shape = c.ellipse(26, 32, 38, 32) & (c.v < 64)
-    c.paint(shape, GREY, 2.0)
-    c.paint(shape & c.ellipse(24, 26, 14, 10), GREY, 4.0)  # a sheen
-    c.paint(c.rect(0, 5, 14, 50), STEEL, 10.0)  # the hinges
+    c.paint(c.rect(0, 64, 0, 64), *_PORCELAIN)
+    lid = c.ellipse(22, 32, 38, 27) & (c.v >= 6)
+    c.paint(lid, GREY, 2.0)
+    c.paint(lid & c.ellipse(24, 25, 12, 9), GREY, 4.0)  # a sheen
+    c.paint(c.rect(1, 6, 14, 22) | c.rect(1, 6, 42, 50), STEEL, 12.0)  # hinges
     return _texture(c)
 
 
@@ -2867,37 +2856,51 @@ def cistern_front() -> int:
     return _texture(c)
 
 
-_PAN = (pan_front(), pan_side(), _plain_texture(*_PORCELAIN), pan_side())
-_LID = lid_top()
-_LID_SIDE = _plain_texture(GREY, 2.0)
+def roll_end() -> int:
+    """A toilet roll end on: white paper round a cardboard core."""
+    c = Canvas()
+    c.paint(c.ellipse(32, 32, 32, 32), GREY, 14.5)
+    c.paint(c.ellipse(32, 32, 32, 32) & ~c.ellipse(32, 32, 28, 28), GREY, 12.5)
+    c.paint(c.ellipse(32, 32, 11, 11), WOOD, 9.0)  # the core
+    c.paint(c.ellipse(32, 32, 7, 7), GREY, 3.0)
+    return _texture(c)
+
+
+_PAN_SIDE = pan_side()
+_PAN = (_PAN_SIDE, _PAN_SIDE, _PAN_SIDE, _PAN_SIDE, pan_top())
 _CISTERN = cistern_front()
 _PANEL = _texture(_laminate())
+_RETURN = _texture(_laminate(12.0))  # a shade lighter than the doors, so they read apart
 _PORCELAIN_PLAIN = _plain_texture(*_PORCELAIN)
+_ROLL_END = roll_end()
+_ROLL_SIDE = _plain_texture(GREY, 14.0)
 _FEET = tuple(
     _plain_texture(*look) for look in ((BRICK, 7.0), (WOOD, 5.0), (GREY, 1.5), (GREY, 6.0))
 )
 
 
-def _toilet(cy: float) -> list[Box]:
-    """A close-coupled WC: the pan (lid down: you can stand on it), the
-    cistern behind on the wall. Three boxes; sizes from shared/things.py."""
-    see = (_LID_SIDE,) * 4
+def _toilet(cy: float, wall_y: float) -> list[Box]:
+    """A close-coupled WC: the pan, one solid block with its lid down on top
+    (you can stand on it), the cistern behind on the wall; and a loo roll
+    on a chrome arm on the partition at `wall_y` (the cubicle's -y side),
+    in front of the pan. Four boxes; sizes from shared/things.py."""
+    plain = _PORCELAIN_PLAIN
+    x0 = PAN_X[1] + 0.06  # the roll's back, clear of the pan
     return [
-        Box(
-            PAN_X, (cy - PAN_HALF, cy + PAN_HALF), (0.0, PAN_TOP - 0.02), (*_PAN, _PORCELAIN_PLAIN)
-        ),
-        Box(
-            (PAN_X[0] + 0.02, PAN_X[1]),
-            (cy - PAN_HALF + 0.005, cy + PAN_HALF - 0.005),
-            (PAN_TOP - 0.02, PAN_TOP),
-            (*see, _LID),
-        ),
+        Box(PAN_X, (cy - PAN_HALF, cy + PAN_HALF), (0.0, PAN_TOP), _PAN),
         Box(
             CISTERN_X,
             (cy - CISTERN_HALF, cy + CISTERN_HALF),
             (0.2, CISTERN_TOP),
-            (_CISTERN, _PORCELAIN_PLAIN, _PORCELAIN_PLAIN, _PORCELAIN_PLAIN, _PORCELAIN_PLAIN),
+            (_CISTERN, plain, plain, plain, plain),
         ),
+        Box(
+            (x0, x0 + 0.07),
+            (wall_y, wall_y + 0.06),
+            (0.25, 0.32),
+            (_ROLL_END, _ROLL_SIDE) * 2 + (_ROLL_SIDE,),
+        ),
+        Box((x0 + 0.025, x0 + 0.045), (wall_y, wall_y + 0.07), (0.32, 0.33), (_DOOR_EDGE,) * 5),
     ]
 
 
@@ -2924,9 +2927,10 @@ def _feet(kind: str, cy: float) -> list[Box]:
 
 def _cubicles(n: int, kind: str) -> tuple[Box, ...]:
     """A run of n cubicles without their doors (cubicle_door_boxes draws
-    those, open or shut): partitions between and at the ends, a chrome
-    headrail across the front, a toilet in each, and feet under the second
-    (ENGAGED: shared/cubicles.py)."""
+    those, open or shut): partitions between and at the ends, each with a
+    return across the front either side, a chrome headrail over the fronts,
+    a toilet and a loo roll in each, and feet under the second (ENGAGED:
+    shared/cubicles.py)."""
     w, d = CUBICLE_WIDTH, CUBICLE_DEPTH
     half = n * w / 2
     boxes: list[Box] = []
@@ -2935,11 +2939,16 @@ def _cubicles(n: int, kind: str) -> tuple[Box, ...]:
         y0, y1 = max(y - PARTITION_HALF, -half), min(y + PARTITION_HALF, half)
         faces = (_DOOR_EDGE, _PANEL, _DOOR_EDGE, _PANEL, _DOOR_EDGE)
         boxes.append(Box((0.0, d), (y0, y1), _PARTITION_Z, faces))
+        # Its returns: a strip of the front either side, the door between.
+        reach = PARTITION_HALF + RETURN_WIDTH
+        r0, r1 = max(y - reach, -half), min(y + reach, half)
+        faces = (_RETURN, _DOOR_EDGE, _RETURN, _DOOR_EDGE, _DOOR_EDGE)
+        boxes.append(Box((d - RETURN_DEPTH, d), (r0, r1), _PARTITION_Z, faces))
     rail = (CUBICLE_TOP - 0.04, CUBICLE_TOP)
     boxes.append(Box((d - 0.01, d + 0.01), (-half, half), rail, (_DOOR_EDGE,) * 5))
     for k in range(n):
         cy = half - (k + 0.5) * w
-        boxes += _toilet(cy)
+        boxes += _toilet(cy, half - (k + 1) * w + PARTITION_HALF)
         if k == 1:
             boxes += _feet(kind, cy)
     return tuple(boxes)

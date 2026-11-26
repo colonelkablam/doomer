@@ -453,8 +453,8 @@ dm_spawn      1.5   3.5   0
   through anyone); an opening one doesn't (whoever it reaches walks out of
   the leaf, as obstacles let a box that's already overlapping them leave).
   The run's partitions, pans and cisterns are footprints like any
-  furniture's. A cubicle is sized for a player (0.6 wide, 0.9 deep: 0.54
-  clear in front of the pan), so you can shut yourself in, and jump onto
+  furniture's. A cubicle is sized for a player (0.6 wide, its door 0.52 between
+  fixed returns, 0.9 deep: 0.54 clear in front of the pan), so you can shut yourself in, and jump onto
   the toilet's lid so your feet don't show under the door. The run's fixed
   parts (partitions, headrail, toilets, the feet under the engaged door)
   are an ordinary box model; the doors are drawn from their state, a box
