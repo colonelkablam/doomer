@@ -171,6 +171,11 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Exit sign (marks the exit) | no | [built] |
 | Office swivel chair (box model, `chair`): a black five-star base on casters (one flat box, the star painted on its top), a gas column, a charcoal fabric seat and backrest on a black shell; four boxes; one at each sitter's Mac and reception's, each nudged and turned a little | yes (small) | [built] |
 | Posters and pictures (box model, `poster`, one thin box on a wall, `kind=`): motivational posters (SYNERGY over an eagle at sunset, "1 + 1 = 3"; TEAMWORK, a rowing crew; EXCELLENCE, a snowy peak); Employee of the Month, three frames, the same moustached chap in big glasses every month; the founder's portrait in oils in a gilt frame (lobby); a DAYS SINCE LAST ACCIDENT: 0 board (plant room); DANGER HIGH VOLTAGE signs (by the plant room door and the breaker: they point the way to the power); a fire plan of the floor itself, a red dot where it hangs | no | [built] |
+| Lobby sofas: low 1980s seating, two- and three-seaters in a facing pair (chrome frame, tweed or leather cushions) | yes | planned |
+| Low coffee table between them, glass or smoked-glass top, a fan of magazines on it (a texture: business titles, a "BOOMER NEWS" newsletter) | yes | planned |
+| Coffee cup on the odd desk: a mug, steam optional (one or two boxes; a texture would look flat, so keep it to a few desks) | no | planned |
+| Kitchen area (kitchenette): a run of counter units with a sink, a kettle, a microwave, a fridge, a few mugs, a "PLEASE WASH YOUR OWN CUPS" sign | yes | planned |
+| Washrooms (loos): toilet cubicles (partitions and doors), basins with a mirror over them, a hand dryer, avocado tiles (the `7` wall) | yes | planned |
 | Photocopier (inert) | yes | planned |
 | Fax machine on stand | yes | planned |
 | Vending machine | yes | planned |

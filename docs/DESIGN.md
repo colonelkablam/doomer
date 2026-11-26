@@ -749,6 +749,38 @@ Rules that have come out of it (details in the sections above):
 
 Noted at the end of a session, to pick up next:
 
+- **To close the single-player loop**, in order: the map checker
+  (`shared/validate.py`: every locked door's pass reachable before it,
+  the breaker reachable, a lift or exit); the full-size ground floor
+  (~32 x 24, laid out for the loop; the current map is the test bed); the
+  automap (Tab; the fire plan already draws a floor); the lift ride and a
+  second floor to arrive on. Enemies, weapons and pickups (milestones 3b,
+  4) come after networking.
+- **Office objects to make** (GAME.md, Office furniture, the `planned`
+  rows): lobby sofas and a low coffee table with magazines; a coffee cup
+  on the odd desk; a kitchen area (counter, sink, kettle, microwave,
+  fridge, mugs); washrooms (cubicles, basins and mirror, hand dryer); and
+  the older list: photocopier, fax on a stand, vending machine (lit: on the
+  main circuit), coat stand, ashtray bin, flip chart, overhead projector on
+  a trolley, fire extinguisher.
+- **Cosmetic to-dos**, smaller polish noted along the way:
+  - A flashing amber beacon over the plant room door (an indicator lamp,
+    `blink`), drawing players to the power.
+  - Wall clocks, stopped at the moment the power failed; ticking again
+    once it's back (a powered box, its hands by the clock).
+  - Lamps that cast light: the breaker's red lamp pulsing on its wall in
+    the dark (needs light patches added and removed at run time, and
+    colour, which the light map lacks).
+  - More face parts: a quiff (the one asymmetric hairstyle), a ponytail,
+    a hard hat (facilities); then desk photo frames and a staff photo
+    wall, with the face generator.
+  - Big glasses at poster distance can merge into a dark band: drop the
+    top rim if it bothers.
+  - The view from higher floors: lower the panorama's ground line per
+    floor (more city), the moon in view from the offices too.
+  - A phone on one more desk (a secretary's).
+  - Lift doors on the emergency circuit (a firefighting lift): doors
+    don't take `circuit=` yet.
 - **A face generator, when something needs many faces** (a wall of staff
   photos, a photo frame on each desk, NPC portraits): a seeded
   `random_face(rng)` in `client/faces.py` picking each part of a `Face`
