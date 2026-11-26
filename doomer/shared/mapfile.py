@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from doomer.shared.placement import ANCHORS, PlacementError, place
 from doomer.shared.things import THING_TYPES
 
 EMPTY = 0
@@ -62,6 +63,9 @@ class Thing:
     angle: float  # radians
     # `key=value` properties after the angle (e.g. a door's lock), in file order.
     props: tuple[tuple[str, str], ...] = ()
+    # With `at=` (doomer/shared/placement.py), the x, y and angle as written
+    # (radians), which format_map writes back; x, y and angle are where it went.
+    written: tuple[float, float, float] | None = None
 
     def prop(self, key: str) -> str | None:
         return next((v for k, v in self.props if k == key), None)
@@ -266,9 +270,10 @@ def format_map(game_map: GameMap) -> str:
     if game_map.things:
         out += ["", "[things]", "# type x y angle [key=value ...]"]
         for t in game_map.things:
-            deg = round(math.degrees(t.angle), 6) % 360
+            x, y, angle = t.written or (t.x, t.y, t.angle)
+            deg = round(math.degrees(angle), 6) % 360
             props = "".join(f" {k}={v}" for k, v in t.props)
-            out.append(f"{t.type} {t.x:g} {t.y:g} {deg:g}{props}")
+            out.append(f"{t.type} {x:g} {y:g} {deg:g}{props}")
     return "\n".join(out) + "\n"
 
 
@@ -390,7 +395,17 @@ def _parse_thing(lineno: int, line: str, game_map: GameMap) -> Thing:
         raise MapError(f"line {lineno}: {type_name} at ({x:g}, {y:g}) is outside the map")
     if game_map.is_solid(cx, cy) and not game_map.is_low_block(cx, cy):
         raise MapError(f"line {lineno}: {type_name} at ({x:g}, {y:g}) is inside a wall")
-    return Thing(type_name, x, y, math.radians(angle_deg), props)
+    angle = math.radians(angle_deg)
+    at = next((v for k, v in props if k == "at"), None)
+    if at is None:
+        return Thing(type_name, x, y, angle, props)
+    try:
+        px, py, pa = place(type_name, x, y, angle, at, game_map.is_full_wall)
+    except PlacementError as e:
+        raise MapError(f"line {lineno}: {type_name} {e}") from None
+    if math.floor(px) != cx or math.floor(py) != cy:
+        raise MapError(f"line {lineno}: {type_name} at={at}: too big to fit in its cell")
+    return Thing(type_name, px, py, pa, props, written=(x, y, angle))
 
 
 def _parse_props(lineno: int, type_name: str, tokens: list[str]) -> tuple[tuple[str, str], ...]:
@@ -400,6 +415,14 @@ def _parse_props(lineno: int, type_name: str, tokens: list[str]) -> tuple[tuple[
         key, sep, value = token.partition("=")
         if not sep:
             raise MapError(f"line {lineno}: expected key=value after the angle, got {token!r}")
+        if key == "at" and not type_name.startswith("door_"):  # any thing but a door
+            if value not in ANCHORS:
+                choices = ", ".join(ANCHORS)
+                raise MapError(
+                    f"line {lineno}: {type_name} at={value!r}: expected one of {choices}"
+                )
+            props.append((key, value))
+            continue
         if key not in allowed:
             known = ", ".join(sorted(allowed)) or "none"
             raise MapError(f"line {lineno}: {type_name} has no property {key!r} (has: {known})")

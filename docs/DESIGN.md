@@ -208,6 +208,22 @@ dm_spawn      1.5   3.5   0
   error at load time. Properties after the angle are declared per thing
   type (`ThingType.properties`, with their allowed values): a door's
   `lock=blue|red|gold`. An unknown property or value is a load error.
+- **`at=`** (any thing but a door; `shared/placement.py`): places the thing
+  against a wall of its cell from its own size, so neither a hand-made map
+  nor the generator works out coordinates. `at=n|e|s|w`: moved across to
+  0.01 off that wall's face (its footprint, turned to its angle; flat
+  things like posters have none), turned to face out of it; its position
+  along the wall stays as written, so a row of servers or posters shares a
+  wall. `at=nw|ne|sw|se`: into that corner, angle kept, plants (ficus,
+  fern) turned up to 25 degrees by a random number seeded by their cell.
+  No full wall there, or too big for the cell, is a load error. The parser
+  resolves it (the sim and renderer see the final x, y, angle); the
+  `Thing` keeps what was written (`written`) so `format_map` writes the
+  `at=` line back. Why the thing places itself rather than the generator
+  nudging x, y: the generator thinks in cells and walls, a model's size
+  lives in one place (the thing type), and resizing one doesn't mean
+  moving every copy in every map. A wall over a doorway isn't a wall cell,
+  so signs above doors are still written by hand.
 - Supported modes are derived, not declared: **co-op** if there is a
   `coop_start` and an `exit`; **deathmatch** if there are at least 4
   `dm_spawn`s. The server ignores things not relevant to the current mode.
@@ -839,8 +855,7 @@ Noted at the end of a session, to pick up next:
   with a perm, a tie with a collar already holds, variety across a row);
   the cast (`CAST`) stays hand-picked. Until then the templates are the
   bank: every new template multiplies the faces possible.
-- Also outstanding: the `corner=` property for things (LEVELS.md);
-  networking (milestone 3).
+- Also outstanding: networking (milestone 3).
 
 ## Setup
 

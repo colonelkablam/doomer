@@ -117,11 +117,11 @@ door_double     12.5  10.5  90
 door_hinged     11.5  12.5  270   lock=red
 # The plant room's main breaker, on its solid west wall facing the room:
 # restores the power. The servers along the east wall, opposite.
-breaker         9.01  14.1  0
-server          12.99 13.4  180   kind=tape
-server          12.99 13.78 180   kind=disk
-server          12.99 14.16 180   kind=tape
-server          12.99 14.54 180   kind=disk
+breaker         9.5   14.1  0     at=w
+server          12.5  13.4  0     kind=tape at=e
+server          12.5  13.78 0     kind=disk at=e
+server          12.5  14.16 0     kind=tape at=e
+server          12.5  14.54 0     kind=disk at=e
 pass_blue       4.37  4.4   0
 pass_red        3.3   12.0  0
 reception_desk  4.6   4.0   180
@@ -141,7 +141,7 @@ ceiling_light   6.5   7.5   0
 mac             4.66  3.57   355.2 circuit=emergency
 # A vending machine in the corridor (a health dispenser, working once the
 # power's back), against its north wall where the corridor widens.
-vending_machine 15.5  11.01 90
+vending_machine 15.5  11.5  0     at=n
 # Coffee cups (pickups: +5 coffee) on a few desks, beside the keyboards,
 # and one on reception.
 coffee_cup      4.78  3.82  0
@@ -158,9 +158,9 @@ sofa_three      1.74  2.16  90
 coffee_table    1.8   2.72  0
 fern            1.95  2.72  0
 chair           5.23  3.55  181
-ficus           1.5   1.5   0
+ficus           1.5   1.5   0     at=nw
 ficus           5.5   5.5   0
-ficus           1.5   6.5   0
+ficus           1.5   6.5   0     at=sw
 water_cooler    6.5   6.5   270
 dm_spawn        2.5   5.5   0
 dm_spawn        4.5   1.5   0
@@ -218,15 +218,15 @@ chair           17.58  5.71  108
 chair           17.28  7.29  288
 chair           18.72  5.71  65
 chair           18.34  7.26  261
-filing_cabinet  22.84 1.23  180
-filing_cabinet  22.84 1.57  180
-filing_cabinet  22.84 2.33  180
-filing_cabinet  22.84 2.67  180
-filing_cabinet  22.84 3.43  180
-filing_cabinet  22.84 3.77  180
+filing_cabinet  22.5  1.23  0     at=e
+filing_cabinet  22.5  1.57  0     at=e
+filing_cabinet  22.5  2.33  0     at=e
+filing_cabinet  22.5  2.67  0     at=e
+filing_cabinet  22.5  3.43  0     at=e
+filing_cabinet  22.5  3.77  0     at=e
 water_cooler    14.5  8.5   270
-ficus           9.5   1.5   0
-ficus           22.5  9.5   0
+ficus           9.5   1.5   0     at=nw
+ficus           22.5  9.5   0     at=se
 ficus           14.5  4.5   0
 dm_spawn        21.5  6.5   180
 # The boss's double doors, at the end of the corridor: flush with the office's
@@ -238,15 +238,15 @@ door_double     8.5   11.5  0
 executive_desk  3.0   12.5  0
 pc              3.08  12.95 195
 phone           2.8   11.85 182
-filing_cabinet  1.28  10.16 90
-filing_cabinet  1.62  10.16 90
-filing_cabinet  2.38  10.16 90
-filing_cabinet  2.72  10.16 90
-ficus           7.5   14.5  0
+filing_cabinet  1.28  10.5  0     at=n
+filing_cabinet  1.62  10.5  0     at=n
+filing_cabinet  2.38  10.5  0     at=n
+filing_cabinet  2.72  10.5  0     at=n
+ficus           7.5   14.5  0     at=se
 dm_spawn        2.5   13.5  270
 # Lower corridor, washroom, lift lobby
-water_cooler    22.5  11.5  180
-ficus           17.5  14.5  0
+water_cooler    22.5  11.5  180   at=ne
+ficus           17.5  14.5  0     at=sw
 dm_spawn        17.5  11.5  180
 dm_spawn        10.5  13.5  0
 # Ceiling lights: panels set into the ceiling, roughly every 2 cells
@@ -276,18 +276,18 @@ ceiling_light   20.5  13.5  0
 # power cut, so they mark the way out (office -> lobby -> street) and the way
 # through to the plant room. Each at the face of the wall over its doorway.
 # Posters and pictures, on wall faces, angle out of the wall (see LEVELS.md)
-poster          9.01  2.5   0     kind=synergy
-poster          9.01  3.6   0     kind=plan
-poster          9.01  6.0   0     kind=teamwork
-poster          9.01  8.3   0     kind=excellence
-poster          15.2  9.99  270   kind=employee_may
-poster          15.5  9.99  270   kind=employee_apr
-poster          15.8  9.99  270   kind=employee_mar
-poster          7.99  5.5   180   kind=founder
-poster          7.99  6.6   180   kind=plan
-poster          10.5  11.99 270   kind=high_voltage
-poster          9.01  13.45 0     kind=high_voltage
-poster          9.8   13.01 90    kind=accident
+poster          9.5   2.5   0     kind=synergy at=w
+poster          9.5   3.6   0     kind=plan at=w
+poster          9.5   6     0     kind=teamwork at=w
+poster          9.5   8.3   0     kind=excellence at=w
+poster          15.2  9.5   0     kind=employee_may at=s
+poster          15.5  9.5   0     kind=employee_apr at=s
+poster          15.8  9.5   0     kind=employee_mar at=s
+poster          7.5   5.5   0     kind=founder at=e
+poster          7.5   6.6   0     kind=plan at=e
+poster          10.5  11.5  0     kind=high_voltage at=s
+poster          9.5   13.45 0     kind=high_voltage at=w
+poster          9.8   13.5  0     kind=accident at=n
 exit_sign       1.02  4.0   0     kind=transom
 exit_sign       9.02  4.5   0
 exit_sign       12.5  11.02 90

@@ -61,7 +61,7 @@ units at most). Anything higher with no stairs is unreachable.
 | `coop_start` | Where co-op players arrive | Exactly 1 for co-op. On open floor or a raised floor, never in a full wall |
 | `exit` | Co-op level exit (drawn as a hanging EXIT sign) | Exactly 1 for co-op. Must be reachable on foot from `coop_start` |
 | `dm_spawn` | Deathmatch spawn | At least 4 for deathmatch. Reachable; spread out (see checks) |
-| `desk`, `water_cooler`, `filing_cabinet`, `ficus` | Blocking furniture | Square footprints, half-widths 0.32 / 0.12 / 0.16 / 0.16. Cabinets, coolers and ficuses are box models: set the angle so the front faces into the room (away from the wall they stand against); the ficus's crown spreads wider than its footprint |
+| `desk`, `water_cooler`, `filing_cabinet`, `ficus` | Blocking furniture | Square footprints, half-widths 0.32 / 0.12 / 0.16 / 0.16. Cabinets, coolers and ficuses are box models: against a wall use `at=` (it turns them to face into the room); a ficus in a corner `at=nw` etc.; the ficus's crown spreads wider than its footprint |
 | `terminal` | PC on a desk | Put it in a desk/counter cell; it stands on the top. Its angle is where the screen faces (towards the sitter): in a pod, 270 on the north half, 90 on the south |
 | `mac` | Macintosh SE/30, keyboard and mouse | As `terminal` (same angle rule). Solid boxes: costs more than a sprite per thing in view, fine for dozens. Its screen is blank until the power's on; `circuit=emergency` (also on `pc`, `terminal`) keeps it lit in a power cut: use it for one that matters (security, reception) |
 | `welcome_sign` | "Boomer Industries" in lit letters | Stand it just in front of a wall's face (e.g. x = 7.99 for the face at 8), angle out of the wall. About 4 cells wide, 1.09 to 1.46 storeys up: needs a two-storey wall |
@@ -69,16 +69,16 @@ units at most). Anything higher with no stairs is unreachable.
 | `pass_blue`, `pass_red`, `pass_gold` | ID passes: staff, facilities, executive | Walk over (or reach) to take; the team shares it. On a counter or desk, put it within 0.5 of the edge you approach from (you're stopped at the edge; reach is 0.75 from your centre) |
 | `door_lift` | Lift doors and the floor's exit | The lift is one cell off the lobby: put the door in that cell, angle out of it (towards the lobby); the cell is the car, its doors on the lobby line. Ceiling `6`, area `c`, a `ceiling_light` in it (main circuit: dark until the power's on). Wall it in with `k`: the cell behind, [facing] towards the car (its mirror); the cells either side, [facing] away from the lobby (their lobby faces take the lobby's look). Co-op needs a lift or an `exit` |
 | `door_hinged`, `door_double`, `door_sliding` | Office door / double office doors (use to open) / automatic glass doors | In a doorway cell: open floor between two full walls, the doorway one cell wide. Angle: across the doorway, the way it opens: hinged and double towards the corridor (they stand at the room's end and swing out into the doorway), sliding towards the room (they stand at that end); see Doors and corridors. Give the doorway cell a ceiling of `6` (a lintel at ~2 m: the face over the door). `lock=blue` (or red, gold): opens only for a team with that pass; card readers appear beside it. Not in a two-storey cell, and nothing blocking within a cell either side |
-| `breaker` | Main breaker: restores the power | Stand it just in front of a solid wall's face (not a window), angle out of the wall (a wall-mounted isolator: it blocks 0.24 out from the wall, its lever's reach, 0.44 wide; its keep-clear mat in front doesn't block). A map with one starts on emergency lighting: put `exit_sign`s over the main doors on the way there (and out), including the plant room's, so the route is lit in pools. Put it behind a lock (the plant room), before the lifts |
+| `breaker` | Main breaker: restores the power | `at=` a solid wall (not a window) (a wall-mounted isolator: it blocks 0.24 out from the wall, its lever's reach, 0.44 wide; its keep-clear mat in front doesn't block). A map with one starts on emergency lighting: put `exit_sign`s over the main doors on the way there (and out), including the plant room's, so the route is lit in pools. Put it behind a lock (the plant room), before the lifts |
 | `executive_desk` | The boss's absurd desk, with its chair (box model) | Mid-room, two cells long across its facing: angle = towards visitors, the boss's chair behind it (1 cell back). Leave a cell clear round it. Things on it rest on its top: put a pass within 0.5 of the visitors' edge |
 | `phone` | 1980s desk phone (box model, 3 boxes) | On a desk, angle towards its user (as a Mac: +x is the user's side), clear of the Mac and keyboard. Keep them few (the boss's desk, reception) |
 | `pc` | Late-80s PC with a green screen (box model, 5 boxes) | The boss's computer, in place of a Mac: on a big desk (it's ~0.3 wide, ~0.45 deep with its keyboard), angle towards its user as a Mac |
 | `chair` | Office swivel chair (box model, 4 boxes; blocks, radius 0.1) | One per sitter: ~0.25-0.36 out from the desk edge in front of their Mac, angle towards the desk; nudge each a few cm and turn it up to ~30 degrees at random so a row looks used. Between a pod and a wall one cell away, keep chairs at least 0.6 from the wall so a player (0.5 wide) gets past |
-| `poster` | A poster or picture, `kind=` synergy, teamwork, excellence, employee_mar/apr/may, founder, accident, high_voltage, plan | At a wall's face (0.01 off it), angle out of the wall. Hang a `plan` by each way in (it draws the floor, marking where it hangs) and a `high_voltage` by the plant room door and its breaker, so the power is signposted |
-| `server` | Minicomputer cabinet, `kind=tape` or `disk`; its lamps blink once the power's on | In the plant room (or a computer room): at a solid wall's face, angle out of it, in a row 0.38 apart (0.38 wide, blocks 0.36 out). Leave the breaker and the way to it clear |
+| `poster` | A poster or picture, `kind=` synergy, teamwork, excellence, employee_mar/apr/may, founder, accident, high_voltage, plan | `at=` the wall it hangs on. Hang a `plan` by each way in (it draws the floor, marking where it hangs) and a `high_voltage` by the plant room door and its breaker, so the power is signposted |
+| `server` | Minicomputer cabinet, `kind=tape` or `disk`; its lamps blink once the power's on | In the plant room (or a computer room): `at=` a solid wall, in a row 0.38 apart (0.38 wide, blocks 0.36 out). Leave the breaker and the way to it clear |
 | `sofa_two`, `sofa_three`, `sofa_corner`; `coffee_table`; `fern` | Lobby seating: modular sofa runs (0.28 a seat, 0.32 deep) and a corner unit; a low table; a small fern | Angle = the way the sitters face, backs against a wall. Make an L: a corner unit in the room's corner (backs west and north at angle 0), runs either side of it, the table in front, 0.2 or so clear of the seats (a nook: you needn't fit between). Keep it out of the way in: the map checker tells you if it cuts the route. The fern on the table: it rests on its top |
 | `coffee_cup` | A cup of coffee: a pickup, +5 coffee | On a desk or counter, within reach of where a player stands (0.75 from their centre: near the edge they walk up to), clear of the Mac and keyboard; angle turns its handle. A few on a floor, not every desk |
-| `vending_machine` | Snack machine: a health dispenser (10 a use, 40 a player), working once the power's on | At a solid wall's face, angle out of it (0.36 wide, blocks 0.3 out): in a corridor where it widens, a kitchen, a break area. Not on the critical path: it's a reward |
+| `vending_machine` | Snack machine: a health dispenser (10 a use, 40 a player), working once the power's on | `at=` a solid wall (0.36 wide, blocks 0.3 out): in a corridor where it widens, a kitchen, a break area. Not on the critical path: it's a reward |
 | `exit_sign` | Green EXIT sign over a door, always lit; in a power cut, a dim emergency light (a pool ~1-2 cells round it) | At the face of the wall over the doorway, on the side people leave from (e.g. x = 9.02 for a doorway whose office-side wall face is x = 9), angle out of the wall. One per main door on the route: office -> lobby -> street, and the plant room. Over glazed doors that run up to the storey line (the entrance's), `kind=transom`: on the transom bar above them, not on the glass |
 | `ceiling_light` | Light panel in the ceiling; lights the room (baked light map). `circuit=emergency`: stays lit without power | Marks the cell; drawn at that cell's ceiling height. Space them 3-6 cells apart for pools of light with darker gaps (every 2 cells saturates a room flat). Light stops at full walls, goes through doorways, and reaches ~6 cells. A room with none sits at ambient (dark): use that on purpose |
 
@@ -114,13 +114,18 @@ and an `exit`; **deathmatch** needs at least 4 `dm_spawn`s.
   Doorway cells take the area of the room they open from (the floor changes
   under the door). Keep areas to whole rooms: a change of carpet mid-room
   looks like a mistake.
-- **Corners** [planned]: a `corner=nw|ne|sw|se` property on things (pot
-  plants first), placing the thing in that corner of its cell, inset by its
-  own footprint (a ficus: 0.2 from each wall, its pot's radius 0.16 plus a
-  gap), so neither a hand-made map nor the generator has to work out the
-  numbers. Until then, write them: cell (x, y)'s NW corner is (x + 0.2,
-  y + 0.2), SE (x + 0.8, y + 0.8). Leaves reaching past a wall are hidden
-  by it.
+- **Against walls and in corners** [built]: give a thing `at=` and let it
+  place itself (DESIGN.md, Map format): `at=w` (or `n`, `e`, `s`) stands it
+  0.01 off that wall of its cell, facing out of it, at the position along
+  the wall you wrote; `at=nw` (or `ne`, `sw`, `se`) puts it in that corner,
+  turned as you wrote it (plants get a random turn). Write the cell's
+  centre for the axis it snaps, e.g. `server 12.5 13.4 0 kind=tape at=e`,
+  `ficus 1.5 1.5 0 at=nw`. Use it for everything that stands against a
+  wall: servers, cabinets, coolers, vending machines, the breaker,
+  posters, plants in corners. The generator should always use it. It
+  needs a full wall in that cell beside it, so signs over doorways (the
+  wall over a doorway is the doorway's cell) are still written by hand.
+  Leaves reaching past a wall are hidden by it.
 - **Macs on desk pairs** go at the sitter's end of each half, at (0.68,
   0.25) and (0.32, 0.75) of a north/south pod's cell (a quarter turn for
   east/west), facing their sitter: the tops' paperwork (`areas.desk_top`)
