@@ -82,3 +82,16 @@ def test_zoom_stays_within_its_steps() -> None:
     for _ in range(5):
         m.change_zoom(1)
     assert m.zoom == ZOOMS[-1]
+
+
+def test_wall_faces_join_round_corners_without_a_gap() -> None:
+    # A pillar in a room: its outline must be a closed ring, corners and all.
+    walls = "[walls]\n#####\n#...#\n#.#.#\n#...#\n#####\n\n"
+    room = parse_map(walls + "[things]\ncoop_start 1.5 1.5 0\nexit 3.5 3.5 0\n")
+    for z in ZOOMS:
+        image = floor_image(room, z)
+        ring = image[2 * z : 3 * z, 2 * z : 3 * z]  # the pillar's cell
+        edge = np.zeros_like(ring, dtype=bool)
+        edge[[0, -1], :] = True
+        edge[:, [0, -1]] = True
+        assert (ring[edge] == WALL).all(), z  # its whole outline, corners included

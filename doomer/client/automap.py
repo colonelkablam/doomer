@@ -55,6 +55,17 @@ def _grow(mask: BoolArray) -> BoolArray:
     return out
 
 
+def _grow8(mask: BoolArray) -> BoolArray:
+    """`mask` and all 8 neighbours: an outline drawn with it has no gaps at
+    its corners (a corner pixel touches the floor only diagonally)."""
+    out = _grow(mask)
+    out[1:, 1:] |= mask[:-1, :-1]
+    out[1:, :-1] |= mask[:-1, 1:]
+    out[:-1, 1:] |= mask[1:, :-1]
+    out[:-1, :-1] |= mask[1:, 1:]
+    return out
+
+
 def _cells_to_pixels(cells: BoolArray, zoom: int) -> BoolArray:
     result: BoolArray = np.kron(cells, np.ones((zoom, zoom), dtype=np.bool_))
     return result
@@ -70,9 +81,9 @@ def floor_image(game_map: GameMap, zoom: int) -> U8Array:
     full_px, low_px = _cells_to_pixels(full, zoom), _cells_to_pixels(low, zoom)
     open_px = _cells_to_pixels(open_, zoom)
     image = np.zeros((h * zoom, w * zoom), dtype=np.uint8)
-    image[low_px & _grow(open_px)] = LOW  # a desk's or counter's outline
+    image[low_px & _grow8(open_px)] = LOW  # a desk's or counter's outline
     image[full_px] = WALL_FILL  # walls solid, so rooms read as the spaces between
-    image[full_px & _grow(open_px | low_px)] = WALL  # their faces, bright
+    image[full_px & _grow8(open_px | low_px)] = WALL  # their faces, bright, unbroken
     for door in doors_from_map(game_map):
         if door.kind == LIFT:  # the car: outlined in amber
             cx, cy = door.car
@@ -166,9 +177,10 @@ class Automap:
         you[mid - 1 : mid + 2, mid - 1 : mid + 2] = True
         for k in range(2, 9):
             facing[mid + round(math.cos(angle) * k), mid + round(math.sin(angle) * k)] = True
-        marker = you | facing
-        under = np.zeros_like(marker)
-        under[1:, 1:] = marker[:-1, :-1]
-        view[under & ~marker] = SHADOW
+        # Only the dot is shadowed: a shadow beside a slanting line would
+        # interleave with its steps and make it look dashed.
+        under = np.zeros_like(you)
+        under[1:, 1:] = you[:-1, :-1]
+        view[under & ~you & ~facing] = SHADOW
         view[facing] = FACING
         view[you] = YOU
