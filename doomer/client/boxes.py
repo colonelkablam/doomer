@@ -2624,6 +2624,82 @@ _SERVER_LAMP_TEXTURES = {ramp: lamp(ramp) for ramp in (GREEN, ORANGE, BRICK)}
 SERVER_MODELS = {f"server:{kind}": _server(kind) for kind in _SERVER_LAMP_Z}
 
 
+# --- Vending machine (a health dispenser: doomer/shared/dispensers.py) -------------
+# An 80s snack machine against a wall: a red cabinet, a SNACKS header, a big
+# window onto shelves of coloured packets on spiral coils (a box of its own,
+# lit while the floor has power: it's on the main circuit), a selection
+# panel (a little display, a keypad, the coin slot) and the pick-up tray.
+# Model x out of the wall, the thing at the wall's face; sizes match its
+# footprint (shared/things.py).
+
+VEND_DEPTH, VEND_HALF_WIDTH, VEND_TOP = 0.3, 0.18, 0.7
+_VEND_WINDOW = (8, 50, 4, 42)  # v0, v1, u0, u1 on the front
+
+
+def vending_front() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), BRICK, 8.0)  # the red cabinet
+    c.paint(c.rect(0, 64, 0, 1) | c.rect(0, 1, 0, 64), BRICK, 10.0)  # lit edges
+    c.paint(c.rect(1, 7, 2, 62), CREAM, 14.0)  # the header
+    _centred(c, "SNACKS", 2, BRICK, 8.0)
+    v0, v1, u0, u1 = _VEND_WINDOW
+    c.paint(c.rect(v0 - 1, v1 + 1, u0 - 1, u1 + 1), GREY, 2.0)  # the window's frame
+    c.paint(c.rect(v0 + 2, v0 + 6, 46, 60), GREY, 1.0)  # the display
+    c.paint(c.rect(v0 + 3, v0 + 5, 48, 56), BRICK, 13.0)  # its red digits
+    for row in range(4):  # the keypad
+        for col in range(3):
+            vk, uk = v0 + 10 + row * 5, 47 + col * 4
+            c.paint(c.rect(vk, vk + 3, uk, uk + 3), GREY, 11.0)
+    c.paint(c.rect(v0 + 32, v0 + 40, 50, 56), GREY, 3.0)  # coin slot plate
+    c.paint(c.rect(v0 + 33, v0 + 39, 52, 54), GREY, 0.0)
+    c.paint(c.rect(53, 60, 6, 40), GREY, 1.0)  # the pick-up tray
+    c.paint(c.rect(53, 54, 6, 40), GREY, 6.0)
+    c.paint(c.rect(61, 64, 0, 64), GREY, 2.0)  # plinth
+    return _texture(c)
+
+
+def vending_window() -> int:
+    """Behind the glass: five shelves of snack packets on spiral coils."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), CREAM, 12.0)  # the back panel
+    colours = (BRICK, OCHRE, BLUE, GREEN, ORANGE, PURPLE)
+    for shelf in range(5):
+        top = 2 + shelf * 12
+        for slot in range(4):
+            u0 = 3 + slot * 15
+            ramp = colours[(shelf * 2 + slot) % len(colours)]
+            c.paint(c.rect(top, top + 8, u0, u0 + 12), ramp, 10.0)  # a packet
+            c.paint(c.rect(top, top + 2, u0, u0 + 12), ramp, 13.0)  # its lit top
+            c.paint(c.rect(top + 3, top + 5, u0 + 3, u0 + 9), CREAM, 14.0)  # its label
+            c.paint(c.rect(top + 8, top + 10, u0, u0 + 12) & (c.u % 3 == 0), GREY, 8.0)  # coil
+        c.paint(c.rect(top + 10, top + 11, 0, 64), GREY, 6.0)  # the shelf's edge
+    c.paint(c.rect(0, 64, 0, 64) & ((c.u + c.v) % 37 < 2), CREAM, 15.0)  # glass glints
+    return _texture(c)
+
+
+def _vending_machine() -> tuple[Box, ...]:
+    side = _plain_texture(BRICK, 7.0)
+    cabinet = Box(
+        (0.0, VEND_DEPTH),
+        (-VEND_HALF_WIDTH, VEND_HALF_WIDTH),
+        (0.0, VEND_TOP),
+        (vending_front(), side, side, side, _plain_texture(BRICK, 9.0)),
+    )
+    # The window: lit from inside while there's power; unlit (the room's
+    # light on the same shelves) without.
+    v0, v1, u0, u1 = _VEND_WINDOW
+    edge = (_plain_texture(GREY, 2.0),) * 4
+    window = Box(
+        (VEND_DEPTH, VEND_DEPTH + 0.003),
+        (_y_of_u(u1 - 0.5, VEND_HALF_WIDTH), _y_of_u(u0 - 0.5, VEND_HALF_WIDTH)),
+        (_z_of_v(v1, 0.0, VEND_TOP), _z_of_v(v0, 0.0, VEND_TOP)),
+        (vending_window(), *edge),
+        glow=True,
+        mains=True,
+    )
+    return (cabinet, window)
+
+
 # Keyed by thing type name, like SPRITES.
 BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "mac": _mac_se30(),
@@ -2636,6 +2712,7 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "coffee_table": _coffee_table(),
     "fern": _fern(),
     "coffee_cup": _coffee_cup(),
+    "vending_machine": _vending_machine(),
     **SERVER_MODELS,
     **PASS_MODELS,
     **{f"poster:{k}": _poster(*v) for k, v in _POSTER_KINDS.items()},

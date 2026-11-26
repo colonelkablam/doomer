@@ -113,6 +113,18 @@ COFFEE_TABLE = register_thing_type(
         footprints=(Footprint((-0.25, 0.25), (-0.15, 0.15), 0.15),),
     )
 )
+# A vending machine (drawn by doomer/client/boxes.py, sizes matching): a
+# health dispenser (doomer/shared/dispensers.py), a snack a use, on the main
+# circuit. Stand it at a solid wall's face, angle out of the wall. Blocks.
+VENDING_MACHINE = register_thing_type(
+    ThingType(
+        "vending_machine",
+        "Snack vending machine: health, with the power on",
+        blocking=True,
+        radius=0.18,
+        footprints=(Footprint((0.0, 0.3), (-0.18, 0.18), 0.7),),
+    )
+)
 # A coffee cup on a desk: a pickup (doomer/shared/pickups.py), +5 coffee.
 COFFEE_CUP = register_thing_type(ThingType("coffee_cup", "A cup of coffee: +5 coffee"))
 FERN = register_thing_type(ThingType("fern", "A small fern in a copper bowl"))

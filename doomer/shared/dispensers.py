@@ -1,7 +1,8 @@
 """Dispensers: fixed things you use (E) to top up a meter, a little each
 use, up to an allowance for each player (GAME.md, Pickups).
 
-The water cooler gives health: a paper cup of water at a time. Each player
+The water cooler gives health a paper cup of water at a time; the vending
+machine a snack at a time, but only with the power on. Each player
 has their own allowance at each dispenser, so one player draining it
 doesn't empty it for another. What each type gives is data (DISPENSERS).
 The state (what's left for whom) is in the World, so the server will own it;
@@ -23,10 +24,13 @@ class DispenserType:
     per_use: int
     allowance: int  # for each player, for the floor
     name: str  # in messages: "the water cooler"
+    needs_power: bool = False  # on the main circuit: works only with the power on
 
 
 DISPENSERS: dict[str, DispenserType] = {
     "water_cooler": DispenserType("health", 5, 25, "the water cooler"),
+    # A snack a use; lit and working only once the power's back.
+    "vending_machine": DispenserType("health", 10, 40, "the vending machine", needs_power=True),
 }
 
 

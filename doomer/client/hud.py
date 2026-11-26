@@ -46,10 +46,13 @@ def _card_image(colour: str) -> pygame.Surface:
 def message_for(event: Event) -> str | None:
     if isinstance(event, Dispensed):
         name = DISPENSERS[event.dispenser].name
+        name = name[0].upper() + name[1:]
         if event.amount:
             return f"{event.meter.capitalize()} +{event.amount}"
-        if event.left == 0:
-            return f"{name[0].upper()}{name[1:]} has nothing left for you"
+        if event.reason == "no power":
+            return f"{name} has no power"
+        if event.reason == "empty":
+            return f"{name} has nothing left for you"
         return f"{event.meter.capitalize()}'s full"
     if isinstance(event, Refreshed):
         return f"{event.meter.capitalize()} +{event.amount}" if event.amount else None

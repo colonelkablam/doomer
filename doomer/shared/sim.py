@@ -78,10 +78,14 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
         if tap is not None:
             meter = tap.kind.meter
             before = _meter(player, meter)
-            amount = dispense(tap, player.id, before, METER_MAX[meter])
+            dead = tap.kind.needs_power and not power
+            amount = 0 if dead else dispense(tap, player.id, before, METER_MAX[meter])
             setattr(player, meter, before + amount)
             left = tap.left_for(player.id)
-            world.events.append(Dispensed(world.tick, player.id, tap.type, meter, amount, left))
+            reason = "no power" if dead else "" if amount else "empty" if left == 0 else "full"
+            world.events.append(
+                Dispensed(world.tick, player.id, tap.type, meter, amount, left, reason)
+            )
         used = (
             None
             if thrown or tap

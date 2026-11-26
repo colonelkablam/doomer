@@ -175,7 +175,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Washrooms (loos): toilet cubicles (partitions and doors), basins with a mirror over them, a hand dryer, avocado tiles (the `7` wall) | yes | planned |
 | Photocopier (inert) | yes | planned |
 | Fax machine on stand | yes | planned |
-| Vending machine: lit (on the main circuit), a health dispenser once the power's on (see Pickups) | yes | planned |
+| Vending machine (box model, `vending_machine`): an 80s snack machine, a red cabinet with a SNACKS header, a big window onto five shelves of coloured packets on spiral coils (lit from inside while there's power), a selection panel (red display, keypad, coin slot) and the pick-up tray. A health dispenser (see Pickups) | yes | [built] |
 | Coat stand | yes | planned |
 | Ashtray bin | yes | planned |
 | Flip chart | yes | planned |
@@ -286,8 +286,9 @@ buttons by the door (G lit).
     cooler** [built] (a paper cup of water: 5 health a use, 25 a player per
     floor; the HUD says "Health +5", "Health's full", or that it has
     nothing left for you), the **vending
-    machine** (a snack, 5 health a use, 40 a player; on the main circuit,
-    so it works only once the power's back, a reward for restoring it),
+    machine** [built] (a snack, 10 health a use, 40 a player; on the main
+    circuit, so it works only once the power's back, a reward for restoring
+    it: until then "The vending machine has no power"),
     later a **coffee machine** (coffee the same way).
   - **Modes**: co-op, pickups are one-off and budgets last the floor;
     deathmatch, pickups come back after ~30 s and your budgets refill when

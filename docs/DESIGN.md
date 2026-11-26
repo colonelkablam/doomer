@@ -108,7 +108,8 @@ means adding a module and registering it, not editing a dozen files.
   - `World.dispensers` [built: `shared/dispensers.py`]: per dispenser, its
     type (`DISPENSERS`: the meter, how much a use, the allowance per player)
     and what it has given each player, `{player_id: given}`. Used with E
-    (switches first, then dispensers, then doors); `Dispensed` events. A player who joins later starts with
+    (switches first, then dispensers, then doors); `Dispensed` events,
+    with a `reason` when nothing's given ("full", "empty", "no power"). A player who joins later starts with
     the full budget. On the main circuit (the vending machine), it works
     only while there's power.
   - Snapshots carry each client its own meters and budgets (a HUD hint
@@ -795,9 +796,9 @@ Noted at the end of a session, to pick up next:
   4) come after networking.
 - **Health and coffee** (GAME.md, Pickups; Networking above): two meters
   per player, coffee as armour (soaks a third of each hit). Built: the
-  meters, coffee cups, the water cooler. To do: snacks, the vending
-  machine (a dispenser on the main circuit), damage and absorption with
-  3b, the meters on the HUD.
+  meters, coffee cups, the water cooler, the vending machine (a dispenser
+  that needs power: `DispenserType.needs_power`). To do: snack pickups,
+  damage and absorption with 3b, the meters on the HUD.
 - **Office objects to make** (GAME.md, Office furniture, the `planned`
   rows)
   on the odd desk; a kitchen area (counter, sink, kettle, microwave,
