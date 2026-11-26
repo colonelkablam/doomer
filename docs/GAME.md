@@ -57,7 +57,6 @@ Planned, roughly in order [planned]:
 
 - **A full-size ground floor**: about 32 x 24 cells, laid out for the loop
   above (the current map is the test bed).
-- **Automap** (Tab): a HUD map of the floor plan as you've seen it.
 - **The lift ride**: the doors close, a short ride (indicator counting up,
   maybe a lift-music sting), then the next floor loads with the team in its
   lift lobby. Until then the floor just ends on the banner.
@@ -69,6 +68,16 @@ Planned, roughly in order [planned]:
 - **Where you start** (open, revisit): the game starts in the ground-floor
   lobby for now. The basement mailroom (B1 in the floor order below) is
   undecided: maybe added later, e.g. reached by taking the lift down.
+
+## The automap [built]
+
+Hold **Tab**: a small map in the top-right corner, green on the scene
+(see-through: just lines, each with a dark shadow so it reads over
+anything; a faint green border). North up, you in the middle as a cream dot
+with a line the way you face. Walls bright green, desks and counters dim,
+doors a line (a locked one in its pass's colour), lift cars amber. Only
+what you've seen: a room appears as you look into it. Zoom with the mouse
+wheel or `-` and `=`: the whole floor, the area round you, close up.
 
 ## Player characters
 

@@ -481,6 +481,16 @@ dm_spawn      1.5   3.5   0
   `now` (seconds) and turns those box models by it, with a small bob, as
   an ID pass card does. Cosmetic, so not part of the simulation: each
   client turns its own.
+- **The automap** (`client/automap.py`): held Tab draws a 64 x 64 map into
+  the 8-bit frame's top-right corner before it's scaled up (chunky pixels
+  like the rest). North up: each zoom (2, 4, 8 px a cell) has an image of
+  the whole floor drawn once (`floor_image`: wall faces, desk outlines,
+  door lines, lift cars); each frame a square is cut from it round you,
+  masked to the cells you've seen, given a one-pixel shadow, and written
+  over the scene (see-through). Seen cells: each frame, every 4th
+  column's ray is sampled out to the z-buffer's depth at the horizon row
+  (`Renderer.eye_level_rays`) and the cells it crosses are marked.
+  Client-side state.
 - **The map checker** (`shared/validate.py`, `check_floor`; on the command
   line `python -m doomer.shared.validate maps/*.map`): can a co-op floor
   be finished? It floods the space a player can reach from the co-op start
@@ -791,7 +801,7 @@ Noted at the end of a session, to pick up next:
 
 - **To close the single-player loop**, in order: the full-size ground floor
   (~32 x 24, laid out for the loop; the current map is the test bed); the
-  automap (Tab; the fire plan already draws a floor); the lift ride and a
+  lift ride and a
   second floor to arrive on. Enemies, weapons and pickups (milestones 3b,
   4) come after networking.
 - **Health and coffee** (GAME.md, Pickups; Networking above): two meters
@@ -833,7 +843,7 @@ Noted at the end of a session, to pick up next:
   the cast (`CAST`) stays hand-picked. Until then the templates are the
   bank: every new template multiplies the faces possible.
 - Also outstanding: the `corner=` property for things (LEVELS.md);
-  the automap; the lift
+  the lift
   ride to the next floor; networking (milestone 3).
 
 ## Setup

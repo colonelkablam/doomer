@@ -11,6 +11,7 @@ import math
 
 import pygame
 
+from doomer.client.automap import RAY_STRIDE, Automap
 from doomer.client.config import ClientConfig
 from doomer.client.hud import Hud
 from doomer.client.input import KeyboardMouseInput
@@ -34,11 +35,13 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
         font = pygame.font.Font(None, 22)
         renderer = Renderer(rc, config.lighting if config.lighting.enabled else None)
         hud = Hud(font)
+        automap = Automap(session.game_map)
         controls = KeyboardMouseInput(config.controls, start_angle, MAX_PITCH)
         controls.set_captured(True)
         clock = pygame.time.Clock()
         log.info(
-            "running %r; Esc releases the mouse, Esc again quits; F11 full screen",
+            "running %r; Esc releases the mouse, Esc again quits; F11 full screen; "
+            "hold Tab for the map (mouse wheel or -/= to zoom)",
             session.game_map.name,
         )
 
@@ -59,6 +62,10 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
                     controls.set_captured(True)
                 elif event.type == pygame.WINDOWFOCUSLOST:
                     controls.set_captured(False)
+                elif event.type == pygame.MOUSEWHEEL and event.y:
+                    automap.change_zoom(1 if event.y > 0 else -1)
+                elif event.type == pygame.KEYDOWN and event.key in _ZOOM_KEYS:
+                    automap.change_zoom(_ZOOM_KEYS[event.key])
 
             player_input = controls.poll(real_dt)
             now = pygame.time.get_ticks() / 1000.0
@@ -74,6 +81,12 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
                 session.power(),
                 now,
             )
+            # The automap: what's in view is now seen; held Tab shows it.
+            automap.observe(camera.x, camera.y, *renderer.eye_level_rays(RAY_STRIDE))
+            if pygame.key.get_pressed()[pygame.K_TAB]:
+                pixels = pygame.surfarray.pixels2d(frame)
+                automap.draw(pixels, camera.x, camera.y, camera.angle)
+                del pixels  # unlock the surface
             # 8-bit frame -> window format, then nearest-neighbour scale into
             # the picture's place in the window (it may have been resized).
             window = pygame.display.get_surface() or window
@@ -91,6 +104,16 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
             pygame.display.flip()
     finally:
         pygame.quit()
+
+
+# Zoom the automap in (+1) or out (-1).
+_ZOOM_KEYS = {
+    pygame.K_EQUALS: 1,
+    pygame.K_PLUS: 1,
+    pygame.K_KP_PLUS: 1,
+    pygame.K_MINUS: -1,
+    pygame.K_KP_MINUS: -1,
+}
 
 
 def view_rect(window: tuple[int, int], frame: tuple[int, int], integer: bool = True) -> pygame.Rect:

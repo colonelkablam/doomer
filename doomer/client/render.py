@@ -566,6 +566,17 @@ class Renderer:
         result: FloatArray = np.minimum(light.at(x, y), 1.0)
         return result
 
+    def eye_level_rays(self, stride: int) -> tuple[FloatArray, FloatArray]:
+        """After a frame: the angle of every `stride`th column's ray and how
+        far it went at eye level before it hit something (the z-buffer at
+        the horizon, made a distance along the ray). For the automap."""
+        h = self.config.height
+        row = min(max(int(self.horizon), 0), h - 1)
+        cols = np.arange(0, self.config.width, stride)
+        angles: FloatArray = self._frame_camera.angle + self._offsets_array[cols]
+        distances: FloatArray = self.zbuffer[cols, row] / self._cos[cols]
+        return angles, distances
+
     def _brightness(self, distance: FloatArray) -> FloatArray:
         fade = self.lighting.shade_distance if self.lighting else self.config.shade_distance
         result: FloatArray = np.maximum(MIN_SHADE, 1.0 - distance / fade)
