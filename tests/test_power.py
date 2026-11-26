@@ -71,7 +71,7 @@ def test_the_breaker_cabinet_blocks_you() -> None:
     p.x, p.y = 2.5, 2.0
     for _ in range(90):
         step(world, {1: PlayerInput(forward=1.0, angle=SOUTH)})
-    assert p.y == pytest.approx(3.99 - 0.18 - world.config.movement.radius)  # its footprint
+    assert p.y == pytest.approx(3.99 - 0.24 - world.config.movement.radius)  # its footprint
 
 
 def test_without_power_only_emergency_panels_light_the_floor() -> None:

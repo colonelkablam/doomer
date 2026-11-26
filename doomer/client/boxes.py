@@ -2052,62 +2052,108 @@ def _exit_sign() -> tuple[Box, ...]:
 
 
 # --- The plant room's breaker (doomer/shared/switches.py has its state) ---------
-# A tall steel switchgear cabinet against a solid wall: louvres at the top,
-# MAIN stencilled on, a warning label, a hazard band at the foot, a big red
-# lever (down: off; thrown up: on) and two lamps over it: red, blinking,
-# while it's off; green, steady, once it's on (they run off its battery).
+# An industrial isolator in a hazardous area: a heavy steel box mounted on
+# a solid wall at chest height, a yellow and black hazard border, bolts at
+# its corners, a DANGER 415V plate; a big red lever in a slot on a yellow
+# backplate (down at OFF, thrown up to ON), a padlock hasp; two lamps, red
+# blinking until it's thrown, then steady green (its own battery).
+# Galvanised conduit runs up through a junction box into the ceiling and
+# down into the floor; a hazard-striped keep-clear mat lies in front.
 # Drawn from the switch's state each frame, like doors. Model x points out
 # of the wall; the thing stands at the wall's face. Sizes match its
 # footprint in doomer/shared/things.py.
 
-BREAKER_DEPTH, BREAKER_HALF_WIDTH, BREAKER_TOP = 0.14, 0.25, 0.72
-_PIVOT, _LEVER = 0.38, 0.12  # walls: the lever's pivot height and length
-_LAMP_Y = {"red": -0.06, "green": 0.06}  # across the front, over the lever
-_LAMP_Z = (0.56, 0.6)
+BREAKER_DEPTH, BREAKER_HALF_WIDTH = 0.16, 0.22
+BREAKER_Z = (0.26, 0.8)  # walls: its foot and top
+_PIVOT, _LEVER = 0.44, 0.1  # walls: the lever's pivot height and length
+_LAMP_Y = {"red": -0.14, "green": 0.14}  # across the front
+_LAMP_V = (21, 25)  # their rows on the front texture
+_CONDUIT_HALF = 0.03
+_JUNCTION_Z = (0.88, 0.95)
+BREAKER_BLINK = 1.0  # seconds per blink of its red lamp
 
 
-def _front_v(z: float, top: float) -> int:
-    """The texel row (v) of height z on a front face from 0 to `top`."""
-    return round((top - z) / top * 64)
+def _front_v(z: float, z0: float, z1: float) -> int:
+    """The texel row (v) of height z on a front face from z0 up to z1."""
+    return round((z1 - z) / (z1 - z0) * 64)
 
 
 def _front_u(y: float, half: float) -> int:
-    """The texel column (u) of y across a front face (model -y at u 0... as
-    drawn on the box's front: mirrored, so use symmetric layouts)."""
+    """The texel column (u) of y across a front face -half..half (mirrored
+    on the box: keep layouts symmetric, or place by u)."""
     return round((y + half) / (2 * half) * 64)
 
 
+def _z_of_v(v: float, z0: float, z1: float) -> float:
+    return z1 - v / 64 * (z1 - z0)
+
+
+def _hazard(c: Canvas, mask: BoolArray, step: int = 8) -> None:
+    """Yellow and black diagonal stripes."""
+    c.paint(mask, OCHRE, 12.5)
+    c.paint(mask & ((c.u + c.v) % step < step // 2), GREY, 1.0)
+
+
 def switchgear_front() -> int:
+    z0, z1 = BREAKER_Z
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), GREY, 8.0)
-    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64) | c.rect(0, 2, 0, 64), GREY, 5.0)
-    for v0 in range(5, 15, 3):  # louvres
-        c.paint(c.rect(v0, v0 + 1, 10, 54), GREY, 3.0)
-    c.text("MAIN", 28, 6, GREY, 2.0)  # stencilled, left of the lever
-    c.paint(c.rect(40, 50, 8, 20), OCHRE, 12.0)  # a warning label
-    c.paint(c.rect(42, 48, 13, 15), GREY, 1.0)
-    for y in _LAMP_Y.values():  # the lamps' dark sockets (lamps, lit, sit proud of them)
-        u, v0, v1 = (
-            _front_u(y, BREAKER_HALF_WIDTH),
-            _front_v(_LAMP_Z[1], BREAKER_TOP),
-            _front_v(_LAMP_Z[0], BREAKER_TOP),
-        )
-        c.paint(c.rect(v0, v1, u - 3, u + 3), GREY, 1.0)
-    stripes = c.rect(56, 62, 2, 62)
-    c.paint(stripes, OCHRE, 12.0)  # hazard band
-    c.paint(stripes & ((c.u + c.v) % 8 < 4), GREY, 1.0)
+    c.paint(c.rect(0, 64, 0, 64), GREY, 6.0)
+    _hazard(c, ~c.rect(4, 60, 4, 60))  # the hazard border
+    c.paint(c.rect(4, 60, 4, 5) | c.rect(4, 5, 4, 60), GREY, 8.0)  # its lit inner edge
+    for v, u in ((6, 6), (6, 56), (56, 6), (56, 56)):
+        c.paint(c.rect(v, v + 2, u, u + 2), GREY, 11.0)  # bolts
+    c.paint(c.rect(7, 18, 9, 55), CREAM, 15.0)  # the danger plate
+    c.paint(c.rect(7, 12, 9, 55), BRICK, 10.0)
+    _centred(c, "DANGER", 7, CREAM, 15.0)
+    _centred(c, "415V", 13, BRICK, 10.0)
+    for y in _LAMP_Y.values():  # the lamps' dark sockets (lit lamps sit proud of them)
+        u = _front_u(y, BREAKER_HALF_WIDTH)
+        c.paint(c.rect(*_LAMP_V, u - 3, u + 3), GREY, 0.5)
+    top = _front_v(_PIVOT + _LEVER + 0.03, z0, z1)
+    bottom = _front_v(_PIVOT - _LEVER - 0.03, z0, z1)
+    c.paint(c.rect(top - 2, bottom + 2, 20, 44), OCHRE, 12.5)  # the yellow backplate
+    c.paint(c.rect(top, bottom, 30, 34), GREY, 0.0)  # the slot the lever runs in
+    c.text("ON", top, 36, GREY, 1.0)
+    c.text("OFF", bottom - 5, 36, GREY, 1.0)
+    c.paint(c.rect(bottom - 7, bottom - 3, 22, 27), GREY, 11.0)  # a padlock hasp
     return _texture(c)
 
 
 def switchgear_side() -> int:
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), GREY, 6.5)
+    c.paint(c.rect(0, 64, 0, 64), GREY, 5.5)
+    _hazard(c, ~c.rect(6, 58, 0, 64))
+    return _texture(c)
+
+
+def conduit() -> int:
+    """Galvanised conduit: a lit side, couplings every half storey."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 10.5)
+    c.paint(c.rect(0, 64, 0, 16), GREY, 12.5)
+    c.paint(c.rect(0, 64, 0, 64) & (c.v % 32 < 4), GREY, 7.0)
+    return _texture(c)
+
+
+def junction_box() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 9.0)
+    c.paint(c.rect(6, 58, 6, 58), GREY, 10.5)
+    for v, u in ((8, 8), (8, 54), (54, 8), (54, 54)):
+        c.paint(c.rect(v, v + 3, u, u + 3), GREY, 5.0)
+    return _texture(c)
+
+
+def keep_clear_mat() -> int:
+    c = Canvas()
+    _hazard(c, c.rect(0, 64, 0, 64), step=16)
+    c.paint(~c.rect(3, 61, 3, 61), GREY, 1.0)
     return _texture(c)
 
 
 def lever_arm() -> int:
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), GREY, 11.0)
+    c.paint(c.rect(0, 64, 0, 64), GREY, 12.0)
     return _texture(c)
 
 
@@ -2124,39 +2170,59 @@ def lamp(ramp: int) -> int:
     return _texture(c)
 
 
-_GEAR_FRONT, _GEAR_SIDE = switchgear_front(), switchgear_side()
+def _plain(ramp: int, shade: float) -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), ramp, shade)
+    return _texture(c)
+
+
+_GEAR_FRONT, _GEAR_SIDE, _GEAR_TOP = switchgear_front(), switchgear_side(), _plain(GREY, 7.0)
+_CONDUIT, _JUNCTION, _MAT = conduit(), junction_box(), keep_clear_mat()
 _ARM, _HANDLE = lever_arm(), lever_handle()
 _LAMP_OFF, _LAMP_ON = lamp(BRICK), lamp(GREEN)
-BREAKER_BLINK = 1.0  # seconds per blink of its red lamp
+
+
+def _breaker_fixed() -> list[Box]:
+    """The parts that don't move: the box, its conduit, the mat."""
+    z0, z1 = BREAKER_Z
+    h, c = BREAKER_HALF_WIDTH, _CONDUIT_HALF
+    pipe = (_CONDUIT,) * 5
+    return [
+        Box((0.0, BREAKER_DEPTH), (-h, h), (z0, z1), (_GEAR_FRONT, *(_GEAR_SIDE,) * 3, _GEAR_TOP)),
+        Box((0.0, 0.07), (-c, c), (z1, _JUNCTION_Z[0]), pipe),  # up to the junction box
+        Box((0.0, 0.1), (-0.07, 0.07), _JUNCTION_Z, (_JUNCTION,) * 5),
+        Box((0.0, 0.07), (-c, c), (_JUNCTION_Z[1], 1.0), pipe),  # on into the ceiling
+        Box((0.0, 0.07), (-c, c), (0.0, z0), pipe),  # down into the floor
+        Box((0.02, 0.62), (-0.32, 0.32), (0.0, 0.004), (_MAT,) * 5),  # keep clear
+    ]
+
+
+_BREAKER_FIXED = _breaker_fixed()
 
 
 def switch_boxes(switches: Iterable[Switch]) -> list[PlacedBox]:
     """Boxes for switches (the breaker) in their current state."""
     out = []
+    d = BREAKER_DEPTH
     for sw in switches:
-        cabinet = Box(
-            (0.0, BREAKER_DEPTH),
-            (-BREAKER_HALF_WIDTH, BREAKER_HALF_WIDTH),
-            (0.02, BREAKER_TOP),
-            (_GEAR_FRONT, _GEAR_SIDE, _GEAR_SIDE, _GEAR_SIDE, _GEAR_SIDE),
-        )
-        # The lever in the middle of the front: hangs down when off, up when on.
+        # The lever in its slot: hangs down at OFF, thrown up to ON.
         z = (_PIVOT, _PIVOT + _LEVER) if sw.on else (_PIVOT - _LEVER, _PIVOT)
-        knob = (z[1] - 0.03, z[1]) if sw.on else (z[0], z[0] + 0.03)
-        arm = Box((BREAKER_DEPTH, BREAKER_DEPTH + 0.03), (-0.015, 0.015), z, (_ARM,) * 5)
-        handle = Box((BREAKER_DEPTH, BREAKER_DEPTH + 0.05), (-0.05, 0.05), knob, (_HANDLE,) * 5)
+        end = z[1] if sw.on else z[0]
+        arm = Box((d, d + 0.04), (-0.014, 0.014), z, (_ARM,) * 5)
+        grip = Box((d + 0.015, d + 0.08), (-0.07, 0.07), (end - 0.025, end + 0.025), (_HANDLE,) * 5)
         # One lamp lit: red, blinking, until it's thrown; then green, steady.
         y = _LAMP_Y["green" if sw.on else "red"]
+        lamp_z = (_z_of_v(_LAMP_V[1], *BREAKER_Z), _z_of_v(_LAMP_V[0], *BREAKER_Z))
         light = Box(
-            (BREAKER_DEPTH, BREAKER_DEPTH + 0.008),
+            (d, d + 0.01),
             (y - 0.025, y + 0.025),
-            _LAMP_Z,
+            lamp_z,
             ((_LAMP_ON if sw.on else _LAMP_OFF),) * 5,
             glow=True,
             indicator=True,
             blink=0.0 if sw.on else BREAKER_BLINK,
         )
-        for box in (cabinet, arm, handle, light):
+        for box in (*_BREAKER_FIXED, arm, grip, light):
             out.append(PlacedBox(sw.x, sw.y, 0.0, sw.facing, box))
     return out
 
@@ -2185,7 +2251,7 @@ def server_front(kind: str) -> int:
     c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64), CREAM, 9.0)  # its edges
     c.paint(c.rect(0, 6, 0, 64), BLUE, 7.0)  # the band at the top
     lamp_z = _SERVER_LAMP_Z[kind]
-    v0, v1 = _front_v(lamp_z[1], SERVER_TOP), _front_v(lamp_z[0], SERVER_TOP)
+    v0, v1 = _front_v(lamp_z[1], 0.0, SERVER_TOP), _front_v(lamp_z[0], 0.0, SERVER_TOP)
     c.paint(c.rect(v0 - 2, v1 + 2, 6, 58), GREY, 3.0)  # the lamp panel
     for y, _, _, _ in _SERVER_LAMPS:
         u = _front_u(y, SERVER_HALF_WIDTH)
