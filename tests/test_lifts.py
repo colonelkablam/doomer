@@ -108,15 +108,22 @@ def test_hud_messages_for_lifts() -> None:
 
 def test_a_lift_has_its_fittings_round_it() -> None:
     from doomer.client.boxes import door_boxes
+    from doomer.client.render import _powered
     from doomer.shared.doors import LIFT, Door
 
-    lift = Door(0, LIFT, 2.5, 2.5, -math.pi / 2)
-    dark = door_boxes([lift], power=False)
-    lit = door_boxes([lift], power=True)
+    lift = Door(0, LIFT, 2.5, 2.5, -math.pi / 2, called=True)
+    boxes = door_boxes([lift])
     # Two leaves plus lining, architrave, sill, indicator, call plate and
     # button, and the car's panel: more than the leaves alone.
-    assert len(dark) == len(lit) > 8
-    assert sum(p.box.glow for p in lit) > sum(p.box.glow for p in dark)  # lit with power
+    assert len(boxes) > 8
+    # The indicator, call button and car panel are on the floor's power.
+    powered = [p for p in boxes if p.box.mains and p.box.off_faces is not None]
+    assert len(powered) == 3
+    lit = [q for p in powered if (q := _powered(p, True, 0.0)) is not None]
+    dark = [q for p in powered if (q := _powered(p, False, 0.0)) is not None]
+    assert sum(p.box.glow for p in lit) == 2  # the G and the called button glow
+    assert not any(p.box.glow for p in dark)  # dark without power
+    assert all(p.box.faces == p0.box.off_faces for p, p0 in zip(dark, powered, strict=True))
 
 
 def test_the_cars_handrail_stops_short_of_the_doors() -> None:

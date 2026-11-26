@@ -440,7 +440,8 @@ dm_spawn      1.5   3.5   0
   mains with `off_faces` (a screen) shows those, unlit; a dead indicator
   lamp isn't drawn; a dead mains glow (a lit sign) is lit like anything
   else. Screens are boxes of their own over the case (the Mac's too), so
-  only they change.
+  only they change. The lifts' indicators, call buttons and car panels
+  work the same way, so `door_boxes` takes no power: the renderer decides.
 - **Indicator lamps** (`Box.indicator`, `blink`, `blink_phase`;
   `boxes.lit_now`): a small lit box on a panel, drawn only while lit, the
   dark socket painted on the panel behind showing otherwise. Unlit when it's

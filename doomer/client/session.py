@@ -92,7 +92,7 @@ class LocalSession:
         return self._static_sprites + lying
 
     def boxes(self) -> list[PlacedBox]:
-        doors = door_boxes(self.world.doors, self.world.passes, self.power())
+        doors = door_boxes(self.world.doors, self.world.passes)
         return doors + switch_boxes(self.world.switches)
 
     def passes(self) -> frozenset[str]:

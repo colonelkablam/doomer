@@ -1496,13 +1496,11 @@ _JAMB, _GLASS, _GLASS_EDGE = jamb(), glass_leaf(), glass_edge()
 _JAMB_HALF = 0.03  # jambs a little thicker than the leaf: a frame
 
 
-def door_boxes(
-    doors: Iterable[Door], passes: Collection[str] = (), power: bool = True
-) -> list[PlacedBox]:
+def door_boxes(doors: Iterable[Door], passes: Collection[str] = ()) -> list[PlacedBox]:
     """Boxes for doors in their current state; by each locked door, a card
     reader on the wall either side, lit green once the team (`passes`) can
-    open it; and by each lift, its call button and floor indicator (lit when
-    there's `power`)."""
+    open it; and by each lift, its call button, floor indicator and car
+    panel, on the floor's power (the renderer lights them while it's on)."""
     out = []
     h = (0.0, DOOR_HEIGHT)
     t = (-DOOR_HALF, DOOR_HALF)
@@ -1549,7 +1547,7 @@ def door_boxes(
             slide = SLIDE[door.kind] * door.open  # each leaf slides towards the wall beside it
             if door.kind == LIFT:
                 faces = (_STEEL_LEAF, _STEEL_EDGE, _STEEL_LEAF, _STEEL_EDGE, _STEEL_EDGE)
-                out += _lift_fittings(door, power)
+                out += _lift_fittings(door)
             else:
                 faces = (_GLASS, _GLASS_EDGE, _GLASS, _GLASS_EDGE, _GLASS_EDGE)
             for y in ((-0.5 - slide, -slide), (slide, 0.5 + slide)):
@@ -1639,16 +1637,17 @@ _INDICATOR = {lit: floor_indicator(lit) for lit in (False, True)}
 _CAR_PANEL = {lit: car_panel(lit) for lit in (False, True)}
 
 
-def _lift_fittings(door: Door, power: bool) -> list[PlacedBox]:
+def _lift_fittings(door: Door) -> list[PlacedBox]:
     """Everything round a lift door but its leaves, in the door's model
     space (x across the doorway, + towards the lobby; y along it). The lift
     is one cell, its car the doorway cell itself, its doors at the lobby
     end: a steel architrave on the lobby wall round them, the sill under
     them, the floor indicator over them and the call plate beside them; and
-    inside the car, on its side wall by the door, its button panel."""
+    inside the car, on its side wall by the door, its button panel. The
+    indicator, the call button and the car's panel are on the main circuit:
+    lit while the floor has power, dark (their off faces) without."""
     f = door.facing
     along = (-math.sin(f), math.cos(f))
-    called = power and door.called
     steel = (_POLISHED,) * 5
     out = []
 
@@ -1663,17 +1662,35 @@ def _lift_fittings(door: Door, power: bool) -> list[PlacedBox]:
     sill = (door.set_back - 0.05, door.set_back + 0.05)
     at(Box(sill, (-0.5, 0.5), (0.0, 0.006), (_SILL,) * 5))  # under the doors
     # Only the fronts carry the display and buttons; their thin sides are steel.
-    indicator = (_INDICATOR[power], *(_POLISHED,) * 4)
-    at(Box((0.5, 0.52), (-0.12, 0.12), (top + 0.07, top + 0.15), indicator, glow=power))
+    sides = (_POLISHED,) * 4
+    indicator = Box(
+        (0.5, 0.52),
+        (-0.12, 0.12),
+        (top + 0.07, top + 0.15),
+        (_INDICATOR[True], *sides),
+        glow=True,
+        mains=True,
+        off_faces=(_INDICATOR[False], *sides),
+    )
+    at(indicator)
     # The call plate, on the wall beside the doors, and its one button.
     bx, by = door.x + along[0] * 0.66, door.y + along[1] * 0.66
     at(Box((0.5, 0.51), (-0.035, 0.035), (0.36, 0.44), (_CALL_PLATE, *(_POLISHED,) * 4)), bx, by)
-    button = (_CALL[called], *(_POLISHED,) * 4)
-    at(Box((0.5, 0.516), (-0.018, 0.018), (0.39, 0.41), button, glow=called), bx, by)
+    button = Box(
+        (0.5, 0.516),
+        (-0.018, 0.018),
+        (0.39, 0.41),
+        (_CALL[door.called], *sides),
+        glow=door.called,  # once called (and only with power)
+        mains=True,
+        off_faces=(_CALL[False], *sides),
+    )
+    at(button, bx, by)
     # The car's panel, on its side wall (y = 0.5) just inside the doors.
     # Its buttons on the face into the car: -y, the box's left face.
-    panel = (_POLISHED, _POLISHED, _POLISHED, _CAR_PANEL[power], _POLISHED)
-    at(Box((0.05, 0.22), (0.485, 0.5), (0.3, 0.52), panel))
+    lit_panel = (_POLISHED, _POLISHED, _POLISHED, _CAR_PANEL[True], _POLISHED)
+    dark_panel = (_POLISHED, _POLISHED, _POLISHED, _CAR_PANEL[False], _POLISHED)
+    at(Box((0.05, 0.22), (0.485, 0.5), (0.3, 0.52), lit_panel, mains=True, off_faces=dark_panel))
     return out
 
 
