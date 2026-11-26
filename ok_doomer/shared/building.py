@@ -50,3 +50,8 @@ def floor_name(label: str) -> str:
 
 def floor_map_path(label: str) -> Path:
     return MAPS_DIR / FLOOR_MAPS[label]
+
+
+def floor_map_text(label: str) -> str:
+    """A floor's map file, as text (what the server sends its clients)."""
+    return floor_map_path(label).read_text(encoding="utf-8")

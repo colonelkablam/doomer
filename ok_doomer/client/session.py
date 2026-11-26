@@ -9,6 +9,7 @@ from typing import Protocol
 
 from ok_doomer.client.boxes import PlacedBox, cubicle_door_boxes, door_boxes, switch_boxes
 from ok_doomer.client.render import Camera, SpriteInstance, sprites_from_things
+from ok_doomer.shared.building import floor_map_text
 from ok_doomer.shared.events import Event, LevelComplete
 from ok_doomer.shared.mapfile import GameMap
 from ok_doomer.shared.player import PlayerInput, PlayerState
@@ -89,7 +90,7 @@ class LocalSession:
                 None,
             )
             if arrived is not None:  # the lift's there: on to the next floor
-                world = arrive_on_floor(self.world, arrived)
+                world = arrive_on_floor(self.world, floor_map_text(arrived))
                 self._start(world, world.players[self.player.id])
                 events += drain_events(world)
                 break  # the rest of this frame's time goes to the new floor next frame

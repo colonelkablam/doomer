@@ -3,6 +3,7 @@ and moving the whole team on to the next floor."""
 
 import math
 
+from ok_doomer.shared.building import floor_map_text
 from ok_doomer.shared.mapfile import load_map, parse_map
 from ok_doomer.shared.player import PlayerInput, PlayerState
 from ok_doomer.shared.sim import step
@@ -84,7 +85,7 @@ def test_the_team_arrives_on_the_next_floor_together() -> None:
     a, b = spawn_player(world, 1, "ann"), spawn_player(world, 2, "bob")
     a.health, b.coffee = 40, 25
     world.passes.add("blue")
-    up = arrive_on_floor(world, "1")
+    up = arrive_on_floor(world, floor_map_text("1"))
     assert up.map.storey == "1" and not up.passes
     assert sorted(up.players) == [1, 2]
     assert (up.players[1].name, up.players[1].health) == ("ann", 40)
@@ -99,7 +100,7 @@ def test_arriving_is_deterministic() -> None:
         world = new_world(load_map("maps/office.map"), "coop", seed=7)
         for i in range(1, 4):
             spawn_player(world, i, f"p{i}")
-        up = arrive_on_floor(world, "1")
+        up = arrive_on_floor(world, floor_map_text("1"))
         return [(p.x, p.y) for p in up.players.values()] + [(up.rng.random(), 0.0)]
 
     assert positions() == positions()

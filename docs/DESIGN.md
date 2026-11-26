@@ -141,6 +141,22 @@ means adding a module and registering it, not editing a dozen files.
   inputs must be finite (NaN, `Infinity` and `1e999` refused: a NaN angle
   would spread through the world); lines over 1 MB are refused. An
   `Update` of the ground floor with 4 players, moving, is ~1.2 KB.
+- **The server core** (`server/game.py`, `GameServer`): no sockets, no
+  clock. The transport calls `join(hello)` (a `Welcome`, or a `Reject`:
+  wrong version, full), `receive(player_id, message)` and `leave`, and
+  `tick()` at the tick rate, which returns what to send whom (each
+  client's `Update`, same snapshot and events, its own `ack`). Inputs:
+  one queued input used per tick; repeats and stale ones (seq not newer)
+  ignored; the queue capped (`input_queue`, the oldest dropped, so a
+  flooding client can't build up lag); a client with none queued has
+  their last input repeated for `hold_ticks` (6: 100 ms, smoothing
+  jitter), then stands still (one who dropped off doesn't walk on).
+  Timeouts count the server's own ticks (`GameServer.ticks`: the world's
+  start again on each floor), `timeout_seconds` of silence. The lift
+  arriving: `NewFloor` to everyone, then the new floor's first `Update`;
+  inputs queued for the old floor are dropped (and acked). Player ids are
+  never reused. Names tidied (spaces collapsed, 16 characters, never
+  empty). Settings in `server/config.py` (`ServerConfig`).
 - **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
   blocking (a lost packet holds up everything behind it until resent),
   matters on the internet, not here. Framing and encoding stay behind
@@ -984,9 +1000,9 @@ Noted at the end of a session, to pick up next:
   `apply(world, snap)`, the changing state only, tested by round trip
   onto a fresh world; (3) `shared/protocol.py`: the messages (hello,
   welcome, reject, input, snapshot, map change, bye), the version, JSON
-  lines, events by a registry of their types [done]; (4) the server core,
+  lines, events by a registry of their types [done]; (4) [done] the server core,
   socket-free (`GameServer`: join, leave, input, tick -> messages out);
-  `LocalSession` then runs on it; (5) the asyncio TCP transport
+  `LocalSession` moves onto it once networking works; (5) the asyncio TCP transport
   (`python -m ok_doomer.server`, `TCP_NODELAY`, timeouts); (6) a bot
   client (standard library: the test player and a load test; pulled
   ahead of the game client so there's something to join with, and

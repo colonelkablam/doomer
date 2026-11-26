@@ -7,9 +7,8 @@ rather than in either of them.
 
 import math
 
-from ok_doomer.shared.building import floor_map_path
 from ok_doomer.shared.events import PlayerSpawned
-from ok_doomer.shared.mapfile import load_map
+from ok_doomer.shared.mapfile import parse_map
 from ok_doomer.shared.modes import GAME_MODES
 from ok_doomer.shared.player import PlayerState
 from ok_doomer.shared.sim import all_obstacles, move_player, standing_height
@@ -66,13 +65,14 @@ def _crowded(world: World, x: float, y: float) -> bool:
     return any(abs(p.x - x) < width and abs(p.y - y) < width for p in world.players.values())
 
 
-def arrive_on_floor(world: World, storey: str) -> World:
-    """The lift's arrived: a new world for that floor of the building, with
+def arrive_on_floor(world: World, map_text: str) -> World:
+    """The lift's arrived: a new world for the next floor (its map file's
+    text: `building.floor_map_text`, as the server sends it), with
     every player in it (at its start, in the lift car they arrive in), each
     keeping their health and coffee. Passes are a floor's own: the new one
     starts without."""
     seed = world.rng.randrange(2**32)  # deterministic: the next world's from this one
-    arrived = new_world(load_map(floor_map_path(storey)), world.mode, world.config, seed)
+    arrived = new_world(parse_map(map_text), world.mode, world.config, seed)
     for before in sorted(world.players.values(), key=lambda p: p.id):
         player = spawn_player(arrived, before.id, before.name)
         player.health, player.coffee = before.health, before.coffee
