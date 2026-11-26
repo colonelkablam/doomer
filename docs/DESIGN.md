@@ -878,7 +878,6 @@ Noted at the end of a session, to pick up next:
     top rim if it bothers.
   - The view from higher floors: lower the panorama's ground line per
     floor (more city), the moon in view from the offices too.
-  - A phone on one more desk (a secretary's).
   - Lift doors on the emergency circuit (a firefighting lift): doors
     don't take `circuit=` yet.
 - **A face generator, when something needs many faces** (a wall of staff
