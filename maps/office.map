@@ -24,11 +24,11 @@ f......h1.jjj...jjj....1...c...4
 g......h1..............1.......4
 g..............................4
 f.......1..............111111111
-f.......1.jjj...jjj....1.......4
-2k.k.k.k1...................c..4
-4kkkkkkk1..............1.......4
-4kkkkkkk1..............1.......4
-4.......1111.1111111.11111111111
+f.......1.jjj...jjj....1...1...4
+2k.k.k.k1..............1...1...4
+4kkkkkkk1..............1...1...4
+4kkkkkkk1..............1...1...4
+4.......1111.1111111.1111.111.11
 4....c.........................4
 4.......1......................4
 4.......1111..11111.1111111.1111
@@ -51,7 +51,7 @@ f.......1.jjj...jjj....1.......4
 00000000000000000000000000000000
 00000000000000000000000000000000
 00000000002220002220000000000000
-00000000000000000000000000002000
+00000000000000000000000000000000
 00000000000000000000000000000000
 00000000000000000000000000000000
 00000000000000000000000000000000
@@ -77,10 +77,10 @@ f.......1.jjj...jjj....1.......4
 8ggggggg688888888888888688888888
 8ggggggg888888888888888888888888
 8ggggggg888888888888888888888888
-88686868888888888888888688888888
+88686868888888888888888888888888
 88888888888888888888888888888888
 88888888888888888888888888888888
-88888888888868888888888888888888
+88888888888868888888888886888688
 88888888688888888888888888888888
 88888888888888888888888888888888
 88888888888866888886888888868888
@@ -103,7 +103,7 @@ f.......1.jjj...jjj....1.......4
 ................................
 ................................
 ..........nnn...nnn.............
-............................e...
+................................
 ..n.n.n.........................
 .nnnnnnn........................
 ................................
@@ -128,10 +128,10 @@ lllllllll.......................
 lllllllll.......................
 lllllllll.......................
 lllllllll.......................
-lllllllll.......................
-llclclcll.......................
-lllllllll.......................
-lllllllll.......................
+lllllllll...............wwwwwww.
+llclclcll...............wwwwwww.
+lllllllll...............wwwwwww.
+lllllllll...............wwwwwww.
 eeeeeeee........................
 eeeeeeee........................
 eeeeeeee........................
@@ -289,11 +289,10 @@ poster          7.5   5.5   0     kind=founder at=e
 poster          7.5   6.6   0     kind=plan at=e
 exit_sign       1.02  4.0   0     kind=transom
 exit_sign       9.02  4.5   0
-# --- The east offices, off the open plan (doors at its east wall, flush
-# with each office, swinging out into their recesses) ---
+# --- The east office, off the open plan (its door in the open plan's east
+# wall, flush with the office, swinging out into its recess) ---
 door_hinged     23.5  4.5   180
-door_hinged     23.5  7.5   180
-# North office: a manager at a single desk, facing the door
+# A manager at a single desk, facing the door
 mac             27.74 2.45  4
 phone           27.42 2.16  2
 chair           28.31 2.52  188
@@ -304,16 +303,28 @@ ficus           30.5  1.5   0     at=ne
 poster          24.5  2.4   0     kind=excellence at=w
 ceiling_light   26.5  2.5   0
 dm_spawn        25.5  3.0   0
-# South office
-mac             28.74 7.52  357
-chair           29.3  7.56  171
-coffee_cup      28.62 7.16  120
-filing_cabinet  25.3  6.5   0     at=n
-filing_cabinet  25.64 6.5   0     at=n
-filing_cabinet  26.4  6.5   0     at=n
-ficus           30.5  9.5   0     at=se
-poster          26.5  9.5   0     kind=synergy at=s
-ceiling_light   26.5  7.5   0
+# --- The washrooms, off the corridor: avocado tiles, terracotta floor,
+# frosted windows. Doors flush with each, swinging out into their recesses;
+# a plate on the corridor wall beside each.
+door_hinged     25.5  10.5  90
+door_hinged     29.5  10.5  90
+poster          24.7  11.5  0     kind=gents at=n
+poster          28.7  11.5  0     kind=ladies at=n
+# Gents: two cubicles, three urinals, two basins under a mirror, a dryer,
+# a WET FLOOR sign someone left out
+cubicles_two    24.4  6.5   0     at=n
+urinals_three   26.5  7.4   0     at=e
+basins_two      24.5  8.4   0     at=w
+hand_dryer      24.35 9.5   0     at=s
+poster          26.3  9.5   0     kind=wash_hands at=s
+wet_floor_sign  25.6  8.0   20
+ceiling_light   25.5  7.5   0
+# Ladies: four cubicles, three basins, a dryer
+cubicles_four   29.5  6.5   0     at=n
+basins_three    28.5  8.3   0     at=w
+hand_dryer      28.35 9.5   0     at=s
+poster          30.3  9.5   0     kind=wash_hands at=s
+ceiling_light   29.5  7.5   0
 # --- The corridor: two cells wide, the length of the floor, the open plan's
 # double doors and an opening on its north side; the secretary's doors at
 # its west end, the lounge, meeting room and plant room off its south side.

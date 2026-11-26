@@ -21,11 +21,11 @@ DEFAULT_FACING = SOUTH
 _FACING_CHARS = "nesw"
 # Areas: what kind of space each cell is, for its look (floor, ceiling, and
 # the plain walls facing into it): open-plan office, executive suite,
-# entrance lobby, service (plant rooms, back corridors), inside a lift car.
-# [areas] letters.
-OFFICE, EXECUTIVE, LOBBY, SERVICE, LIFT_CAR = range(5)
+# entrance lobby, service (plant rooms, back corridors), inside a lift car,
+# washrooms. [areas] letters.
+OFFICE, EXECUTIVE, LOBBY, SERVICE, LIFT_CAR, WASHROOM = range(6)
 DEFAULT_AREA = OFFICE
-AREA_CHARS = "oelsc"
+AREA_CHARS = "oelscw"
 
 # Wall types with built-in shape (the rest are just textures, chosen by the
 # client): a stair cell's floor slopes up across the cell, towards the way

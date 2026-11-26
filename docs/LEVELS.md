@@ -74,8 +74,13 @@ units at most). Anything higher with no stairs is unreachable.
 | `phone` | 1980s desk phone (box model, 3 boxes) | On a desk, angle towards its user (as a Mac: +x is the user's side), clear of the Mac and keyboard. Keep them few (the boss's desk, reception) |
 | `pc` | Late-80s PC with a green screen (box model, 5 boxes) | The boss's computer, in place of a Mac: on a big desk (it's ~0.3 wide, ~0.45 deep with its keyboard), angle towards its user as a Mac |
 | `chair` | Office swivel chair (box model, 4 boxes; blocks, radius 0.1) | One per sitter: ~0.25-0.36 out from the desk edge in front of their Mac, angle towards the desk; nudge each a few cm and turn it up to ~30 degrees at random so a row looks used. Between a pod and a wall one cell away, keep chairs at least 0.6 from the wall so a player (0.5 wide) gets past |
-| `poster` | A poster or picture, `kind=` synergy, teamwork, excellence, employee_mar/apr/may, founder, accident, high_voltage, plan | `at=` the wall it hangs on. Hang a `plan` by each way in (it draws the floor, marking where it hangs) and a `high_voltage` by the plant room door and its breaker, so the power is signposted |
+| `poster` | A poster or picture, `kind=` synergy, teamwork, excellence, employee_mar/apr/may, founder, accident, high_voltage, plan; washroom door plates gents, ladies; wash_hands | `at=` the wall it hangs on. Hang a `plan` by each way in (it draws the floor, marking where it hangs) and a `high_voltage` by the plant room door and its breaker, so the power is signposted. A `gents` or `ladies` plate on the corridor wall beside each washroom door |
 | `server` | Minicomputer cabinet, `kind=tape` or `disk`; its lamps blink once the power's on | In the plant room (or a computer room): `at=` a solid wall, in a row 0.38 apart (0.38 wide, blocks 0.36 out). Leave the breaker and the way to it clear |
+| `cubicles_two`, `_three`, `_four` | Toilet cubicles: a run (0.34 wide each, 0.55 deep), the first door ajar, the second ENGAGED | `at=` the wall they back onto (the run's middle where you write it along the wall). Blocks, the open door too (it swings 0.28 out from the front, towards the run's +y end: your left as you face them). Leave a cell clear in front |
+| `urinals_two`, `_three` | Urinals, screens between (0.32 apart, 0.24 out) | `at=` a wall. Gents only |
+| `basins_two`, `_three` | Vanity unit: basins (0.24 apart, 0.2 deep), a mirror over it | `at=` a wall |
+| `hand_dryer` | Hand dryer | `at=` a wall, near the basins; doesn't block |
+| `wet_floor_sign` | Yellow CAUTION WET FLOOR A-frame | Anywhere on a floor, any angle; blocks (radius 0.08) |
 | `sofa_two`, `sofa_three`, `sofa_corner`; `coffee_table`; `fern` | Lobby seating: modular sofa runs (0.28 a seat, 0.32 deep) and a corner unit; a low table; a small fern | Angle = the way the sitters face, backs against a wall. Make an L: a corner unit in the room's corner (backs west and north at angle 0), runs either side of it, the table in front, 0.2 or so clear of the seats (a nook: you needn't fit between). Keep it out of the way in: the map checker tells you if it cuts the route. The fern on the table: it rests on its top |
 | `coffee_cup` | A cup of coffee: a pickup, +5 coffee | On a desk or counter, within reach of where a player stands (0.75 from their centre: near the edge they walk up to), clear of the Mac and keyboard; angle turns its handle. A few on a floor, not every desk |
 | `vending_machine` | Snack machine: a health dispenser (10 a use, 40 a player), working once the power's on | `at=` a solid wall (0.36 wide, blocks 0.3 out): in a corridor where it widens, a kitchen, a break area. Not on the critical path: it's a reward |
@@ -107,7 +112,7 @@ and an `exit`; **deathmatch** needs at least 4 `dm_spawn`s.
 - **Single desks** `c` face where you sit; **executive desks** `b` likewise.
 - **Areas** (`[areas]`): mark every open cell of a room with its kind of
   space: `e` the boss's suite, `l` the entrance and lift lobby, `s` plant
-  rooms and back corridors, the rest office (default). Build room walls from
+  rooms and back corridors, `w` washrooms, the rest office (default). Build room walls from
   plain `#` and let the areas dress them: a wall between two areas shows
   each side its own look. Use an explicit wall type only for something
   that's the same from both sides (a window, brick, the curtain wall).

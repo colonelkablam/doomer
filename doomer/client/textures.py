@@ -380,6 +380,20 @@ def avocado_tiles(seed: int = 7) -> U8Array:
     return indices(np.where(grout, GREY, MOSS), np.where(grout, 11.0, shade))
 
 
+def washroom_tiles(seed: int = 7) -> U8Array:
+    """A washroom's walls: the avocado tiles to the ceiling, with a band of
+    darker tiles at dado height (v 32-47: a row of tiles, the 1980s border)."""
+    v, _ = grid()
+    tiles = avocado_tiles(seed)
+    band = (v >= 32) & (v < 48)
+    darker = np.where(band & (tiles >> 4 == MOSS), tiles - 3, tiles)
+    return darker.astype(np.uint8)
+
+
+def washroom_tiles_upper(seed: int = 7) -> U8Array:
+    return avocado_tiles(seed)
+
+
 def steel_panels(seed: int = 8) -> U8Array:
     rng = np.random.default_rng(seed)
     v, u = grid()

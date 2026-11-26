@@ -6,6 +6,7 @@ thing looks is the client's business (doomer/client/sprites.py), keyed by the
 same name.
 """
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
@@ -143,6 +144,9 @@ POSTER_KINDS = (
     "accident",
     "high_voltage",
     "plan",
+    "gents",  # washroom door plates (on the corridor wall beside the door)
+    "ladies",
+    "wash_hands",  # NOW WASH YOUR HANDS
 )
 POSTER = register_thing_type(
     ThingType("poster", "A poster or picture on a wall", properties={"kind": POSTER_KINDS})
@@ -251,6 +255,58 @@ for _name, _description in (
     ("door_lift", "Lift doors: use to call the lift (needs power); a car behind"),
 ):
     register_thing_type(ThingType(_name, _description, properties={"lock": PASS_COLOURS}))
+
+# Washroom fittings (drawn by doomer/client/boxes.py, sizes matching), each
+# against a wall (`at=`), +x out of it. A run of cubicles: laminate
+# partitions raised off the floor, a door each (one ajar, one ENGAGED); a
+# run of urinals with screens between; a vanity unit with basins and a
+# mirror over it. Runs of two, three or four, like the sofas.
+CUBICLE_WIDTH, CUBICLE_DEPTH, CUBICLE_TOP = 0.34, 0.55, 0.74
+CUBICLE_DOOR_AJAR = math.radians(55)  # the first cubicle's door, swung out
+URINAL_PITCH, URINAL_DEPTH = 0.32, 0.24
+BASIN_PITCH, BASIN_DEPTH, BASIN_TOP = 0.24, 0.2, 0.3
+for _n, _word in ((2, "two"), (3, "three"), (4, "four")):
+    _half = _n * CUBICLE_WIDTH / 2
+    _hinge = _half - CUBICLE_WIDTH  # the open door hangs from here
+    _door = Footprint(
+        (CUBICLE_DEPTH, CUBICLE_DEPTH + CUBICLE_WIDTH * math.sin(CUBICLE_DOOR_AJAR)),
+        (_hinge, _hinge + CUBICLE_WIDTH * math.cos(CUBICLE_DOOR_AJAR)),
+        0.7,
+    )
+    register_thing_type(
+        ThingType(
+            f"cubicles_{_word}",
+            f"Toilet cubicles: a run of {_word}",
+            blocking=True,
+            radius=_half,
+            footprints=(Footprint((0.0, CUBICLE_DEPTH), (-_half, _half), CUBICLE_TOP), _door),
+        )
+    )
+for _n, _word in ((2, "two"), (3, "three")):
+    _half = _n * URINAL_PITCH / 2
+    register_thing_type(
+        ThingType(
+            f"urinals_{_word}",
+            f"Urinals: a run of {_word} with screens between",
+            blocking=True,
+            radius=_half,
+            footprints=(Footprint((0.0, URINAL_DEPTH), (-_half, _half), 0.6),),
+        )
+    )
+    _half = _n * BASIN_PITCH / 2
+    register_thing_type(
+        ThingType(
+            f"basins_{_word}",
+            f"Vanity unit with {_word} basins, a mirror over it",
+            blocking=True,
+            radius=_half,
+            footprints=(Footprint((0.0, BASIN_DEPTH), (-_half, _half), BASIN_TOP),),
+        )
+    )
+HAND_DRYER = register_thing_type(ThingType("hand_dryer", "Hand dryer on a wall"))
+WET_FLOOR_SIGN = register_thing_type(
+    ThingType("wet_floor_sign", "A yellow CAUTION WET FLOOR A-frame", blocking=True, radius=0.08)
+)
 
 # ID passes (doomer/shared/pickups.py): walk over one to pick it up; the team
 # shares it. Drawn as a sprite on whatever it lies on.

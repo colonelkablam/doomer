@@ -195,8 +195,9 @@ dm_spawn      1.5   3.5   0
 - `[facing]` (optional): one of `n`, `e`, `s`, `w` per cell (`.` or missing =
   `s`): which way a cell's front faces, for wall types with different
   textures per side (desks: the front is where you sit).
-- `[areas]` (optional): one of `o`, `e`, `l`, `s`, `c` per cell (`.` or
-  missing = `o`): open-plan office, executive, lobby, service, lift car. Cosmetic (the server
+- `[areas]` (optional): one of `o`, `e`, `l`, `s`, `c`, `w` per cell (`.` or
+  missing = `o`): open-plan office, executive, lobby, service, lift car,
+  washroom. Cosmetic (the server
   ignores it): it picks the cell's floor and ceiling textures, and how plain
   walls (`#`) look from that side. A plain wall face takes the look of the
   area it faces, so one wall can be stone on its lobby side and painted
@@ -825,10 +826,13 @@ Noted at the end of a session, to pick up next:
   damage and absorption with 3b, the meters on the HUD.
 - **Office objects to make** (GAME.md, Office furniture, the `planned`
   rows): a kitchen area (counter, sink, kettle, microwave, fridge, mugs);
-  washrooms (cubicles, basins and mirror, hand dryer); a photocopier, a fax
+  a photocopier, a fax
   on a stand, a coat stand, an ashtray bin, a flip chart, an overhead
   projector on a trolley, a fire extinguisher.
 - **Cosmetic to-dos**, smaller polish noted along the way:
+  - A flickering fluorescent panel (one of the washrooms'): the light map
+    is baked, so its pool would have to be switched on and off as a
+    separate patch.
   - A flashing amber beacon over the plant room door (an indicator lamp,
     `blink`), drawing players to the power.
   - Wall clocks, stopped at the moment the power failed; ticking again

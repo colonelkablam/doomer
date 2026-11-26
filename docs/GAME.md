@@ -44,13 +44,14 @@ the player's bearings carry from floor to floor; the theme fills the rest:
   floor; on later floors whatever blocks the way up).
 - **A break area**: a lounge or kitchenette with a water cooler and
   vending machine (the health dispensers), somewhere to regroup. Sofas.
+- **Washrooms**: Gents and Ladies, side by side off a corridor.
 - **Smaller rooms that give a floor its life**: offices, a meeting room,
-  a secretary's office, stores; washrooms [planned] once their fittings
-  exist.
+  a secretary's office, stores.
 
-The ground floor has all but the washrooms: the lobby, the open plan, two
-offices, the corridor, the secretary's and the boss's offices, the lounge,
-the meeting room and the plant room (servers, and the switch room).
+The ground floor has them all: the lobby, the open plan, an office, the
+washrooms (GTS, LDS), the corridor, the secretary's and the boss's
+offices, the lounge, the meeting room and the plant room (servers, and the
+switch room).
 
 ## Game loop
 
@@ -65,10 +66,10 @@ start the climb. Its plan:
 ```
 +---------+------------------+--------+
 |  LOBBY  |    OPEN PLAN     | OFFICE |
-|         |    four pods     +--------+
-|reception=  blue door       | OFFICE |
-|  lifts  |                  |        |
-+---------+---| |------| |---+--------+
+|         |    four pods     +---+----+
+|reception=  blue door       |GTS|LDS |
+|  lifts  |                  |   |    |
++---------+---| |------| |---+| |+| |-+
 |SECRETARY=  CORRIDOR, two cells wide |
 |         |                           |
 +---| |---+---|  |---+--| |--+-|red|--+
@@ -221,7 +222,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Coffee table (`coffee_table`): amber glass in a dark frame on four chrome legs, three magazines at one end, upright to someone walking up from the open side: two side by side, one fanned over them, each a masthead band, a picture (a skyline, a chart, a portrait) and cover lines; things rest on it, the fern at the other end. A small fern (`fern`) in a copper bowl, for a table or a desk | yes (the fern: no) | [built] |
 | Coffee cup (`coffee_cup`, a pickup): a chunky white office mug with a blue band, full of coffee, its handle turned to its map angle; on the odd desk beside the keyboard. Walk up to it: +5 coffee (a HUD message, "Coffee +5"); left lying if your coffee's full. Four boxes and a handle | no | [built] |
 | Kitchen area (kitchenette): a run of counter units with a sink, a kettle, a microwave, a fridge, a few mugs, a "PLEASE WASH YOUR OWN CUPS" sign | yes | planned |
-| Washrooms (loos): toilet cubicles (partitions and doors), basins with a mirror over them, a hand dryer, avocado tiles (the `7` wall) | yes | planned |
+| Washrooms (loos), box models against the walls: a run of toilet cubicles (`cubicles_two`/`three`/`four`): beige laminate partitions on a gap above the floor under a chrome headrail, a door each with a VACANT/ENGAGED indicator, the first door standing ajar with the toilet inside, the second ENGAGED, a pair of shoes and trousers round the ankles under it; urinals (`urinals_two`/`three`), a chrome flush pipe up from each, screens between; a vanity unit (`basins_two`/`three`): brown wood-grain doors, a cream counter with white basins let in and a chrome tap each, a mirror (a grey sheen: no reflections) over it; a white hand dryer (PRESS); a yellow CAUTION WET FLOOR A-frame; door plates (`poster kind=gents`, `ladies`: white pictograms on blue) and a NOW WASH YOUR HANDS card (`kind=wash_hands`) | yes (not the dryer, plates or card) | [built] |
 | Photocopier (inert) | yes | planned |
 | Fax machine on stand | yes | planned |
 | Vending machine (box model, `vending_machine`): a snack machine as they were, a dark charcoal cabinet with chrome trim; a big window onto a dark interior (lit from inside while there's power, a light strip along its top), six rows of silver spiral coils holding bright packets, a few slots sold out; a narrow panel to the right (red LED display, keypad, coin slot); a pale PUSH flap; a louvred kick plate. A health dispenser (see Pickups) | yes | [built] |
@@ -233,7 +234,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 
 ## Areas [built]
 
-Each cell of a floor is one of four kinds of space (`[areas]` in the map). The
+Each cell of a floor is one of six kinds of space (`[areas]` in the map). The
 area sets the floor, the ceiling, and how plain walls (`#`) look from that
 side, so the same wall can be stone in the lobby and blockwork in the plant
 room behind it.
@@ -245,13 +246,15 @@ room behind it.
 | Lobby | `l` | Pale polished stone slabs | Terrazzo slabs | Smooth plaster |
 | Service | `s` | Painted breeze block: cream gloss above a grey dado | Grey flecked lino | Bare concrete, formwork marks |
 | Lift car | `c` | Brushed stainless panels with a handrail stopping short of the corners (the car walls `k`: a tinted mirror on the back wall) | Black studded rubber | Perforated brushed steel |
+| Washroom | `w` | Avocado tiles to the ceiling (the `7` tiles), a row of darker ones at dado height | Small terracotta quarry tiles, each a slightly different tone, dark grout | Smooth painted plaster |
 
 Windows (`4`) are cut into the wall of the area they face, as plain walls
 are dressed: in the office, an aluminium frame with a short top light over
 the main pane, a sill at desk height, the beige wall round it; in the
 executive suite, tall panes nearly floor to ceiling in dark wood mullions
 over a deep sill; in service areas, a small high window of wired glass
-(you can't see out) in a steel frame in the blockwork. Through the office
+(you can't see out) in a steel frame in the blockwork; in washrooms, a
+high window of pale dimpled obscured glass in a white frame. Through the office
 and executive windows, the lobby's curtain wall and its entrance doors you
 see the city at night, from the ground floor: flat dark ground up to the
 horizon, black towers on it against a dark sky, small yellow lit windows,

@@ -58,9 +58,11 @@ from doomer.client.textures import (
     register_wall_texture,
     stone_cladding,
     stone_cladding_upper,
+    washroom_tiles,
+    washroom_tiles_upper,
     wood_panelling,
 )
-from doomer.shared.mapfile import EXECUTIVE, LIFT_CAR, LOBBY, OFFICE, SERVICE, GameMap
+from doomer.shared.mapfile import EXECUTIVE, LIFT_CAR, LOBBY, OFFICE, SERVICE, WASHROOM, GameMap
 
 FloatArray = npt.NDArray[np.float64]
 
@@ -122,6 +124,17 @@ def lino(seed: int = 33) -> U8Array:
         + np.where(chips > 0.93, 1.5, 0.0)
     )
     return np.where(u == 0, indices(GREY, 5.0), indices(GREY, shade)).astype(np.uint8)
+
+
+def quarry_tiles(seed: int = 46) -> U8Array:
+    """Washrooms: small terracotta quarry tiles, 8 x 8 per cell (~34 cm),
+    each a slightly different fired tone, in dark grout."""
+    rng = np.random.default_rng(seed)
+    v, u = grid()
+    tone = rng.random((8, 8))[v // 8, u // 8]
+    shade = 6.2 + tone * 1.6 + (noise(rng, 16) - 0.5) * 0.6
+    grout = (u % 8 == 0) | (v % 8 == 0)
+    return np.where(grout, indices(WARM_GREY, 4.0), indices(BRICK, shade)).astype(np.uint8)
 
 
 def studded_rubber(seed: int = 39) -> U8Array:
@@ -267,6 +280,7 @@ AREA_LOOKS: dict[int, AreaLook] = {
     LOBBY: AreaLook(terrazzo, plaster, stone_cladding, stone_cladding_upper, soffit_stone),
     SERVICE: AreaLook(lino, concrete, painted_block, painted_block_upper, concrete),
     LIFT_CAR: AreaLook(studded_rubber, car_ceiling, lift_car_side, lift_car_side, car_ceiling),
+    WASHROOM: AreaLook(quarry_tiles, plaster, washroom_tiles, washroom_tiles_upper, plaster),
 }
 
 for _area, _look in AREA_LOOKS.items():
@@ -325,6 +339,20 @@ def service_window() -> U8Array:
     return tex.astype(np.uint8)
 
 
+def washroom_window() -> U8Array:
+    """A washroom's window: high in the tiling, obscured glass (pale and
+    dimpled: light, no view) in a white frame, a tiled sill."""
+    rng = np.random.default_rng(47)
+    v, u = grid()
+    tex = washroom_tiles()
+    glass = (v >= 5) & (v < 25) & (u >= 6) & (u < 58)
+    dimples = noise(rng, 16) + (rng.random((TEX_SIZE, TEX_SIZE)) - 0.5) * 0.6
+    tex = np.where(glass, indices(STEEL, 12.0 + dimples), tex)
+    frame = (v >= 3) & (v < 27) & (u >= 4) & (u < 60) & ~glass
+    tex = np.where(frame, indices(CREAM, np.where((v == 3) | (u == 4), 14.0, 11.0)), tex)
+    return tex.astype(np.uint8)
+
+
 def window_type(area: int) -> int:
     return WINDOW_WALL_TYPE + area
 
@@ -335,6 +363,7 @@ for _area, _make in (
     (LOBBY, office_window),
     (SERVICE, service_window),
     (LIFT_CAR, office_window),
+    (WASHROOM, washroom_window),
 ):
     register_wall_texture(window_type(_area), _make())
 

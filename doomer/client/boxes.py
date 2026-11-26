@@ -65,7 +65,19 @@ from doomer.shared.mapfile import STAIR_RISE, STAIRS_WALL_TYPE, WALL_UNITS, Game
 from doomer.shared.screens import SCREEN_HALF, SCREEN_HEIGHT
 from doomer.shared.screens import desk_screens as shared_desk_screens
 from doomer.shared.switches import Switch
-from doomer.shared.things import EXIT_SIGN_HEIGHTS, POSTER_KINDS
+from doomer.shared.things import (
+    BASIN_DEPTH,
+    BASIN_PITCH,
+    BASIN_TOP,
+    CUBICLE_DEPTH,
+    CUBICLE_DOOR_AJAR,
+    CUBICLE_TOP,
+    CUBICLE_WIDTH,
+    EXIT_SIGN_HEIGHTS,
+    POSTER_KINDS,
+    URINAL_DEPTH,
+    URINAL_PITCH,
+)
 
 FRONT, RIGHT, BACK, LEFT, TOP = range(5)  # face order in Box.faces
 
@@ -461,6 +473,41 @@ def high_voltage_sign() -> int:
 
 
 # kind: (texture, half-width (cells), z (walls))
+
+
+def washroom_plate(ladies: bool) -> int:
+    """A door plate: the 1980s pictogram, white on blue, the word under it."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), BLUE, 4.5)
+    c.paint(~c.rect(2, 62, 2, 62), STEEL, 12.0)  # an aluminium edge
+    figure = CREAM, 15.0
+    c.paint(c.ellipse(11, 32, 5, 5), *figure)  # the head
+    if ladies:  # a dress, flaring out; arms; legs below it
+        c.paint((c.v >= 17) & (c.v < 37) & (np.abs(c.u - 31.5) < 5 + (c.v - 17) * 0.45), *figure)
+        c.paint(c.rect(37, 46, 27, 30) | c.rect(37, 46, 33, 36), *figure)
+    else:  # a body, arms at the sides, two legs
+        c.paint(c.rect(17, 33, 26, 38), *figure)
+        c.paint(c.rect(17, 31, 22, 25) | c.rect(17, 31, 39, 42), *figure)
+        c.paint(c.rect(33, 46, 27, 31) | c.rect(33, 46, 33, 37), *figure)
+    _centred(c, "LADIES" if ladies else "GENTLEMEN", 52, CREAM, 15.0)
+    return _texture(c)
+
+
+def wash_hands_notice() -> int:
+    """NOW WASH YOUR HANDS, on a printed card: a tap and a pair of hands."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), CREAM, 14.0)
+    c.paint(~c.rect(2, 62, 2, 62), BLUE, 6.0)
+    _centred(c, "NOW WASH", 6, BLUE, 4.0, scale=2)
+    _centred(c, "YOUR HANDS", 19, BLUE, 4.0)
+    c.paint(c.rect(29, 33, 18, 36), STEEL, 8.0)  # the tap
+    c.paint(c.rect(33, 38, 32, 36), STEEL, 8.0)
+    c.paint(c.rect(38, 46, 33, 35), BLUE, 9.0)  # water
+    c.paint(c.ellipse(49, 28, 5, 8) | c.ellipse(49, 40, 5, 8), SAND, 11.0)  # hands
+    _centred(c, "PLEASE", 57, BRICK, 6.0)
+    return _texture(c)
+
+
 _POSTER_KINDS: dict[str, tuple[int, float, tuple[float, float]]] = {
     "synergy": (_motivational("SYNERGY", "1 + 1 = 3", _sunset_eagle), 0.15, (0.33, 0.73)),
     "teamwork": (_motivational("TEAMWORK", "ROW AS ONE", _rowing_crew), 0.15, (0.33, 0.73)),
@@ -471,6 +518,9 @@ _POSTER_KINDS: dict[str, tuple[int, float, tuple[float, float]]] = {
     "founder": (founder_portrait(), 0.25, (0.38, 1.0)),
     "accident": (accident_board(), 0.18, (0.45, 0.75)),
     "high_voltage": (high_voltage_sign(), 0.1, (0.45, 0.73)),
+    "gents": (washroom_plate(ladies=False), 0.1, (0.46, 0.68)),
+    "ladies": (washroom_plate(ladies=True), 0.1, (0.46, 0.68)),
+    "wash_hands": (wash_hands_notice(), 0.13, (0.42, 0.7)),
 }
 assert set(_POSTER_KINDS) | {"plan"} == set(POSTER_KINDS), "posters: shared/things.py"
 
@@ -2710,6 +2760,263 @@ def _vending_machine() -> tuple[Box, ...]:
     return (cabinet, window)
 
 
+# --- Washroom fittings ---------------------------------------------------------------
+# Sizes from doomer/shared/things.py. Each stands against a wall, model +x
+# out of it. White porcelain, chrome, beige laminate (with the avocado
+# tiles, the 1980s washroom).
+
+_PORCELAIN = (GREY, 14.0)
+_CHROME = (STEEL, 12.0)
+_LAMINATE = (SAND, 10.0)
+_PARTITION_Z = (0.06, CUBICLE_TOP)  # raised off the floor: the gap under the doors
+_DOOR_Z = (0.06, 0.7)
+
+
+def _laminate(shade: float = 10.0) -> Canvas:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), SAND, shade)
+    c.paint(c.rect(0, 2, 0, 64), STEEL, 12.0)  # an aluminium capping along the top
+    return c
+
+
+def cubicle_door(state: str) -> int:
+    """A cubicle door from outside: laminate, a chrome handle, and the lock's
+    indicator above it: VACANT (green) or ENGAGED (red). `state` "inside":
+    the plain inner face of an ajar door."""
+    c = _laminate(10.5)
+    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64), SAND, 8.0)  # its edges
+    if state != "inside":
+        ramp = BRICK if state == "engaged" else GREEN
+        c.paint(c.rect(24, 30, 6, 15), GREY, 10.0)  # the indicator's plate
+        c.paint(c.rect(25, 29, 7, 14), ramp, 11.0)
+        c.paint(c.rect(32, 35, 4, 14), STEEL, 13.0)  # the handle
+        c.paint(c.rect(35, 36, 4, 14), STEEL, 7.0)
+    return _texture(c)
+
+
+def _porcelain(top_ring: bool = False) -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), *_PORCELAIN)
+    c.paint(c.rect(56, 64, 0, 64), GREY, 11.0)  # shaded towards the floor
+    if top_ring:  # seen from above: the seat round the bowl, lid up
+        c.paint(c.ellipse(36, 32, 24, 26), GREY, 12.0)
+        c.paint(c.ellipse(36, 32, 17, 19), GREY, 9.0)
+        c.paint(c.ellipse(40, 32, 9, 11), STEEL, 6.0)  # water
+    return _texture(c)
+
+
+def _cubicles(n: int) -> tuple[Box, ...]:
+    """A run of n cubicles: partitions between and at the ends, a door
+    each across the front under a chrome headrail. The first (on your left
+    as you face them) stands ajar, a toilet inside; the second is ENGAGED:
+    shoes and trousers round the ankles under the door; the rest VACANT."""
+    w, d, thick = CUBICLE_WIDTH, CUBICLE_DEPTH, 0.012
+    half = n * w / 2
+    panel = _texture(_laminate())
+    edge = _plain_texture(*_CHROME)
+    boxes: list[Box] = []
+    for k in range(n + 1):  # partitions, +y (your left) first
+        y = half - k * w
+        y0, y1 = max(y - thick, -half), min(y + thick, half)
+        boxes.append(Box((0.0, d), (y0, y1), _PARTITION_Z, (edge, panel, edge, panel, edge)))
+    boxes.append(Box((d - 0.01, d + 0.01), (-half, half), (0.7, CUBICLE_TOP), (edge,) * 5))
+    inside, vacant, engaged = (
+        cubicle_door("inside"),
+        cubicle_door("vacant"),
+        cubicle_door("engaged"),
+    )
+    for k in range(n):
+        y1, y0 = half - k * w - thick, half - (k + 1) * w + thick  # this cubicle's doorway
+        if k == 0:  # ajar: turned out about its hinge at y0 (see _hinged)
+            boxes.append(_hinged(d, y0, y1 - y0, inside, vacant))
+            # The toilet: a pan, its cistern against the wall behind.
+            cy = (y0 + y1) / 2
+            pan = _porcelain(top_ring=True)
+            side = _porcelain()
+            boxes.append(
+                Box((0.06, 0.3), (cy - 0.07, cy + 0.07), (0.0, 0.15), (side,) * 4 + (pan,))
+            )
+            boxes.append(Box((0.0, 0.07), (cy - 0.09, cy + 0.09), (0.12, 0.3), (side,) * 5))
+            continue
+        face = engaged if k == 1 else vacant
+        boxes.append(Box((d - 0.008, d), (y0, y1), _DOOR_Z, (face, panel, inside, panel, edge)))
+        if k == 1:  # someone's in: their shoes, and trousers round their ankles
+            cy = (y0 + y1) / 2
+            shoe, cloth = _plain_texture(GREY, 1.5), _plain_texture(BLUE, 3.0)
+            for dy in (-0.035, 0.035):
+                boxes.append(
+                    Box((0.3, 0.38), (cy + dy - 0.02, cy + dy + 0.02), (0.0, 0.025), (shoe,) * 5)
+                )
+            boxes.append(Box((0.24, 0.3), (cy - 0.07, cy + 0.07), (0.0, 0.02), (cloth,) * 5))
+    return tuple(boxes)
+
+
+def _hinged(x: float, hinge_y: float, width: float, front: int, back: int) -> Box:
+    """A cubicle door standing open: hinged at (x, hinge_y), swung out (+x)
+    by CUBICLE_DOOR_AJAR. A box can only be turned about the model's origin, so
+    it's the door's rectangle turned back by that angle, with `turn` taking
+    it round to where it stands."""
+    a = CUBICLE_DOOR_AJAR
+    # The door runs from the hinge along (sin a, cos a); turned by +a that's +y.
+    hx = x * math.cos(a) - hinge_y * math.sin(a)
+    hy = x * math.sin(a) + hinge_y * math.cos(a)
+    side = _plain_texture(*_CHROME)
+    faces = (front, side, back, side, side)
+    return Box((hx - 0.008, hx), (hy, hy + width), _DOOR_Z, faces, turn=-a)
+
+
+def urinal_front() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), *_PORCELAIN)
+    c.paint(c.ellipse(30, 32, 22, 20), GREY, 11.0)  # the bowl's hollow
+    c.paint(c.ellipse(46, 32, 4, 6), STEEL, 6.0)  # the drain
+    c.paint(c.rect(0, 3, 0, 64), GREY, 15.0)  # the lip
+    return _texture(c)
+
+
+def _urinals(n: int) -> tuple[Box, ...]:
+    """A run of urinals, a flush pipe up from each, laminate screens between."""
+    half = n * URINAL_PITCH / 2
+    white, front = _plain_texture(*_PORCELAIN), urinal_front()
+    chrome = _plain_texture(*_CHROME)
+    screen = _texture(_laminate(9.5))
+    boxes: list[Box] = []
+    for k in range(n):
+        cy = half - (k + 0.5) * URINAL_PITCH
+        boxes.append(
+            Box(
+                (0.0, 0.13), (cy - 0.1, cy + 0.1), (0.15, 0.46), (front, white, white, white, white)
+            )
+        )
+        boxes.append(Box((0.0, 0.02), (cy - 0.01, cy + 0.01), (0.46, 0.68), (chrome,) * 5))
+        if k:
+            y = half - k * URINAL_PITCH
+            boxes.append(
+                Box(
+                    (0.0, URINAL_DEPTH),
+                    (y - 0.006, y + 0.006),
+                    (0.18, 0.64),
+                    (chrome, screen, chrome, screen, chrome),
+                )
+            )
+    return tuple(boxes)
+
+
+def vanity_front() -> int:
+    """The vanity unit's front: brown wood-grain laminate doors under a
+    cream counter edge."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), WOOD, 6.5)
+    c.paint(c.rect(0, 9, 0, 64), CREAM, 13.0)  # the counter's edge
+    c.paint(c.rect(9, 10, 0, 64), WOOD, 3.5)
+    for u in range(0, 64, 16):  # the doors' joints
+        c.paint(c.rect(10, 64, u, u + 1), WOOD, 4.0)
+    c.paint(c.rect(60, 64, 0, 64), WOOD, 3.0)  # the plinth, in shadow
+    return _texture(c)
+
+
+def vanity_top(n: int) -> int:
+    """The counter from above (front at the bottom): cream, n white basins
+    let into it, each with its plughole."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), CREAM, 12.5)
+    pitch = 64 / n
+    for k in range(n):
+        cu = pitch * (k + 0.5)
+        c.paint(c.ellipse(36, cu, 18, pitch * 0.34), GREY, 15.0)
+        c.paint(c.ellipse(36, cu, 15, pitch * 0.28), GREY, 12.0)
+        c.paint(c.ellipse(38, cu, 2.5, 2.5), STEEL, 5.0)
+    return _texture(c)
+
+
+def mirror_glass() -> int:
+    """A mirror: it can't reflect (there's nothing behind a wall to show),
+    so a cool grey sheen with two diagonal highlights, in a chrome edge."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), STEEL, 7.0)
+    for offset in (14, 22):
+        c.paint(np.abs(c.u + c.v - 2 * offset - 20) < 3 + (offset == 14) * 2, STEEL, 10.0)
+    c.paint(~c.rect(2, 62, 2, 62), STEEL, 13.0)
+    return _texture(c)
+
+
+def _basins(n: int) -> tuple[Box, ...]:
+    """A vanity unit with n basins let into its counter, a chrome tap at the
+    back of each, a mirror the unit's width over it."""
+    half = n * BASIN_PITCH / 2
+    front, side = vanity_front(), _plain_texture(WOOD, 5.5)
+    chrome = _plain_texture(*_CHROME)
+    unit = Box(
+        (0.0, BASIN_DEPTH),
+        (-half, half),
+        (0.0, BASIN_TOP),
+        (front, side, side, side, vanity_top(n)),
+    )
+    mirror = Box(
+        (0.0, 0.006), (-half, half), (0.42, 0.74), (mirror_glass(), chrome, chrome, chrome, chrome)
+    )
+    taps = tuple(
+        Box((0.02, 0.06), (cy - 0.012, cy + 0.012), (BASIN_TOP, BASIN_TOP + 0.05), (chrome,) * 5)
+        for cy in (half - (k + 0.5) * BASIN_PITCH for k in range(n))
+    )
+    return (unit, mirror, *taps)
+
+
+def hand_dryer_front() -> int:
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), GREY, 13.5)
+    c.paint(c.rect(56, 64, 0, 64), GREY, 11.0)
+    c.paint(c.ellipse(26, 32, 9, 12), STEEL, 12.0)  # the big chrome button
+    c.paint(c.ellipse(26, 32, 6, 9), STEEL, 9.0)
+    c.text("PRESS", 42, 22, GREY, 5.0)
+    return _texture(c)
+
+
+def _hand_dryer() -> tuple[Box, ...]:
+    white = _plain_texture(GREY, 13.0)
+    chrome = _plain_texture(*_CHROME)
+    body = Box(
+        (0.0, 0.07), (-0.055, 0.055), (0.36, 0.46), (hand_dryer_front(), white, white, white, white)
+    )
+    nozzle = Box((0.02, 0.06), (-0.015, 0.015), (0.33, 0.36), (chrome,) * 5)
+    return (body, nozzle)
+
+
+def wet_floor_front() -> int:
+    """CAUTION WET FLOOR: black on yellow, a figure slipping."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), OCHRE, 12.5)
+    c.paint(c.rect(0, 64, 0, 3) | c.rect(0, 64, 61, 64), OCHRE, 9.0)
+    _centred(c, "CAUTION", 6, GREY, 1.0)
+    # The slipping figure: head, a body tipping back, legs flying.
+    c.paint(c.ellipse(20, 30, 3, 3), GREY, 1.0)
+    for k in range(9):
+        c.paint(c.rect(23 + k, 25 + k, 28 - k // 3, 31 - k // 3), GREY, 1.0)
+    c.paint(c.rect(32, 34, 26, 40), GREY, 1.0)
+    c.paint(c.rect(36, 37, 14, 50), GREY, 1.0)  # the floor
+    _centred(c, "WET", 42, GREY, 1.0)
+    _centred(c, "FLOOR", 50, GREY, 1.0)
+    return _texture(c)
+
+
+def wet_floor_side() -> int:
+    """Seen from the side, an A: a yellow triangle, see-through round it."""
+    c = Canvas()
+    c.paint(
+        (np.abs(c.u - 31.5) < 1 + c.v * 0.47) & (np.abs(c.u - 31.5) > c.v * 0.47 - 4), OCHRE, 11.0
+    )
+    return _texture(c)
+
+
+def _wet_floor_sign() -> tuple[Box, ...]:
+    front, side = wet_floor_front(), wet_floor_side()
+    top = Canvas()
+    top.paint(top.rect(0, 64, 28, 36), OCHRE, 12.0)  # just the hinge along the ridge
+    return (
+        Box((-0.05, 0.05), (-0.075, 0.075), (0.0, 0.24), (front, side, front, side, _texture(top))),
+    )
+
+
 # Keyed by thing type name, like SPRITES.
 BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "mac": _mac_se30(),
@@ -2734,6 +3041,11 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "exit_sign": _exit_sign(EXIT_SIGN_HEIGHTS["door"]),
     **{f"exit_sign:{k}": _exit_sign(z) for k, z in EXIT_SIGN_HEIGHTS.items()},
     "executive_desk": _executive_desk(),
+    **{f"cubicles_{w}": _cubicles(n) for n, w in ((2, "two"), (3, "three"), (4, "four"))},
+    **{f"urinals_{w}": _urinals(n) for n, w in ((2, "two"), (3, "three"))},
+    **{f"basins_{w}": _basins(n) for n, w in ((2, "two"), (3, "three"))},
+    "hand_dryer": _hand_dryer(),
+    "wet_floor_sign": _wet_floor_sign(),
 }
 BOX_TEXTURES: U8Array = np.stack(_TEXTURES)  # [texture][u][v]
 BOX_OPAQUE: BoolArray = np.stack(_OPAQUE)  # [texture][u][v]: False = see-through
