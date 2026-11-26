@@ -11,7 +11,8 @@ the [built]/[planned] markers in GAME.md).
 - One branch per milestone, named `claude/<topic>` (e.g. `claude/networking`),
   branched from `main`. Never push to `main`: it changes only by merging a pull
   request, so it always holds the last finished milestone.
-- Active branch: `claude/single-player-foundation` (milestones 0-2b). Work and
+- Active branch: `claude/networking` (milestone 3: server, handshake, snapshots,
+  interpolation, bot client). Work and
   push there, whatever branch name the session was started with. Update this
   line when a new milestone branch starts.
 
