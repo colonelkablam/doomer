@@ -128,6 +128,19 @@ means adding a module and registering it, not editing a dozen files.
   server's alone), events (alongside, in the same message). Entities
   that appear in play (enemies, drops) will need ids, as players do.
   815 bytes of JSON for `office.map` with 4 players, before rounding.
+- **The protocol** (`shared/protocol.py`, version 1): `Hello(version,
+  name)` -> `Welcome(player_id, mode, config, map_text)` or `Reject`;
+  then `Input(seq, input)` from the client each tick and `Update(ack,
+  snapshot, events)` from the server each tick; `NewFloor(map_text)` when
+  the lift arrives; `Bye(reason)` either way. One JSON object a line, a
+  `type` key; `encode` and `decode` are the only way in or out. The
+  config goes in the welcome so `step` runs the same on both sides.
+  Events convert by walking the `Event` subclasses: a new event needs no
+  protocol change. Everything decoded is checked (a client's data is
+  untrusted): malformed is a `ProtocolError`, never a crash; numbers in
+  inputs must be finite (NaN, `Infinity` and `1e999` refused: a NaN angle
+  would spread through the world); lines over 1 MB are refused. An
+  `Update` of the ground floor with 4 players, moving, is ~1.2 KB.
 - **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
   blocking (a lost packet holds up everything behind it until resent),
   matters on the internet, not here. Framing and encoding stay behind
@@ -971,11 +984,13 @@ Noted at the end of a session, to pick up next:
   `apply(world, snap)`, the changing state only, tested by round trip
   onto a fresh world; (3) `shared/protocol.py`: the messages (hello,
   welcome, reject, input, snapshot, map change, bye), the version, JSON
-  lines, events by a registry of their types; (4) the server core,
+  lines, events by a registry of their types [done]; (4) the server core,
   socket-free (`GameServer`: join, leave, input, tick -> messages out);
   `LocalSession` then runs on it; (5) the asyncio TCP transport
   (`python -m ok_doomer.server`, `TCP_NODELAY`, timeouts); (6) a bot
-  client (standard library: the test player and a load test); (7)
+  client (standard library: the test player and a load test; pulled
+  ahead of the game client so there's something to join with, and
+  something moving round you once the client can join); (7)
   `NetworkSession`: a reader thread into a queue, the world copy, remote
   players drawn ~2 snapshots behind, `--connect host:port`, a sprite for
   other players; (8) measure the lag on a LAN, then decide on prediction.
