@@ -2625,65 +2625,75 @@ SERVER_MODELS = {f"server:{kind}": _server(kind) for kind in _SERVER_LAMP_Z}
 
 
 # --- Vending machine (a health dispenser: doomer/shared/dispensers.py) -------------
-# An 80s snack machine against a wall: a red cabinet, a SNACKS header, a big
-# window onto shelves of coloured packets on spiral coils (a box of its own,
-# lit while the floor has power: it's on the main circuit), a selection
-# panel (a little display, a keypad, the coin slot) and the pick-up tray.
-# Model x out of the wall, the thing at the wall's face; sizes match its
-# footprint (shared/things.py).
+# A snack machine against a wall, as they were: a dark charcoal cabinet with
+# chrome trim; a big window onto a dark interior, a light strip along its
+# top, rows of silver spiral coils holding bright packets (a few slots sold
+# out); a narrow panel to the right (a red LED display, a keypad, the coin
+# slot); a pale PUSH flap under the window; a louvred kick plate. The window
+# is a box of its own, lit from inside while the floor has power (it's on
+# the main circuit). Model x out of the wall, the thing at the wall's face;
+# sizes match its footprint (shared/things.py).
 
 VEND_DEPTH, VEND_HALF_WIDTH, VEND_TOP = 0.3, 0.18, 0.7
-_VEND_WINDOW = (8, 50, 4, 42)  # v0, v1, u0, u1 on the front
+_VEND_WINDOW = (4, 45, 3, 44)  # v0, v1, u0, u1 on the front
 
 
 def vending_front() -> int:
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), BRICK, 8.0)  # the red cabinet
-    c.paint(c.rect(0, 64, 0, 1) | c.rect(0, 1, 0, 64), BRICK, 10.0)  # lit edges
-    c.paint(c.rect(1, 7, 2, 62), CREAM, 14.0)  # the header
-    _centred(c, "SNACKS", 2, BRICK, 8.0)
+    c.paint(c.rect(0, 64, 0, 64), GREY, 3.5)  # the charcoal cabinet
+    c.paint(c.rect(0, 64, 0, 1) | c.rect(0, 1, 0, 64) | c.rect(0, 64, 63, 64), GREY, 10.0)  # trim
     v0, v1, u0, u1 = _VEND_WINDOW
-    c.paint(c.rect(v0 - 1, v1 + 1, u0 - 1, u1 + 1), GREY, 2.0)  # the window's frame
-    c.paint(c.rect(v0 + 2, v0 + 6, 46, 60), GREY, 1.0)  # the display
-    c.paint(c.rect(v0 + 3, v0 + 5, 48, 56), BRICK, 13.0)  # its red digits
-    for row in range(4):  # the keypad
+    c.paint(c.rect(v0 - 1, v1 + 1, u0 - 1, u1 + 1), GREY, 9.0)  # the window's chrome frame
+    # The panel to the right: display, keypad, coin slot.
+    c.paint(c.rect(v0 + 2, v0 + 5, 48, 60), GREY, 0.5)
+    c.paint(c.rect(v0 + 3, v0 + 4, 49, 57), BRICK, 13.0)  # red LED digits
+    for row in range(5):
         for col in range(3):
-            vk, uk = v0 + 10 + row * 5, 47 + col * 4
-            c.paint(c.rect(vk, vk + 3, uk, uk + 3), GREY, 11.0)
-    c.paint(c.rect(v0 + 32, v0 + 40, 50, 56), GREY, 3.0)  # coin slot plate
-    c.paint(c.rect(v0 + 33, v0 + 39, 52, 54), GREY, 0.0)
-    c.paint(c.rect(53, 60, 6, 40), GREY, 1.0)  # the pick-up tray
-    c.paint(c.rect(53, 54, 6, 40), GREY, 6.0)
-    c.paint(c.rect(61, 64, 0, 64), GREY, 2.0)  # plinth
+            vk, uk = v0 + 9 + row * 4, 49 + col * 4
+            c.paint(c.rect(vk, vk + 2, uk, uk + 3), GREY, 11.0)
+    c.paint(c.rect(v0 + 31, v0 + 36, 51, 57), GREY, 8.0)  # the coin slot plate
+    c.paint(c.rect(v0 + 32, v0 + 35, 53, 55), GREY, 0.0)
+    c.paint(c.rect(47, 53, u0, u1), GREY, 12.0)  # the PUSH flap
+    c.paint(c.rect(47, 48, u0, u1), GREY, 14.0)
+    _centred(c, "PUSH", 48, GREY, 4.0)
+    for v in range(55, 63, 2):  # the kick plate's louvres
+        c.paint(c.rect(v, v + 1, 3, 61), GREY, 1.0)
+        c.paint(c.rect(v + 1, v + 2, 3, 61), GREY, 6.0)
     return _texture(c)
 
 
 def vending_window() -> int:
-    """Behind the glass: five shelves of snack packets on spiral coils."""
+    """Behind the glass: a dark interior, a light strip along the top, six
+    rows of spiral coils, most holding a bright packet."""
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), CREAM, 12.0)  # the back panel
+    c.paint(c.rect(0, 64, 0, 64), GREY, 1.0)  # dark inside
+    c.paint(c.rect(0, 2, 0, 64), CREAM, 15.0)  # the light strip
     colours = (BRICK, OCHRE, BLUE, GREEN, ORANGE, PURPLE)
-    for shelf in range(5):
-        top = 2 + shelf * 12
+    sold_out = {(1, 3), (3, 0), (4, 2)}
+    for row in range(6):
+        top = 4 + row * 10
         for slot in range(4):
-            u0 = 3 + slot * 15
-            ramp = colours[(shelf * 2 + slot) % len(colours)]
-            c.paint(c.rect(top, top + 8, u0, u0 + 12), ramp, 10.0)  # a packet
-            c.paint(c.rect(top, top + 2, u0, u0 + 12), ramp, 13.0)  # its lit top
-            c.paint(c.rect(top + 3, top + 5, u0 + 3, u0 + 9), CREAM, 14.0)  # its label
-            c.paint(c.rect(top + 8, top + 10, u0, u0 + 12) & (c.u % 3 == 0), GREY, 8.0)  # coil
-        c.paint(c.rect(top + 10, top + 11, 0, 64), GREY, 6.0)  # the shelf's edge
-    c.paint(c.rect(0, 64, 0, 64) & ((c.u + c.v) % 37 < 2), CREAM, 15.0)  # glass glints
+            u0 = 2 + slot * 15
+            coil = c.rect(top + 6, top + 8, u0, u0 + 12) & (c.u % 3 != 0)
+            c.paint(coil, GREY, 11.0)  # the spiral, its loops catching the light
+            if (row, slot) in sold_out:
+                continue
+            ramp = colours[(row * 4 + slot * 3) % len(colours)]
+            c.paint(c.rect(top, top + 6, u0 + 1, u0 + 11), ramp, 11.0)  # a packet
+            c.paint(c.rect(top, top + 1, u0 + 1, u0 + 11), ramp, 14.0)  # its crimped top
+            c.paint(c.rect(top + 2, top + 4, u0 + 3, u0 + 9), CREAM, 14.0)  # its label
+        c.paint(c.rect(top + 8, top + 9, 0, 64), GREY, 5.0)  # the shelf
+    c.paint(c.rect(0, 64, 0, 64) & ((c.u - c.v) % 47 == 0), GREY, 8.0)  # a glint on the glass
     return _texture(c)
 
 
 def _vending_machine() -> tuple[Box, ...]:
-    side = _plain_texture(BRICK, 7.0)
+    side = _plain_texture(GREY, 3.0)
     cabinet = Box(
         (0.0, VEND_DEPTH),
         (-VEND_HALF_WIDTH, VEND_HALF_WIDTH),
         (0.0, VEND_TOP),
-        (vending_front(), side, side, side, _plain_texture(BRICK, 9.0)),
+        (vending_front(), side, side, side, _plain_texture(GREY, 4.0)),
     )
     # The window: lit from inside while there's power; unlit (the room's
     # light on the same shelves) without.

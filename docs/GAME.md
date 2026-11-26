@@ -175,7 +175,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Washrooms (loos): toilet cubicles (partitions and doors), basins with a mirror over them, a hand dryer, avocado tiles (the `7` wall) | yes | planned |
 | Photocopier (inert) | yes | planned |
 | Fax machine on stand | yes | planned |
-| Vending machine (box model, `vending_machine`): an 80s snack machine, a red cabinet with a SNACKS header, a big window onto five shelves of coloured packets on spiral coils (lit from inside while there's power), a selection panel (red display, keypad, coin slot) and the pick-up tray. A health dispenser (see Pickups) | yes | [built] |
+| Vending machine (box model, `vending_machine`): a snack machine as they were, a dark charcoal cabinet with chrome trim; a big window onto a dark interior (lit from inside while there's power, a light strip along its top), six rows of silver spiral coils holding bright packets, a few slots sold out; a narrow panel to the right (red LED display, keypad, coin slot); a pale PUSH flap; a louvred kick plate. A health dispenser (see Pickups) | yes | [built] |
 | Coat stand | yes | planned |
 | Ashtray bin | yes | planned |
 | Flip chart | yes | planned |
