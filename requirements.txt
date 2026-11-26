@@ -1,0 +1,4 @@
+# Client and editor. The server needs only the standard library.
+pygame-ce==2.5.8
+numpy==2.5.5
+numba==0.68.1  # compiles the renderer's ray casting (doomer/client/fastcast.py)

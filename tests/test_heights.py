@@ -1,0 +1,292 @@
+"""Rendering with heights: tall walls, bulkheads, raised ceilings, raised
+floors, camera eye height and looking up/down. Expected pixels come from the
+projection formula  row = horizon + (eye - height) * projection / depth."""
+
+import math
+
+import numpy as np
+
+from doomer.client.config import RenderConfig
+from doomer.client.render import EYE_HEIGHT, MAX_PITCH, Camera, Renderer
+from doomer.shared.mapfile import parse_map
+
+CFG = RenderConfig()
+R = Renderer(CFG)
+COL = CFG.width // 2
+
+# A corridor: x 1..10 open, wall at x = 11. Cells x 4..7 are double height.
+ATRIUM = parse_map(
+    "[walls]\n############\n#..........#\n############\n\n[ceiling]\n888888888888\n8888gggg8888\n"
+)
+# The same corridor, double height all the way to the end wall.
+TALL_END = parse_map(
+    "[walls]\n############\n#..........#\n############\n\n[ceiling]\n888888888888\n8ggggggggggg\n"
+)
+
+
+def row(
+    height: float, depth: float, eye: float = EYE_HEIGHT, horizon: float | None = None
+) -> float:
+    h = CFG.height / 2 if horizon is None else horizon
+    return h + (eye - height) * R.projection / depth
+
+
+def test_wall_in_a_tall_space_reaches_its_ceiling() -> None:
+    R.render_indices(TALL_END, Camera(1.5, 1.5, 0.0))
+    depth = 9.5  # wall face at x = 11
+    # Halfway between heights 1 and 2: wall, not ceiling.
+    y = round((row(1.0, depth) + row(2.0, depth)) / 2)
+    assert math.isclose(R.zbuffer[COL, y], depth, rel_tol=1e-6)
+    # In a normal-height corridor the same pixel is ceiling (infinitely far).
+    plain = parse_map("[walls]\n############\n#..........#\n############\n")
+    R.render_indices(plain, Camera(1.5, 1.5, 0.0))
+    ceiling_depth = (1.0 - EYE_HEIGHT) * R.projection / (CFG.height / 2 - (y + 0.5))
+    assert math.isclose(R.zbuffer[COL, y], ceiling_depth, rel_tol=1e-6)
+
+
+def test_bulkhead_where_the_ceiling_comes_down() -> None:
+    # Camera inside the tall stretch looking east: at x = 8 the ceiling drops
+    # from 2 back to 1, so a bulkhead face spans heights 1..2 at depth 8 - 4.5.
+    R.render_indices(ATRIUM, Camera(4.5, 1.5, 0.0))
+    depth = 3.5
+    y = round((row(1.0, depth) + row(2.0, depth)) / 2)
+    assert math.isclose(R.zbuffer[COL, y], depth, rel_tol=1e-6)
+
+
+def test_raised_ceiling_surface_has_the_right_depth() -> None:
+    R.render_indices(ATRIUM, Camera(4.5, 1.5, 0.0))
+    # Near the top of the screen the ray meets the height-2 ceiling before the
+    # bulkhead 3.5 away. (Nearer than ~2.9 the ceiling is above the screen.)
+    for y in (0, 5, 10):
+        expected = (2.0 - EYE_HEIGHT) * R.projection / (CFG.height / 2 - (y + 0.5))
+        assert expected < 3.5  # still inside the tall stretch
+        assert math.isclose(R.zbuffer[COL, y], expected, rel_tol=1e-6)
+
+
+def test_looking_up_moves_the_horizon_down_by_tan_pitch() -> None:
+    plain = parse_map("[walls]\n############\n#..........#\n############\n")
+    pitch = math.radians(15)
+    R.render_indices(plain, Camera(1.5, 1.5, 0.0, pitch=pitch))
+    horizon = CFG.height / 2 + math.tan(pitch) * R.projection
+    assert math.isclose(R.horizon, horizon)
+    # The end wall's bottom edge moves down by the same amount.
+    depth = 9.5
+    y = round(row(0.05, depth, horizon=horizon))
+    assert math.isclose(R.zbuffer[COL, y], depth, rel_tol=1e-6)
+    # Pitch is clamped.
+    R.render_indices(plain, Camera(1.5, 1.5, 0.0, pitch=math.radians(80)))
+    assert math.isclose(R.horizon, CFG.height / 2 + math.tan(MAX_PITCH) * R.projection)
+
+
+def test_lower_eye_moves_the_floor_line_up() -> None:
+    plain = parse_map("[walls]\n############\n#..........#\n############\n")
+    depth = 9.5
+    for eye in (EYE_HEIGHT, 0.35):  # standing, crouching
+        R.render_indices(plain, Camera(1.5, 1.5, 0.0, z=eye))
+        bottom = row(0.0, depth, eye=eye)
+        assert math.isclose(R.zbuffer[COL, math.floor(bottom) - 1], depth, rel_tol=1e-6)
+        assert math.isinf(R.zbuffer[COL, math.ceil(bottom) + 1])  # floor below it
+
+
+def test_standing_on_a_raised_floor_draws_it_only_to_its_edge() -> None:
+    # Camera on a raised run (type e, height 4/8, x = 2..5) looking east; it
+    # drops to the open floor at x = 6, and the end wall is at x = 11.
+    stage = parse_map(
+        "[walls]\n############\n#.eeee.....#\n############\n\n[floor]\n000000000000\n004444000000\n"
+    )
+    eye = 0.5 + EYE_HEIGHT
+    frame = R.render_indices(stage, Camera(2.5, 1.5, 0.0, z=eye))
+    # 2.0 away the raised floor is under you: its surface, at that depth.
+    assert math.isclose(R.zbuffer[COL, math.floor(row(0.5, 2.0, eye=eye))], 2.0, rel_tol=0.05)
+    # The row where height 0.5 would be 4.0 away passes over the edge (3.5
+    # away) and reaches the lower floor beyond: the default floor, infinitely far.
+    assert np.isinf(R.zbuffer[COL, round(row(0.5, 4.0, eye=eye))])
+    assert frame.shape == (CFG.width, CFG.height)
+
+
+# A double-height room (ceiling 16/8) with a desk pair in the middle (x = 5).
+DESK_IN_ATRIUM = parse_map(
+    "[walls]\n############\n#....d.....#\n############\n\n"
+    "[floor]\n000000000000\n000002000000\n\n"
+    "[ceiling]\ngggggggggggg\ngggggggggggg\n"
+)
+
+
+def test_high_ceiling_carries_on_beyond_a_desk() -> None:
+    # From outside the tall room it'd be an open stretch closed by the desk;
+    # from inside it's the camera's own space. Either way, ceiling pixels whose
+    # height-2 distance lies beyond the desk (x > 6) must be the high ceiling.
+    for camera in (Camera(1.5, 1.5, 0.0), Camera(2.5, 1.5, 0.0)):
+        R.render_indices(DESK_IN_ATRIUM, camera)
+        end_wall = 11 - camera.x
+        for y in range(0, CFG.height // 2 - 1, 3):
+            depth = (2.0 - EYE_HEIGHT) * R.projection / (CFG.height / 2 - (y + 0.5))
+            if 6 - camera.x < depth < end_wall:
+                assert math.isclose(R.zbuffer[COL, y], depth, rel_tol=1e-6), (camera, y)
+
+
+def test_from_on_a_desk_the_high_ceiling_still_carries_on() -> None:
+    eye = 0.25 + EYE_HEIGHT
+    camera = Camera(5.5, 1.5, 0.0, z=eye)  # standing on the desk, looking east
+    R.render_indices(DESK_IN_ATRIUM, camera)
+    for y in range(0, CFG.height // 2 - 1, 3):
+        depth = (2.0 - eye) * R.projection / (CFG.height / 2 - (y + 0.5))
+        if depth < 11 - camera.x:
+            assert math.isclose(R.zbuffer[COL, y], depth, rel_tol=1e-6), y
+
+
+def test_ceiling_light_panel_is_drawn_into_the_ceiling() -> None:
+    from doomer.client.palette import CREAM
+
+    lit = parse_map("[walls]\n#######\n#.....#\n#######\n\n[things]\nceiling_light 3.5 1.5 0\n")
+    # Looking along x and up, a little off the cell's centre line: the column
+    # straight ahead passes under the panel, beside the bar across its middle.
+    camera = Camera(2.6, 1.62, 0.0, pitch=math.radians(25))
+    frame = R.render_indices(lit, camera)
+    column = frame[COL, : int(R.horizon)]
+    diffuser = (CREAM << 4) | 15
+    hits = [y for y in range(len(column)) if column[y] == diffuser]
+    assert hits, "no light panel pixels"
+    # Those pixels are on the ceiling at x within the panel: 3.5 +/- 0.25.
+    for y in hits:
+        up = R.horizon - (y + 0.5)
+        depth = (1.0 - EYE_HEIGHT) * R.projection / up
+        assert abs(camera.x + depth - 3.5) < 0.26
+    # A room without the light thing has no panel.
+    plain = parse_map("[walls]\n#######\n#.....#\n#######\n")
+    assert diffuser not in R.render_indices(plain, camera)[COL].tolist()
+
+
+def test_low_ceiling_hides_the_high_one_beyond_it() -> None:
+    # Camera in the normal-height corridor at x = 1.5, looking east into the
+    # tall stretch that starts at x = 4. Rows whose default-ceiling point is
+    # nearer than x = 4 must show that low ceiling, not the high one beyond.
+    R.render_indices(ATRIUM, Camera(1.5, 1.5, 0.0))
+    checked = 0
+    for y in range(0, CFG.height // 2 - 1):
+        low = (1.0 - EYE_HEIGHT) * R.projection / (CFG.height / 2 - (y + 0.5))
+        if low < 2.5 - 0.05:  # the boundary is 2.5 away
+            assert math.isclose(R.zbuffer[COL, y], low, rel_tol=1e-6), y
+            checked += 1
+    assert checked > 5
+
+
+def test_low_ceiling_stops_at_the_boundary_even_when_a_step_is_there() -> None:
+    # The tall stretch starts at x = 4 with a step (a raised block, not open
+    # floor), as at the lobby door. Beyond x = 4 the default ceiling doesn't
+    # exist: no pixel may show it there.
+    stepped = parse_map(
+        "[walls]\n############\n#...e......#\n############\n\n"
+        "[floor]\n000000000000\n000010000000\n\n"
+        "[ceiling]\n888888888888\n8888gggggggg\n"
+    )
+    R.render_indices(stepped, Camera(1.5, 1.5, 0.0))
+    for y in range(0, CFG.height // 2 - 1):
+        low = (1.0 - EYE_HEIGHT) * R.projection / (CFG.height / 2 - (y + 0.5))
+        z = float(R.zbuffer[COL, y])
+        if low < 2.5 - 0.05:
+            assert math.isclose(z, low, rel_tol=1e-6), y  # our own low ceiling
+        elif low > 2.5 + 0.05:
+            assert not math.isclose(z, low, rel_tol=1e-6), y  # not a phantom low ceiling
+
+
+STAIRS = parse_map(
+    "[walls]\n11111111\n1eeeeee1\n1..hh..1\n1..hh..1\n1......1\n1......1\n11111111\n\n"
+    "[floor]\n00000000\n08888880\n00088000\n00044000\n00000000\n00000000\n00000000\n\n"
+    "[ceiling]\ngggggggg\ngggggggg\ngggggggg\ngggggggg\ngggggggg\ngggggggg\ngggggggg\n\n"
+    "[facing]\n........\n........\n...nn...\n...nn...\n"
+)
+
+
+def test_stairs_are_drawn_as_steps_even_above_eye_level() -> None:
+    # Facing north up the flight from 1.6 before it: 16 steps of 1/16 storey
+    # with 1/8-cell treads, rising from 0 to 1.0, past eye level (0.6).
+    camera = Camera(3.5, 5.6, -math.pi / 2, pitch=math.radians(10))
+    R.render_indices(STAIRS, camera)
+    checked = 0
+    for i in range(16):
+        riser = 1.6 + i / 8  # step i's riser (its near face) ...
+        row = int(R.horizon + (EYE_HEIGHT - (i + 0.5) / 16) * R.projection / riser)
+        if 0 <= row < CFG.height:
+            assert math.isclose(R.zbuffer[COL, row], riser, abs_tol=1e-6), i
+            checked += 1
+        tread = (i + 1) / 16  # ... and its tread, seen from above, 1/8 cell deep
+        near_row = R.horizon + (EYE_HEIGHT - tread) * R.projection / riser
+        far_row = R.horizon + (EYE_HEIGHT - tread) * R.projection / (riser + 1 / 8)
+        if tread < EYE_HEIGHT and near_row - far_row >= 2:  # a few pixels deep on screen
+            row = int((near_row + far_row) / 2)
+            depth = (EYE_HEIGHT - tread) * R.projection / (row + 0.5 - R.horizon)
+            if 0 <= row < CFG.height:
+                assert math.isclose(R.zbuffer[COL, row], depth, abs_tol=1e-6), i
+                assert riser <= depth <= riser + 1 / 8
+                checked += 1
+    assert checked >= 15  # most risers and the nearer treads
+
+
+def test_no_railing_or_step_at_the_top_of_the_stairs_when_standing_on_them() -> None:
+    from doomer.client.render import Renderer as _R
+
+    # Balcony (i, a storey up) along y = 1, stairs up to it at x = 3 (y = 2, 3).
+    room = parse_map(
+        "[walls]\n#######\n#iiiii#\n#..h..#\n#..h..#\n#.....#\n#######\n\n"
+        "[floor]\n0000000\n0888880\n0008000\n0004000\n\n"
+        "[ceiling]\nggggggg\nggggggg\nggggggg\nggggggg\nggggggg\nggggggg\n\n"
+        "[facing]\n.......\n.......\n...n...\n...n...\n"
+    )
+    on = _R(CFG)
+    off = _R(CFG)
+    off.rail_opaque = np.zeros_like(off.rail_opaque)  # the same, minus railings
+    x, y = 3.5, 2.5  # halfway up the upper flight, looking north at the opening
+    camera = Camera(x, y, -math.pi / 2, z=room.floor_at(x, y) + EYE_HEIGHT)
+    assert (on.render_indices(room, camera) == off.render_indices(room, camera)).all()
+
+
+def test_balusters_drawn_on_the_edge_of_the_balcony_cell_you_stand_in() -> None:
+    from doomer.client.render import Renderer as _R
+
+    # Balcony along y = 1 dropping to the floor at y = 2. Stand on it near the
+    # edge, looking down at the railing in your own cell.
+    room = parse_map(
+        "[walls]\n#######\n#iiiii#\n#.....#\n#.....#\n#######\n\n"
+        "[floor]\n0000000\n0888880\n\n"
+        "[ceiling]\nggggggg\nggggggg\nggggggg\nggggggg\nggggggg\n"
+    )
+    on = _R(CFG)
+    off = _R(CFG)
+    off.rail_opaque = np.zeros_like(off.rail_opaque)
+    camera = Camera(3.3, 1.6, math.pi / 2, z=1.0 + EYE_HEIGHT, pitch=-0.35)
+    per_column = (on.render_indices(room, camera) != off.render_indices(room, camera)).sum(axis=1)
+    drawn = per_column[per_column > 0]
+    # Handrail and bottom rail alone give every column about the same count;
+    # balusters make some columns solid from top to bottom.
+    assert drawn.size and drawn.max() > 2 * drawn.min()
+
+
+def test_bulkhead_is_drawn_below_eye_level_seen_from_a_balcony() -> None:
+    # In the double-height part of the corridor (x 4..7) with the eye a storey
+    # up (on a balcony), looking east: the ceiling drops to one storey at
+    # x = 8, so a bulkhead fills heights 1..2 there, partly below eye level.
+    camera = Camera(5.0, 1.5, 0.0, z=1.0 + EYE_HEIGHT)
+    R.render_indices(ATRIUM, camera)
+    for height in (1.1, 1.3, 1.5, 1.8):  # below and above the eye (1.6)
+        row = int(R.horizon + (camera.z - height) * R.projection / 3.0)
+        assert math.isclose(R.zbuffer[COL, row], 3.0, rel_tol=1e-6), height
+
+
+def test_low_ceiling_hides_a_tall_rooms_wall_seen_from_the_low_room() -> None:
+    # Two-storey room at x 1..6, one-storey corridor x 7..10. From the corridor,
+    # the tall room's far wall (x = 0) is drawn up to that room's ceiling, but
+    # any sight line that meets the corridor's ceiling first must see ceiling.
+    room = parse_map(
+        "[walls]\n############\n#..........#\n############\n\n"
+        "[ceiling]\n888888888888\n8gggggg88888\n888888888888\n"
+    )
+    camera = Camera(10.5, 1.5, math.pi, pitch=0.2)
+    R.render_indices(room, camera)
+    checked = 0
+    for row in range(int(R.horizon)):
+        reach = (1.0 - EYE_HEIGHT) * R.projection / (R.horizon - (row + 0.5))
+        if reach < 10.5 - 7.0:  # meets the corridor ceiling before the tall room
+            assert math.isclose(R.zbuffer[COL, row], reach, rel_tol=1e-6), row
+            checked += 1
+    assert checked > 10

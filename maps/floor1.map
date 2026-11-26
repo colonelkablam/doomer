@@ -1,0 +1,235 @@
+name: Sales Floor
+storey: 1
+# Floor 1: arrive by lift; the sales floor (four pods) and its manager's
+# office to the north of a corridor the width of the floor, the lift lobby
+# and a break room to its south. The route: out of the lift -> the red pass
+# on a sales desk -> the manager's office -> the gold pass -> the lifts up.
+# Power's on (no breaker on this floor).
+
+[walls]
+1444444444444441444441
+4..............1.....4
+4..............1.....4
+4..ddd...ddd...1..b..4
+4..............1.....4
+4..............1.....4
+4..ddd...ddd...1.....4
+4..............1.....4
+1111111.11111.1111.111
+4....................4
+4....................4
+11111..1111111.1111111
+1........1...........4
+1........1...........4
+1........1...........4
+1........1...........4
+1k.k.k.k11444444444441
+1kkkkkkk11111111111111
+
+[floor]
+0000000000000000000000
+0000000000000000000000
+0000000000000000000000
+0002220002220000002000
+0000000000000000000000
+0000000000000000000000
+0002220002220000000000
+0000000000000000000000
+0000000000000000000000
+0000000000000000000000
+0000000000000000000000
+0000000000000000000000
+0000000000000000000000
+0000000000000000000000
+0000000000000000000000
+0000000000000000000000
+0000000000000000000000
+0000000000000000000000
+
+[ceiling]
+8888888888888888888888
+8888888888888888888888
+8888888888888888888888
+8888888888888888888888
+8888888888888888888888
+8888888888888888888888
+8888888888888888888888
+8888888888888888888888
+8888888688888688886888
+8888888888888888888888
+8888888888888888888888
+8888866888888868888888
+8888888888888888888888
+8888888888888888888888
+8888888888888888888888
+8888888888888888888888
+8868686888888888888888
+8888888888888888888888
+
+[facing]
+......................
+......................
+......................
+...nnn...nnn......n...
+......................
+......................
+...nnn...nnn..........
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+..n.n.n...............
+
+[areas]
+......................
+................eeeee.
+................eeeee.
+................eeeee.
+................eeeee.
+................eeeee.
+................eeeee.
+................eeeee.
+......................
+......................
+......................
+......................
+.llllllll.............
+.llllllll.............
+.llllllll.............
+.llllllll.............
+.lclclcll.............
+......................
+
+[things]
+# type          x     y     angle
+# Arriving: the team in the middle lift's car, facing out. The lifts are
+# an executive floor's: locked (gold), a keyswitch in the car, so the way
+# up needs the gold pass, which is in the sales manager's office (red).
+coop_start      4.5   16.5  270
+door_lift       2.5   16.5  270   lock=gold car=B1
+door_lift       4.5   16.5  270   lock=gold
+door_lift       6.5   16.5  270   lock=gold car=5
+ceiling_light   2.5   16.5  0
+ceiling_light   4.5   16.5  0
+ceiling_light   6.5   16.5  0
+# The lift lobby: stone, a bench, plants
+sofa_two        1.5   13.9  0     at=w
+ficus           1.5   12.5  0     at=nw
+ficus           8.5   12.5  0     at=ne
+poster          8.5   14.2  0     kind=plan at=e
+bin_tall        8.5   15.5  0     kind=steel at=se
+ceiling_light   4.5   13.5  0
+# The corridor: two cells wide, the sales floor's openings on its north
+# side, the manager's door (red), the lobby and the break room on its south
+water_cooler    20.5  9.5   0     at=ne
+bin_tall        1.5   10.5  0     kind=orange at=sw
+poster          9.5   9.5   0     kind=plan at=n
+poster          16.5  9.5   0     kind=synergy at=n
+ceiling_light   2.5  9.5   0
+ceiling_light   6.5  9.5   0
+ceiling_light   10.5  9.5   0
+ceiling_light   14.5  9.5   0
+ceiling_light   18.5  9.5   0
+door_hinged     18.5  8.5   90    lock=red
+# The sales floor: four pods of steel desks back to back, a Mac and a
+# chair per sitter; the facilities (red) pass left on a desk
+mac             3.72 3.25  276.4
+chair           3.75 2.74  100
+mac             3.36 3.76  83.4
+chair           3.35 4.29  259
+mac             4.68 3.25  265.2
+chair           4.70 2.72  65
+mac             4.35 3.76  97.7
+chair           4.39 4.29  269
+mac             5.71 3.25  276.0
+chair           5.76 2.69  75
+mac             5.34 3.76  96.5
+chair           5.36 4.29  289
+mac             9.67 3.26  274.5
+chair           9.63 2.67  91
+mac             9.33 3.76  95.4
+chair           9.37 4.34  285
+mac             10.65 3.25  263.8
+chair           10.61 2.74  108
+mac             10.28 3.75  82.6
+chair           10.33 4.28  283
+mac             11.66 3.26  265.7
+chair           11.69 2.68  110
+mac             11.34 3.74  86.1
+chair           11.39 4.33  256
+mac             3.70 6.24  263.7
+chair           3.75 5.73  110
+mac             3.35 6.75  96.2
+chair           3.35 7.26  265
+mac             4.70 6.25  278.2
+chair           4.69 5.73  114
+mac             4.29 6.76  94.9
+chair           4.25 7.29  254
+mac             5.65 6.26  261.7
+chair           5.61 5.72  69
+mac             5.34 6.74  96.7
+chair           5.40 7.31  259
+mac             9.68 6.25  274.1
+chair           9.69 5.73  90
+mac             9.35 6.76  84.7
+chair           9.35 7.30  248
+mac             10.71 6.26  274.7
+chair           10.65 5.69  99
+mac             10.33 6.74  86.0
+chair           10.31 7.30  264
+mac             11.71 6.26  262.2
+chair           11.74 5.71  68
+mac             11.33 6.75  82.8
+chair           11.38 7.29  264
+pass_red        10.78 6.86  0
+coffee_cup      4.18  3.22  40
+coffee_cup      11.2  6.18  200
+bin             6.12  3.4   0     kind=steel
+bin             8.88  6.6   180   kind=steel
+bin             12.12 3.6   0     kind=steel
+ficus           1.5   1.5   0     at=nw
+ficus           14.5  1.5   0     at=ne
+poster          14.5  3.0   0     kind=employee_may at=e
+poster          14.5  3.3   0     kind=employee_apr at=e
+poster          14.5  3.6   0     kind=employee_mar at=e
+poster          14.5  5.6   0     kind=teamwork at=e
+ceiling_light   4.5   2.5   0
+ceiling_light   10.5   2.5   0
+ceiling_light   4.5   5.5   0
+ceiling_light   10.5   5.5   0
+ceiling_light   7.5   4.5   0
+ceiling_light   13.5   4.5   0
+# The sales manager's office (red pass): a desk facing the door, the
+# executive (gold) pass on it
+mac             18.5  3.26  272
+chair           18.48 2.7   94
+phone           17.78 3.55  268
+pass_gold       18.3  3.84  0
+filing_cabinet  16.5  4.5   0     at=w
+filing_cabinet  16.5  4.84  0     at=w
+sofa_two        16.5  7.5   0     at=s
+ficus           20.5  1.5   0     at=ne
+poster          16.5  2.4   0     kind=excellence at=w
+bin             17.6  2.55  0     kind=wood
+ceiling_light   18.5  4.5   0
+# The break room: snacks, water, a sofa by the window
+vending_machine 10.5  12.6  0     at=w
+water_cooler    10.5  14.3  0     at=w
+sofa_three      16.5  15.5  0     at=s
+coffee_table    16.5  14.85 0
+fern            16.65 14.85 0
+bin_tall        20.5  12.5  0     kind=orange at=ne
+poster          11.6  12.5  0     kind=teamwork at=n
+ceiling_light   12.5  13.5  0
+ceiling_light   17.5  13.5  0
+# Deathmatch
+dm_spawn        2.5   1.5   0
+dm_spawn        13.5  6.5   180
+dm_spawn        19.5  10.5  180
+dm_spawn        14.5  14.5  270
