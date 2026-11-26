@@ -114,6 +114,20 @@ means adding a module and registering it, not editing a dozen files.
   60 Hz to 4 clients ~2.3 Mbit/s, fine on a LAN. So full snapshots first,
   deltas only if a measurement says so. A tick with 4 players took 0.58 ms
   on the cloud VM (budget 16.7 ms); a Pi 5 is perhaps 2-3x slower.
+- **Snapshots** (`shared/snapshot.py`): only what changes in play. The
+  client builds its own `World` from the map the server sent, so a
+  snapshot's doors, pickups, switches and dispensers go positionally (each
+  a row of its changing fields, in map order); players go whole, with ids,
+  as they join and leave. `capture(world)` and `apply(world, snap)`
+  (players updated in place, so a session holding one sees it move).
+  Each entity type's fields are listed as `STATE` (sent) or `FIXED` (by
+  the map: a lift's `here`, a cubicle's `locked`); the tests check every
+  field is listed, that every field play changes is sent (a run that uses
+  every switch, dispenser and door, the lift arriving), and that a fresh
+  world given a snapshot then plays on identically. Not sent: `rng` (the
+  server's alone), events (alongside, in the same message). Entities
+  that appear in play (enemies, drops) will need ids, as players do.
+  815 bytes of JSON for `office.map` with 4 players, before rounding.
 - **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
   blocking (a lost packet holds up everything behind it until resent),
   matters on the internet, not here. Framing and encoding stay behind
@@ -953,7 +967,7 @@ Noted at the end of a session, to pick up next:
   bank: every new template multiplies the faces possible.
 - **Networking (milestone 3), in order**: (1) [done] prep: spawning and
   the next floor in `shared/spawn.py`, players spread round a start,
-  `idle_input`; (2) `shared/snapshot.py`: `capture(world)` and
+  `idle_input`; (2) [done] `shared/snapshot.py`: `capture(world)` and
   `apply(world, snap)`, the changing state only, tested by round trip
   onto a fresh world; (3) `shared/protocol.py`: the messages (hello,
   welcome, reject, input, snapshot, map change, bye), the version, JSON
