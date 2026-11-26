@@ -883,6 +883,12 @@ Noted at the end of a session, to pick up next:
   on a stand, a coat stand, an ashtray bin, a flip chart, an overhead
   projector on a trolley, a fire extinguisher.
 - **Cosmetic to-dos**, smaller polish noted along the way:
+  - The lift ride's lurch: the car doesn't move (each storey is its own
+    map; the ride is the panel counting, then the next map), so sell it
+    with the camera: a dip of a few cm as it sets off (`LiftDeparting`),
+    eased back, and a smaller bounce as it stops, as the eye height eases
+    for a crouch. Client-side only. Sound (the hum, a ding, the doors)
+    would do more, once there's audio.
   - A flickering fluorescent panel (one of the washrooms'): the light map
     is baked, so its pool would have to be switched on and off as a
     separate patch.
