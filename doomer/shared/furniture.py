@@ -52,7 +52,7 @@ def placed_footprints(thing: Thing) -> list[PlacedFootprint]:
 
 def footprint_obstacles(thing: Thing) -> list[Obstacle]:
     return [
-        Obstacle((p.x0 + p.x1) / 2, (p.y0 + p.y1) / 2, (p.x1 - p.x0) / 2, (p.y1 - p.y0) / 2)
+        Obstacle((p.x0 + p.x1) / 2, (p.y0 + p.y1) / 2, (p.x1 - p.x0) / 2, (p.y1 - p.y0) / 2, p.top)
         for p in placed_footprints(thing)
     ]
 

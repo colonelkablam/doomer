@@ -21,14 +21,14 @@ from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 
-from doomer.shared.collision import Obstacle, ThinWall, move_box
+from doomer.shared.collision import Obstacle, ThinWall, move_box, obstacles_in_the_way
 from doomer.shared.config import MovementConfig, SimConfig
 from doomer.shared.doors import LIFT, Door, door_walls
 from doomer.shared.mapfile import GameMap
 from doomer.shared.pickups import HEIGHT_REACH, REACH, Pickup
 from doomer.shared.player import PlayerState
 from doomer.shared.screens import SCREEN_HALF, screens_at_height
-from doomer.shared.sim import _drops_away, cell_blocks, on_railed_floor, support_height
+from doomer.shared.sim import _drops_away, cell_blocks, on_railed_floor, standing_height
 from doomer.shared.switches import POWER, USE_REACH, Switch
 from doomer.shared.things import EXIT
 from doomer.shared.world import ModeNotSupported, World, new_world
@@ -141,7 +141,7 @@ def _reachable(
     def position(i: int, j: int) -> tuple[float, float]:
         return sx + i * SPACING, sy + j * SPACING
 
-    start_z = support_height(game_map, sx, sy, move.radius)
+    start_z = standing_height(game_map, obstacles, sx, sy, move.radius, 0.0, move.step_height)
     seen = {(0, 0): start_z}
     queue = deque([(0, 0)])
     while queue:
@@ -195,9 +195,10 @@ def _step(
                 return True
             return r and _drops_away(game_map, cx, cy, p, move.step_height)
 
-        nx, ny = move_box(game_map, x, y, tx - x, ty - y, move.radius, obstacles, blocked, walls)
+        in_way = obstacles_in_the_way(obstacles, feet, move.step_height)
+        nx, ny = move_box(game_map, x, y, tx - x, ty - y, move.radius, in_way, blocked, walls)
         if abs(nx - tx) < _EPS and abs(ny - ty) < _EPS:
-            return support_height(game_map, tx, ty, move.radius)
+            return standing_height(game_map, obstacles, tx, ty, move.radius, feet, move.step_height)
     return None
 
 

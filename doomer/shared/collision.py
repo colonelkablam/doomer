@@ -16,16 +16,39 @@ _EPS = 1e-9
 
 
 class Obstacle(NamedTuple):
-    """A blocking rectangle (a thing's footprint): centre and half-widths."""
+    """A blocking rectangle (a thing's footprint): centre and half-widths,
+    and the height of its top (walls). A low top can be jumped onto and
+    stood on, as a desk can (a toilet, a sofa); `inf`: blocks at any height."""
 
     x: float
     y: float
     half_x: float
     half_y: float
+    top: float = math.inf
 
     @classmethod
     def square(cls, x: float, y: float, radius: float) -> "Obstacle":
         return cls(x, y, radius, radius)
+
+
+def obstacles_in_the_way(obstacles: Sequence[Obstacle], feet: float, step: float) -> list[Obstacle]:
+    """The obstacles that block a body whose feet are at `feet`: those whose
+    tops are more than a step above them (the rest it walks or stands on)."""
+    return [ob for ob in obstacles if ob.top > feet + step + _EPS]
+
+
+def obstacle_support(
+    obstacles: Sequence[Obstacle], x: float, y: float, radius: float, feet: float, step: float
+) -> float:
+    """The highest obstacle top under a box at (x, y) that it can be on
+    (no more than a step above its feet); -inf if none."""
+    best = -math.inf
+    for ob in obstacles:
+        if ob.top > feet + step + _EPS or ob.top == math.inf:
+            continue
+        if abs(x - ob.x) < radius + ob.half_x - _EPS and abs(y - ob.y) < radius + ob.half_y - _EPS:
+            best = max(best, ob.top)
+    return best
 
 
 class ThinWall(NamedTuple):

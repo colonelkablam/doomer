@@ -70,10 +70,18 @@ from doomer.shared.things import (
     BASIN_DEPTH,
     BASIN_PITCH,
     BASIN_TOP,
+    CISTERN_HALF,
+    CISTERN_TOP,
+    CISTERN_X,
     CUBICLE_DEPTH,
+    CUBICLE_RUNS,
     CUBICLE_TOP,
     CUBICLE_WIDTH,
     EXIT_SIGN_HEIGHTS,
+    PAN_HALF,
+    PAN_TOP,
+    PAN_X,
+    PARTITION_HALF,
     POSTER_KINDS,
     URINAL_DEPTH,
     URINAL_PITCH,
@@ -2779,8 +2787,8 @@ _PORCELAIN = (GREY, 14.0)
 _CHROME = (STEEL, 12.0)
 # Partitions and doors raised off the floor: a gap under them to see feet.
 _PARTITION_Z = (0.11, CUBICLE_TOP)
-_DOOR_Z = (0.11, 0.7)
-_THICK = 0.012  # a partition's half-thickness
+_DOOR_Z = (0.11, CUBICLE_TOP - 0.04)  # under the headrail
+_LEAF = 0.008  # a door's thickness
 
 
 def _laminate(shade: float = 10.0) -> Canvas:
@@ -2791,17 +2799,18 @@ def _laminate(shade: float = 10.0) -> Canvas:
 
 
 def cubicle_door(state: str) -> int:
-    """A cubicle door from outside: laminate, a chrome handle, and the lock's
-    indicator above it: VACANT (green) or ENGAGED (red). `state` "inside":
-    the door's plain inner face."""
+    """A cubicle door. From outside ("vacant", "engaged"): plain laminate,
+    and by the latch (the free edge: on your right, the hinge on your left)
+    a small indicator slot, green or red, over a small chrome knob. From
+    inside ("inside"): the latch on your left, a chrome thumb-turn."""
     c = _laminate(10.5)
-    c.paint(c.rect(0, 64, 0, 3) | c.rect(0, 64, 61, 64), SAND, 8.0)  # its edges
-    if state != "inside":
-        ramp = BRICK if state == "engaged" else GREEN
-        c.paint(c.rect(22, 30, 40, 58), GREY, 10.0)  # the indicator's plate, by the lock
-        c.paint(c.rect(23, 29, 41, 57), ramp, 11.0)
-        c.paint(c.rect(33, 37, 44, 58), STEEL, 13.0)  # the handle
-        c.paint(c.rect(37, 38, 44, 58), STEEL, 7.0)
+    c.paint(c.rect(0, 64, 0, 2) | c.rect(0, 64, 62, 64), SAND, 8.0)  # its edges
+    if state == "inside":
+        c.paint(c.rect(29, 35, 5, 11), STEEL, 12.0)
+        c.paint(c.rect(31, 33, 6, 10), STEEL, 7.0)  # the turn's bar
+    else:
+        c.paint(c.rect(28, 32, 51, 59), BRICK if state == "engaged" else GREEN, 11.0)
+        c.paint(c.rect(35, 38, 53, 57), STEEL, 13.0)
     return _texture(c)
 
 
@@ -2809,62 +2818,128 @@ _DOOR_FACES = {state: cubicle_door(state) for state in ("vacant", "engaged", "in
 _DOOR_EDGE = _plain_texture(*_CHROME)
 
 
-def _porcelain(top_ring: bool = False) -> int:
+def pan_front() -> int:
+    """A WC pan from the front: the bowl's rim the full width at the top, a
+    narrower pedestal under it, flaring to its foot. See-through round it."""
     c = Canvas()
-    c.paint(c.rect(0, 64, 0, 64), *_PORCELAIN)
-    c.paint(c.rect(56, 64, 0, 64), GREY, 11.0)  # shaded towards the floor
-    if top_ring:  # seen from above: the seat round the bowl, lid up
-        c.paint(c.ellipse(36, 32, 24, 26), GREY, 12.0)
-        c.paint(c.ellipse(36, 32, 17, 19), GREY, 9.0)
-        c.paint(c.ellipse(40, 32, 9, 11), STEEL, 6.0)  # water
+    across = np.abs(c.u + 0.5 - 32)
+    bowl = (c.v < 22) & (across < 32 - np.maximum(c.v - 12, 0) * 0.9)
+    pedestal = (c.v >= 18) & (across < 13 + np.maximum(c.v - 54, 0) * 1.0)
+    c.paint(bowl | pedestal, *_PORCELAIN)
+    c.paint((bowl | pedestal) & (across > 9) & (c.v >= 18), GREY, 12.0)  # its rounded sides
+    c.paint(c.rect(0, 3, 0, 64) & bowl, GREY, 15.0)  # the rim, catching the light
     return _texture(c)
 
 
+def pan_side() -> int:
+    """From the side: the bowl over a pedestal set in from both ends (drawn
+    symmetric, so it's right whichever side you see)."""
+    c = Canvas()
+    across = np.abs(c.u + 0.5 - 32)
+    bowl = c.v < 24
+    pedestal = (c.v >= 18) & (across < 20 + np.maximum(c.v - 54, 0) * 0.8)
+    c.paint(bowl | pedestal, *_PORCELAIN)
+    c.paint(pedestal & ~bowl & (across > 14), GREY, 12.0)
+    c.paint(c.rect(0, 3, 0, 64), GREY, 15.0)
+    return _texture(c)
+
+
+def lid_top() -> int:
+    """The lid, down, seen from above (its front at the bottom): black
+    plastic, rounded at the front, hinged at the back, a highlight."""
+    c = Canvas()
+    shape = c.ellipse(26, 32, 38, 32) & (c.v < 64)
+    c.paint(shape, GREY, 2.0)
+    c.paint(shape & c.ellipse(24, 26, 14, 10), GREY, 4.0)  # a sheen
+    c.paint(c.rect(0, 5, 14, 50), STEEL, 10.0)  # the hinges
+    return _texture(c)
+
+
+def cistern_front() -> int:
+    """A low-level cistern: white, a chrome lever at its top left."""
+    c = Canvas()
+    c.paint(c.rect(0, 64, 0, 64), *_PORCELAIN)
+    c.paint(c.rect(0, 6, 0, 64), GREY, 15.0)  # its lid
+    c.paint(c.rect(6, 8, 0, 64), GREY, 11.0)
+    c.paint(c.rect(14, 19, 6, 24), STEEL, 13.0)  # the lever
+    c.paint(c.rect(12, 21, 4, 9), STEEL, 10.0)  # its boss
+    c.paint(c.rect(58, 64, 0, 64), GREY, 11.5)
+    return _texture(c)
+
+
+_PAN = (pan_front(), pan_side(), _plain_texture(*_PORCELAIN), pan_side())
+_LID = lid_top()
+_LID_SIDE = _plain_texture(GREY, 2.0)
+_CISTERN = cistern_front()
 _PANEL = _texture(_laminate())
-_PAN_TOP, _PAN_SIDE = _porcelain(top_ring=True), _porcelain()
+_PORCELAIN_PLAIN = _plain_texture(*_PORCELAIN)
 _FEET = tuple(
     _plain_texture(*look) for look in ((BRICK, 7.0), (WOOD, 5.0), (GREY, 1.5), (GREY, 6.0))
 )
 
 
+def _toilet(cy: float) -> list[Box]:
+    """A close-coupled WC: the pan (lid down: you can stand on it), the
+    cistern behind on the wall. Three boxes; sizes from shared/things.py."""
+    see = (_LID_SIDE,) * 4
+    return [
+        Box(
+            PAN_X, (cy - PAN_HALF, cy + PAN_HALF), (0.0, PAN_TOP - 0.02), (*_PAN, _PORCELAIN_PLAIN)
+        ),
+        Box(
+            (PAN_X[0] + 0.02, PAN_X[1]),
+            (cy - PAN_HALF + 0.005, cy + PAN_HALF - 0.005),
+            (PAN_TOP - 0.02, PAN_TOP),
+            (*see, _LID),
+        ),
+        Box(
+            CISTERN_X,
+            (cy - CISTERN_HALF, cy + CISTERN_HALF),
+            (0.2, CISTERN_TOP),
+            (_CISTERN, _PORCELAIN_PLAIN, _PORCELAIN_PLAIN, _PORCELAIN_PLAIN, _PORCELAIN_PLAIN),
+        ),
+    ]
+
+
 def _feet(kind: str, cy: float) -> list[Box]:
-    """Whoever's in the ENGAGED cubicle, as seen under the door. Gents:
-    black shoes, grey trousers round the ankles. Ladies: red court shoes
-    (a heel each) and a handbag on the floor beside them."""
+    """Whoever's in the ENGAGED cubicle, sitting on the toilet, as seen under
+    the door. Gents: black shoes, grey trousers round the ankles. Ladies:
+    red court shoes (a heel each) and a handbag on the floor beside them."""
     out = []
     red, bag, shoe, cloth = _FEET
+    x0 = PAN_X[1]  # the pan's front: their feet in front of it
     if kind == "ladies":
-        for dy in (-0.032, 0.032):
-            y = (cy + dy - 0.017, cy + dy + 0.017)
-            out.append(Box((0.36, 0.47), y, (0.0, 0.02), (red,) * 5))  # the shoe
-            out.append(Box((0.35, 0.37), y, (0.0, 0.05), (red,) * 5))  # its heel
-        out.append(Box((0.4, 0.48), (cy + 0.07, cy + 0.11), (0.0, 0.07), (bag,) * 5))
+        for dy in (-0.04, 0.04):
+            y = (cy + dy - 0.022, cy + dy + 0.022)
+            out.append(Box((x0 + 0.06, x0 + 0.2), y, (0.0, 0.025), (red,) * 5))  # the shoe
+            out.append(Box((x0 + 0.04, x0 + 0.07), y, (0.0, 0.06), (red,) * 5))  # its heel
+        out.append(Box((x0 + 0.1, x0 + 0.22), (cy + 0.12, cy + 0.2), (0.0, 0.08), (bag,) * 5))
     else:
-        for dy in (-0.032, 0.032):
-            y = (cy + dy - 0.02, cy + dy + 0.02)
-            out.append(Box((0.35, 0.48), y, (0.0, 0.035), (shoe,) * 5))
-        out.append(Box((0.28, 0.36), (cy - 0.075, cy + 0.075), (0.0, 0.035), (cloth,) * 5))
+        for dy in (-0.045, 0.045):
+            y = (cy + dy - 0.025, cy + dy + 0.025)
+            out.append(Box((x0 + 0.06, x0 + 0.22), y, (0.0, 0.04), (shoe,) * 5))
+        out.append(Box((x0, x0 + 0.1), (cy - 0.1, cy + 0.1), (0.0, 0.04), (cloth,) * 5))
     return out
 
 
 def _cubicles(n: int, kind: str) -> tuple[Box, ...]:
     """A run of n cubicles without their doors (cubicle_door_boxes draws
     those, open or shut): partitions between and at the ends, a chrome
-    headrail across the front, a toilet in each (a pan, the cistern on the
-    wall behind), and feet under the second (ENGAGED: shared/cubicles.py)."""
+    headrail across the front, a toilet in each, and feet under the second
+    (ENGAGED: shared/cubicles.py)."""
     w, d = CUBICLE_WIDTH, CUBICLE_DEPTH
     half = n * w / 2
-    panel, edge, pan, white = _PANEL, _DOOR_EDGE, _PAN_TOP, _PAN_SIDE
     boxes: list[Box] = []
     for k in range(n + 1):  # partitions, +y (your left) first
         y = half - k * w
-        y0, y1 = max(y - _THICK, -half), min(y + _THICK, half)
-        boxes.append(Box((0.0, d), (y0, y1), _PARTITION_Z, (edge, panel, edge, panel, edge)))
-    boxes.append(Box((d - 0.01, d + 0.01), (-half, half), (0.7, CUBICLE_TOP), (edge,) * 5))
+        y0, y1 = max(y - PARTITION_HALF, -half), min(y + PARTITION_HALF, half)
+        faces = (_DOOR_EDGE, _PANEL, _DOOR_EDGE, _PANEL, _DOOR_EDGE)
+        boxes.append(Box((0.0, d), (y0, y1), _PARTITION_Z, faces))
+    rail = (CUBICLE_TOP - 0.04, CUBICLE_TOP)
+    boxes.append(Box((d - 0.01, d + 0.01), (-half, half), rail, (_DOOR_EDGE,) * 5))
     for k in range(n):
         cy = half - (k + 0.5) * w
-        boxes.append(Box((0.06, 0.28), (cy - 0.06, cy + 0.06), (0.0, 0.15), (white,) * 4 + (pan,)))
-        boxes.append(Box((0.0, 0.06), (cy - 0.08, cy + 0.08), (0.12, 0.3), (white,) * 5))
+        boxes += _toilet(cy)
         if k == 1:
             boxes += _feet(kind, cy)
     return tuple(boxes)
@@ -2873,26 +2948,23 @@ def _cubicles(n: int, kind: str) -> tuple[Box, ...]:
 def _hinged(
     x: float, hinge_y: float, width: float, swing: float, faces: tuple[int, int, int, int, int]
 ) -> Box:
-    """A door hinged at (x, hinge_y), its free end towards +y when shut,
-    swung by `swing` radians (positive: out, +x; negative: in). A box turns
-    only about the model's origin, so this is the door's rectangle turned
-    back by the swing, `turn` taking it round to where it stands."""
+    """A door hinged at (x, hinge_y), running from it towards -y when shut,
+    swung by `swing` radians (positive: out, +x). A box turns only about the
+    model's origin, so this is the door's rectangle turned back by the swing,
+    `turn` taking it round to where it stands."""
     c, s = math.cos(swing), math.sin(swing)
-    hx, hy = x * c - hinge_y * s, x * s + hinge_y * c
-    return Box((hx - 0.008, hx), (hy, hy + width), _DOOR_Z, faces, turn=-swing)
+    hx, hy = x * c + hinge_y * s, -x * s + hinge_y * c
+    return Box((hx - _LEAF, hx), (hy - width, hy), _DOOR_Z, faces, turn=swing)
 
 
 def cubicle_door_boxes(doors: Iterable[CubicleDoor]) -> list[PlacedBox]:
-    """Each cubicle's door as it stands: shut, or swung in (the hinge at
-    the cubicle's -y side)."""
-    side = _DOOR_EDGE
+    """Each cubicle's door as it stands: shut, or swung out into the room
+    (hinged on the cubicle's +y side, shared/cubicles.py)."""
     out = []
     for door in doors:
-        half = door.count * CUBICLE_WIDTH / 2
-        y0 = half - (door.index + 1) * CUBICLE_WIDTH + _THICK
         front = _DOOR_FACES["engaged" if door.locked else "vacant"]
-        faces = (front, side, _DOOR_FACES["inside"], side, side)
-        box = _hinged(CUBICLE_DEPTH, y0, CUBICLE_WIDTH - 2 * _THICK, -door.open * OPEN_ANGLE, faces)
+        faces = (front, _DOOR_EDGE, _DOOR_FACES["inside"], _DOOR_EDGE, _DOOR_EDGE)
+        box = _hinged(CUBICLE_DEPTH, door.hinge_y, door.width, door.open * OPEN_ANGLE, faces)
         out.append(PlacedBox(door.run_x, door.run_y, 0.0, door.run_angle, box))
     return out
 
@@ -3120,8 +3192,8 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     **{f"exit_sign:{k}": _exit_sign(z) for k, z in EXIT_SIGN_HEIGHTS.items()},
     "executive_desk": _executive_desk(),
     **{
-        f"cubicles_{w}{suffix}": _cubicles(n, kind)
-        for n, w in ((2, "two"), (3, "three"), (4, "four"))
+        f"{name}{suffix}": _cubicles(n, kind)
+        for name, n in CUBICLE_RUNS.items()
         for kind, suffix in (("gents", ""), ("gents", ":gents"), ("ladies", ":ladies"))
     },
     **{f"urinals_{w}": _urinals(n) for n, w in ((2, "two"), (3, "three"), (4, "four"))},

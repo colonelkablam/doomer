@@ -43,7 +43,7 @@ Different storeys of the building are separate maps.
 |---|---|---|
 | Fit through a gap | Collision box 0.5 x 0.5 | Any 1-cell gap fits |
 | Walk up a step | Rises up to 1 unit (0.125) | Steps of 1 unit, or stairs (`h`) |
-| Jump onto something | Apex 0.32 walls | 2 units (desk) yes; 3 units (counter) no |
+| Jump onto something | Apex 0.32 walls | 2 units (desk) yes; 3 units (counter) no. Furniture whose top is at most 0.32 (a toilet, a sofa, a coffee table, a vanity counter) can be jumped onto and stood on |
 | Walk upright | Body 0.67 | Needs ceiling - floor >= 6 units |
 | Crouch | Body 0.42 | 4-5 units of headroom: crouch-only (crawlways, low bulkheads) |
 | Stand on a desk | Desk top 2 + body 0.67 | Needs ceiling >= 8 over a desk (the default is fine) |
@@ -76,7 +76,7 @@ units at most). Anything higher with no stairs is unreachable.
 | `chair` | Office swivel chair (box model, 4 boxes; blocks, radius 0.1) | One per sitter: ~0.25-0.36 out from the desk edge in front of their Mac, angle towards the desk; nudge each a few cm and turn it up to ~30 degrees at random so a row looks used. Between a pod and a wall one cell away, keep chairs at least 0.6 from the wall so a player (0.5 wide) gets past |
 | `poster` | A poster or picture, `kind=` synergy, teamwork, excellence, employee_mar/apr/may, founder, accident, high_voltage, plan; washroom door plates gents, ladies; wash_hands | `at=` the wall it hangs on. Hang a `plan` by each way in (it draws the floor, marking where it hangs) and a `high_voltage` by the plant room door and its breaker, so the power is signposted. A `gents` or `ladies` plate on the corridor wall beside each washroom door |
 | `server` | Minicomputer cabinet, `kind=tape` or `disk`; its lamps blink once the power's on | In the plant room (or a computer room): `at=` a solid wall, in a row 0.38 apart (0.38 wide, blocks 0.36 out). Leave the breaker and the way to it clear |
-| `cubicles_two`, `_three`, `_four` | Toilet cubicles: a run (0.25 wide each, four to a cell; 0.55 deep), `kind=gents` or `ladies` (the feet under the ENGAGED door). Doors open on use, swinging in | `at=` the wall they back onto (the run's middle where you write it along the wall); runs can sit end to end. Blocks; the doors never reach into the room. Leave a cell clear in front |
+| `cubicles_two` .. `_five` | Toilet cubicles: a run (0.6 wide each, five across a 3-cell wall; 0.9 deep), `kind=gents` or `ladies` (the feet under the ENGAGED door). A player fits in one; doors open on use, swinging out a quarter turn, hinged on the run's +y side (your left as you face it) | `at=` the wall they back onto (the run's middle where you write it along the wall); a run of five fills a 3-cell wall exactly. Keep 0.6 clear in front for the doors (an open one stands 0.58 out). Put nothing where the end doors fold back: a run's first door (its +y end) lies along that end's wall |
 | `urinals_two`, `_three`, `_four` | Urinals, screens between and at the ends (0.36 apart, 0.26 out) | `at=` a wall; runs can sit end to end. Gents only |
 | `basins_two`, `_three`, `_four` | Vanity unit: basins (0.3 apart, 0.26 deep), a mirror over it | `at=` a wall |
 | `hand_dryer` | Hand dryer (0.11 wide) | `at=` a wall, near the basins, in a row about 0.23 apart; doesn't block |

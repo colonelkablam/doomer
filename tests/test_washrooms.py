@@ -1,5 +1,5 @@
-"""Washrooms: the washroom area, its fittings, the cubicle doors, and the
-ground floor's Gents and Ladies."""
+"""Washrooms: the washroom area, its fittings, the cubicle doors (and
+hiding in a cubicle), and the ground floor's Gents and Ladies."""
 
 import math
 
@@ -8,19 +8,25 @@ import pytest
 from doomer.client.areas import AREA_LOOKS
 from doomer.client.boxes import BOX_MODELS, Box, cubicle_door_boxes
 from doomer.client.hud import message_for
-from doomer.shared.cubicles import DOOR_SECONDS, cubicle_doors_from_map
+from doomer.shared.cubicles import DOOR_SECONDS, CubicleDoor, cubicle_doors_from_map
 from doomer.shared.events import CubicleDoorUsed, Event
 from doomer.shared.mapfile import WASHROOM, format_map, load_map, parse_map
-from doomer.shared.player import PlayerInput
+from doomer.shared.player import PlayerInput, PlayerState
 from doomer.shared.sim import step
-from doomer.shared.things import CUBICLE_DEPTH, CUBICLE_WIDTH, THING_TYPES
-from doomer.shared.world import drain_events, new_world, spawn_player
+from doomer.shared.things import (
+    CUBICLE_DEPTH,
+    CUBICLE_WIDTH,
+    PAN_TOP,
+    PARTITION_HALF,
+    THING_TYPES,
+)
+from doomer.shared.world import World, drain_events, new_world, spawn_player
 
 FITTINGS = [
     f"{fitting}_{n}"
     for fitting in ("cubicles", "urinals", "basins")
     for n in ("two", "three", "four")
-]
+] + ["cubicles_five"]
 
 # A washroom 4 cells wide: a run of four cubicles against the north wall.
 ROOM = """\
@@ -39,10 +45,10 @@ ROOM = """\
 ......
 
 [things]
-coop_start 2.5 3.5 270
+coop_start 3.0 3.5 270
 exit 4.5 3.5 0
 dm_spawn 1.5 3.5 0
-cubicles_four 2.5 1.5 0 kind=gents at=n
+cubicles_four 3.0 1.5 0 kind=gents at=n
 """
 
 
@@ -55,12 +61,20 @@ def test_the_washroom_area_has_a_look_and_round_trips() -> None:
 
 @pytest.mark.parametrize("name", FITTINGS)
 def test_a_fittings_footprint_holds_its_model(name: str) -> None:
-    (fp,) = THING_TYPES[name].footprints
+    fps = THING_TYPES[name].footprints
     boxes = BOX_MODELS[name]
-    assert min(b.x[0] for b in boxes) >= fp.x[0] - 1e-9
-    assert max(b.x[1] for b in boxes) <= fp.x[1] + 0.011  # the headrail's lip
-    assert min(b.y[0] for b in boxes) >= fp.y[0] - 1e-9
-    assert max(b.y[1] for b in boxes) <= fp.y[1] + 1e-9
+    assert min(b.x[0] for b in boxes) >= min(f.x[0] for f in fps) - 1e-9
+    assert max(b.x[1] for b in boxes) <= max(f.x[1] for f in fps) + 0.011  # the headrail
+    assert min(b.y[0] for b in boxes) >= min(f.y[0] for f in fps) - 1e-9
+    assert max(b.y[1] for b in boxes) <= max(f.y[1] for f in fps) + 1e-9
+
+
+def test_a_cubicle_fits_a_player() -> None:
+    # Between partitions, wider than a player's 0.5; deep enough in front of
+    # the toilet's pan to stand with the door shut.
+    assert CUBICLE_WIDTH - 2 * PARTITION_HALF > 0.5
+    pan = [f for f in THING_TYPES["cubicles_two"].footprints if f.top == PAN_TOP][0]
+    assert CUBICLE_DEPTH - pan.x[1] > 0.5
 
 
 def test_the_engaged_cubicle_shows_whose_feet() -> None:
@@ -69,9 +83,9 @@ def test_the_engaged_cubicle_shows_whose_feet() -> None:
     def low(name: str) -> set[tuple[float, float]]:
         return {b.z for b in BOX_MODELS[name] if b.z[1] <= 0.08}
 
-    assert (0.0, 0.05) in low("cubicles_four:ladies")  # heels
-    assert (0.0, 0.07) in low("cubicles_four:ladies")  # the handbag
-    assert low("cubicles_four:gents") == {(0.0, 0.035)}  # shoes and trousers
+    assert (0.0, 0.06) in low("cubicles_four:ladies")  # heels
+    assert (0.0, 0.08) in low("cubicles_four:ladies")  # the handbag
+    assert low("cubicles_four:gents") == {(0.0, 0.04)}  # shoes and trousers
     assert BOX_MODELS["cubicles_four"] == BOX_MODELS["cubicles_four:gents"]  # unless told
 
 
@@ -82,17 +96,18 @@ def _corners(box: Box) -> list[tuple[float, float]]:
 
 
 @pytest.mark.parametrize("open_", [0.0, 0.5, 1.0])
-def test_a_cubicle_door_hangs_from_its_hinge_and_swings_in(open_: float) -> None:
-    (door, *_) = cubicle_doors_from_map(parse_map(ROOM))
+def test_a_cubicle_door_hangs_from_its_hinge_and_swings_out(open_: float) -> None:
+    door = cubicle_doors_from_map(parse_map(ROOM))[0]
     door.open = open_
     (placed,) = cubicle_door_boxes([door])
     corners = _corners(placed.box)
     half = 4 * CUBICLE_WIDTH / 2
-    hinge = (CUBICLE_DEPTH, half - CUBICLE_WIDTH)
-    assert min(math.dist(c, hinge) for c in corners) < 0.02
-    assert max(c[0] for c in corners) <= CUBICLE_DEPTH + 1e-6  # never out into the room
+    hinge = (CUBICLE_DEPTH, half - PARTITION_HALF)  # the first cubicle's +y side
+    assert min(math.dist(c, hinge) for c in corners) < 0.012
+    if open_ == 0.0:
+        assert max(c[0] for c in corners) <= CUBICLE_DEPTH + 1e-6  # across the front
     if open_ == 1.0:
-        assert min(c[0] for c in corners) < CUBICLE_DEPTH - 0.15  # well in
+        assert max(c[0] for c in corners) > CUBICLE_DEPTH + 0.5  # out into the room
 
 
 def test_the_first_door_starts_open_the_second_engaged() -> None:
@@ -101,33 +116,85 @@ def test_the_first_door_starts_open_the_second_engaged() -> None:
     assert [d.locked for d in doors] == [False, True, False, False]
 
 
-def _use_door(world_map: str, index: int) -> tuple[list[float], list[Event]]:
-    world = new_world(parse_map(world_map), "coop")
-    player = spawn_player(world, 1, "p")
-    door = world.cubicle_doors[index]
-    cx, cy = door.centre()
-    player.x, player.y = cx, cy + 0.5  # in front of it, facing it (north)
-    face = PlayerInput(angle=3 * math.pi / 2)
-    step(world, {1: PlayerInput(angle=face.angle, use=True)})
+def _ticks(world: World, inputs: PlayerInput, seconds: float) -> None:
+    for _ in range(round(seconds / world.config.dt) + 2):
+        step(world, {1: inputs})
+
+
+def _in_front(world: World, door: CubicleDoor, out: float) -> PlayerState:
+    """Player 1, `out` in front of a door's middle (negative: inside the
+    cubicle), facing the door."""
+    player = world.players.get(1) or spawn_player(world, 1, "p")
+    x, y = door.to_world(CUBICLE_DEPTH + out, door.hinge_y - door.width / 2)
+    player.x, player.y, player.z = x, y, 0.0
+    player.angle = door.run_angle + (math.pi if out > 0 else 0.0)
+    return player
+
+
+def _use(world: World, player: PlayerState) -> list[Event]:
+    step(world, {1: PlayerInput(angle=player.angle, use=True)})
     events = drain_events(world)
-    for _ in range(round(DOOR_SECONDS / world.config.dt) + 2):
-        step(world, {1: face})
-    return [d.open for d in world.cubicle_doors], events
+    _ticks(world, PlayerInput(angle=player.angle), DOOR_SECONDS)
+    return events
 
 
-def test_use_opens_a_vacant_cubicle_door() -> None:
-    opens, events = _use_door(ROOM, 2)
-    assert opens[2] == 1.0
+def test_use_opens_a_vacant_cubicle_door_and_shuts_it_again() -> None:
+    world = new_world(parse_map(ROOM), "coop")
+    door = world.cubicle_doors[2]
+    player = _in_front(world, door, 0.75)
+    events = _use(world, player)
+    assert door.open == 1.0
     used = [e for e in events if isinstance(e, CubicleDoorUsed)]
     assert used and used[0].opening and not used[0].engaged
+    _use(world, player)  # standing where it would swing: it waits
+    assert door.open == 1.0 and not door.opening
+    _in_front(world, door, 0.88)  # step back (still in reach): it shuts
+    _ticks(world, PlayerInput(angle=player.angle), DOOR_SECONDS)
+    assert door.open == 0.0
 
 
 def test_an_engaged_door_stays_shut_and_says_so() -> None:
-    opens, events = _use_door(ROOM, 1)
-    assert opens[1] == 0.0
+    world = new_world(parse_map(ROOM), "coop")
+    door = world.cubicle_doors[1]
+    events = _use(world, _in_front(world, door, 0.75))
+    assert door.open == 0.0
     (used,) = [e for e in events if isinstance(e, CubicleDoorUsed)]
     assert used.engaged
     assert message_for(used) == "Engaged: someone's in there"
+
+
+def test_a_door_wont_shut_on_someone_in_the_doorway() -> None:
+    world = new_world(parse_map(ROOM), "coop")
+    door = world.cubicle_doors[0]  # open
+    player = _in_front(world, door, 0.1)  # straddling the front
+    _use(world, player)
+    assert door.open == 1.0 and not door.opening  # told to shut; waiting
+
+
+def test_hide_in_a_cubicle_shut_the_door_and_stand_on_the_loo() -> None:
+    world = new_world(parse_map(ROOM), "coop")
+    door = world.cubicle_doors[0]  # open
+    player = _in_front(world, door, -0.27)  # inside, in front of the pan
+    player.angle = door.run_angle  # facing out, at the door
+    _use(world, player)
+    assert door.open == 0.0  # shut, with them inside
+    # Turn round and jump onto the toilet (its lid's above a step).
+    into = door.run_angle + math.pi
+    step(world, {1: PlayerInput(forward=1.0, angle=into, jump=True)})
+    _ticks(world, PlayerInput(forward=1.0, angle=into), 0.6)
+    assert player.z == pytest.approx(PAN_TOP)
+    # And they can't walk out through the shut door.
+    _ticks(world, PlayerInput(forward=1.0, angle=door.run_angle), 1.0)
+    x, y = door.centre()
+    assert math.hypot(player.x - x, player.y - y) < 0.6
+
+
+def test_a_toilet_is_too_high_to_step_onto() -> None:
+    world = new_world(parse_map(ROOM), "coop")
+    door = world.cubicle_doors[0]
+    player = _in_front(world, door, -0.27)
+    _ticks(world, PlayerInput(forward=1.0, angle=door.run_angle + math.pi), 0.6)
+    assert player.z == 0.0  # walked up to it, stopped
 
 
 def test_the_ground_floor_has_gents_and_ladies_off_the_corridor() -> None:
@@ -154,9 +221,9 @@ def test_the_ground_floor_has_gents_and_ladies_off_the_corridor() -> None:
             if t.type.startswith(prefix) and x0 <= t.x < x1 + 1
         )
 
-    sizes = {"two": 2, "three": 3, "four": 4}
-    assert count("cubicles_", "gents", sizes) == 4
-    assert count("cubicles_", "ladies", sizes) == 8
+    sizes = {"two": 2, "three": 3, "four": 4, "five": 5}
+    assert count("cubicles_", "gents", sizes) == 5
+    assert count("cubicles_", "ladies", sizes) == 5
     assert count("urinals_", "gents", sizes) == 8
     assert count("basins_", "gents", sizes) == count("basins_", "ladies", sizes) == 4
     dryers = office.things_of_type("hand_dryer")

@@ -257,24 +257,49 @@ for _name, _description in (
 
 # Washroom fittings (drawn by doomer/client/boxes.py, sizes matching), each
 # against a wall (`at=`), +x out of it. A run of cubicles: laminate
-# partitions raised off the floor, a door each (one open, one ENGAGED); a
-# run of urinals with screens between; a vanity unit with basins and a
-# mirror over it. Runs of two, three or four, like the sofas. The cubicles'
-# doors open on use (doomer/shared/cubicles.py); `kind=gents` or `ladies`.
-CUBICLE_WIDTH, CUBICLE_DEPTH, CUBICLE_TOP = 0.25, 0.55, 0.74  # four to a cell
+# partitions raised off the floor, a toilet and a door each (one open, one
+# ENGAGED), the doors opening on use (doomer/shared/cubicles.py),
+# `kind=gents` or `ladies`; a run of urinals with screens between; a vanity
+# unit with basins and a mirror over it. Runs of two to four (cubicles to
+# five), like the sofas.
+# Cubicles are big enough for a player (0.5 wide): five across a 3-cell wall.
+CUBICLE_WIDTH, CUBICLE_DEPTH, CUBICLE_TOP = 0.6, 0.9, 0.8
+PARTITION_HALF = 0.012  # half a partition's thickness
+# The toilet in each cubicle, in the run's frame (x out of the wall): the pan
+# with its lid down (stand on it: a jump), the cistern against the wall.
+PAN_X, PAN_HALF, PAN_TOP = (0.06, 0.36), 0.085, 0.18
+CISTERN_X, CISTERN_HALF, CISTERN_TOP = (0.0, 0.08), 0.12, 0.38
 URINAL_PITCH, URINAL_DEPTH = 0.36, 0.26  # a screen's depth
 BASIN_PITCH, BASIN_DEPTH, BASIN_TOP = 0.3, 0.26, 0.3
-for _n, _word in ((2, "two"), (3, "three"), (4, "four")):
-    _half = _n * CUBICLE_WIDTH / 2
+CUBICLE_RUNS = {f"cubicles_{w}": n for n, w in ((2, "two"), (3, "three"), (4, "four"), (5, "five"))}
+
+
+def _cubicle_footprints(n: int) -> tuple[Footprint, ...]:
+    """A run's floor plan: each partition (thin), and each toilet's pan and
+    cistern. The doors are the World's (doomer/shared/cubicles.py)."""
+    half = n * CUBICLE_WIDTH / 2
+    out = []
+    for k in range(n + 1):
+        y = half - k * CUBICLE_WIDTH
+        y0, y1 = max(y - PARTITION_HALF, -half), min(y + PARTITION_HALF, half)
+        out.append(Footprint((0.0, CUBICLE_DEPTH), (y0, y1), CUBICLE_TOP))
+    for k in range(n):
+        cy = half - (k + 0.5) * CUBICLE_WIDTH
+        out.append(Footprint(PAN_X, (cy - PAN_HALF, cy + PAN_HALF), PAN_TOP))
+        out.append(Footprint(CISTERN_X, (cy - CISTERN_HALF, cy + CISTERN_HALF), CISTERN_TOP))
+    return tuple(out)
+
+
+for _name, _n in CUBICLE_RUNS.items():
     register_thing_type(
         ThingType(
-            f"cubicles_{_word}",
-            f"Toilet cubicles: a run of {_word}",
+            _name,
+            f"Toilet cubicles: a run of {_name.split('_')[1]}",
             blocking=True,
-            radius=_half,
+            radius=_n * CUBICLE_WIDTH / 2,
             # Whose they are: the shoes under the ENGAGED door.
             properties={"kind": ("gents", "ladies")},
-            footprints=(Footprint((0.0, CUBICLE_DEPTH), (-_half, _half), CUBICLE_TOP),),
+            footprints=_cubicle_footprints(_n),
         )
     )
 for _n, _word in ((2, "two"), (3, "three"), (4, "four")):

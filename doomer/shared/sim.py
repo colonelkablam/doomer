@@ -13,10 +13,18 @@ and bump your head on ceilings.
 import math
 from collections.abc import Mapping
 
-from doomer.shared.collision import ThinWall, move_box
+from doomer.shared.collision import (
+    Obstacle,
+    ThinWall,
+    move_box,
+    obstacle_support,
+    obstacles_in_the_way,
+)
 from doomer.shared.config import MovementConfig
 from doomer.shared.cubicles import (
     cubicle_door_in_reach,
+    cubicle_door_leaves,
+    cubicle_door_walls,
     update_cubicle_doors,
     use_cubicle_door,
 )
@@ -61,7 +69,9 @@ def step(world: World, inputs: Mapping[int, PlayerInput]) -> None:
         power,
         departing,
     )
-    update_cubicle_doors(world.cubicle_doors, world.config.dt)
+    update_cubicle_doors(
+        world.cubicle_doors, world.config.dt, positions, world.config.movement.radius
+    )
     if departing and not world.complete and _lifts_shut(world, positions):
         world.complete = True
         world.events.append(LevelComplete(world.tick))
@@ -141,6 +151,7 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
             for sc in screens_at_height(world.screens, player.z)
         ]
         walls += [wall for door in world.doors for wall in door_walls(door)]
+        walls += cubicle_door_walls(world.cubicle_doors)
         player.x, player.y = move_box(
             world.map,
             player.x,
@@ -148,7 +159,7 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
             vx * distance,
             vy * distance,
             move.radius,
-            world.obstacles,
+            obstacles_in_the_way(all_obstacles(world), player.z, move.step_height),
             lambda cx, cy: (
                 cell_blocks(world.map, cx, cy, player.z, body, move.step_height, player.x, player.y)
                 or (railed and _drops_away(world.map, cx, cy, player, move.step_height))
@@ -159,7 +170,7 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
     if player_input.jump and player.on_ground:
         player.z_velocity = move.jump_speed
         player.on_ground = False
-    _apply_gravity(world.map, player, move, dt)
+    _apply_gravity(world.map, player, move, dt, all_obstacles(world))
 
     def wants(pickup: Pickup) -> bool:
         return all(_meter(player, m) < METER_MAX[m] for m in pickup.effects)
@@ -285,8 +296,36 @@ def _update_crouch(
         player.crouching = room < move.height - _EPS
 
 
-def _apply_gravity(game_map: GameMap, player: PlayerState, move: MovementConfig, dt: float) -> None:
-    support = support_height(game_map, player.x, player.y, move.radius)
+def all_obstacles(world: World) -> list[Obstacle]:
+    """The furniture, and the leaves of open cubicle doors."""
+    return [*world.obstacles, *cubicle_door_leaves(world.cubicle_doors)]
+
+
+def standing_height(
+    game_map: GameMap,
+    obstacles: list[Obstacle] | tuple[Obstacle, ...],
+    x: float,
+    y: float,
+    radius: float,
+    feet: float,
+    step: float,
+) -> float:
+    """What a box at (x, y), feet at `feet`, stands on: the floor, or the top
+    of furniture under it that it's up on (or can step onto)."""
+    floor = support_height(game_map, x, y, radius)
+    return max(floor, obstacle_support(obstacles, x, y, radius, feet, step))
+
+
+def _apply_gravity(
+    game_map: GameMap,
+    player: PlayerState,
+    move: MovementConfig,
+    dt: float,
+    obstacles: list[Obstacle] | tuple[Obstacle, ...] = (),
+) -> None:
+    support = standing_height(
+        game_map, obstacles, player.x, player.y, move.radius, player.z, move.step_height
+    )
     if (
         player.on_ground
         and player.z_velocity <= 0.0

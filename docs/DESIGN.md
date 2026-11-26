@@ -441,16 +441,34 @@ dm_spawn      1.5   3.5   0
   furniture stays as map cells.
 - **Cubicle doors** (`shared/cubicles.py`, drawn by
   `boxes.cubicle_door_boxes`): each run of toilet cubicles has a door per
-  cubicle in `World.cubicle_doors`, how far open (0-1, swinging over 0.4 s)
+  cubicle in `World.cubicle_doors`, how far open (0-1, swinging over 0.3 s)
   and whether it's locked (ENGAGED: the second of each run, for good). Use
-  (E) toggles a vacant one; a locked one emits `CubicleDoorUsed` with
-  `engaged` and the HUD says someone's in there. They swing inwards, as
-  real ones do, so open or shut they never reach into the room: nothing to
-  collide with, and the run's footprint is the same either way. The run's
-  fixed parts (partitions, headrail, toilets, the feet under the engaged
-  door) are an ordinary box model; the doors are drawn from their state, a
-  box turned about the model origin by the swing, offset so it turns on its
+  (E) toggles a vacant one, from outside or in; a locked one emits
+  `CubicleDoorUsed` with `engaged` and the HUD says someone's in there.
+  Hinged on the cubicle's +y side (so a run's first door folds back against
+  the end wall), they swing out, a quarter turn. Collision follows the
+  state: shut (under half open), a door is a thin wall across the
+  cubicle's front; open, its leaf is a thin obstacle standing out into the
+  room. A shutting door waits while someone's in its sweep (it never shuts
+  through anyone); an opening one doesn't (whoever it reaches walks out of
+  the leaf, as obstacles let a box that's already overlapping them leave).
+  The run's partitions, pans and cisterns are footprints like any
+  furniture's. A cubicle is sized for a player (0.6 wide, 0.9 deep: 0.54
+  clear in front of the pan), so you can shut yourself in, and jump onto
+  the toilet's lid so your feet don't show under the door. The run's fixed
+  parts (partitions, headrail, toilets, the feet under the engaged door)
+  are an ordinary box model; the doors are drawn from their state, a box
+  turned about the model origin by the swing, offset so it turns on its
   hinge.
+- **Standing on furniture**: an `Obstacle` carries its footprint's `top`.
+  It blocks only a body whose feet are more than a step below that
+  (`collision.obstacles_in_the_way`), and you stand on the highest top under
+  you that you're up on (`collision.obstacle_support`, with the floor in
+  `sim.standing_height`). So furniture low enough to jump onto (apex 0.32)
+  can be stood on, as desks can: a toilet's lid (0.18), a coffee table,
+  a sofa, a vanity counter; taller things (a counter, a cabinet, the
+  boss's desk at 0.33) still block. Things with only a radius block at
+  any height. The map checker uses the same rules.
 - **Doors** (prototype; `shared/doors.py`, drawn by `boxes.door_boxes`): a
   door is a thing in a doorway cell (open floor between two wall cells),
   standing at one end of it, `DOOR_SET` (0.45) from the cell's middle:
