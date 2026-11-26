@@ -92,7 +92,24 @@ class LiftNoPower(Event):
 
 @dataclass(frozen=True, slots=True)
 class LevelComplete(Event):
-    """Everyone's in a lift and its doors have shut: the floor is done."""
+    """Everyone rode a lift up: the floor is done. `next_floor`: the floor
+    the lift arrives at (its label), if it has a map; None at the top of
+    what's built."""
+
+    next_floor: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class LiftCalled(Event):
+    """A player called a lift whose car is on another floor: it's coming."""
+
+    door_id: int
+    player_id: int
+
+
+@dataclass(frozen=True, slots=True)
+class LiftDeparting(Event):
+    """Everyone's aboard with the doors shut: the lift sets off up."""
 
 
 @dataclass(frozen=True, slots=True)

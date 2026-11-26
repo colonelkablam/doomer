@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from doomer.shared.building import FLOOR_LABELS
 from doomer.shared.placement import ANCHORS, PlacementError, place
 from doomer.shared.things import THING_TYPES
 
@@ -46,7 +47,7 @@ DEFAULT_CEILING = WALL_UNITS
 _SECTION = re.compile(r"^\[(\w+)\]\s*$")
 _GRID_SECTIONS = ("walls", "floor", "ceiling", "facing", "areas")
 _KNOWN_SECTIONS = (*_GRID_SECTIONS, "things")
-_KNOWN_HEADERS = ("name",)
+_KNOWN_HEADERS = ("name", "storey")
 
 Grid = tuple[tuple[int, ...], ...]
 
@@ -84,6 +85,9 @@ class GameMap:
     facing: Grid = ()
     # Each cell's area (OFFICE, EXECUTIVE, LOBBY, SERVICE, LIFT_CAR).
     areas: Grid = ()
+    # Which floor of the building this is (doomer/shared/building.py): the
+    # `storey:` header, G if none.
+    storey: str = "G"
 
     def in_bounds(self, x: int, y: int) -> bool:
         return 0 <= x < self.width and 0 <= y < self.height
@@ -191,7 +195,7 @@ def parse_map(text: str) -> GameMap:
         if current is None:
             key, sep, value = stripped.partition(":")
             if not sep or key.strip() not in _KNOWN_HEADERS:
-                raise MapError(f"line {lineno}: expected 'name: ...' or a [section]")
+                raise MapError(f"line {lineno}: expected 'name: ...', 'storey: ...' or a [section]")
             headers[key.strip()] = value.strip()
         else:
             sections[current].append((lineno, stripped))
@@ -222,6 +226,7 @@ def parse_map(text: str) -> GameMap:
 
     game_map = GameMap(
         name=headers.get("name", "Untitled"),
+        storey=_storey(headers.get("storey", "G")),
         width=width,
         height=height,
         walls=walls,
@@ -250,9 +255,18 @@ def _check_heights(m: GameMap) -> None:
                     raise MapError(f"cell ({x}, {y}): ceiling must be above the floor")
 
 
+def _storey(label: str) -> str:
+    if label not in FLOOR_LABELS:
+        raise MapError(f"storey: {label!r} isn't a floor (one of {', '.join(FLOOR_LABELS)})")
+    return label
+
+
 def format_map(game_map: GameMap) -> str:
     """Serialise a map. parse_map(format_map(m)) == m."""
-    out = [f"name: {game_map.name}", "", "[walls]"]
+    out = [f"name: {game_map.name}"]
+    if game_map.storey != "G":
+        out.append(f"storey: {game_map.storey}")
+    out += ["", "[walls]"]
     out += ["".join(wall_char(c) for c in row) for row in game_map.walls]
     for section, grid, default in (
         ("floor", game_map.floor, DEFAULT_FLOOR),

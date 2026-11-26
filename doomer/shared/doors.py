@@ -27,9 +27,18 @@ Kinds:
   team holding that ID pass (doomer/shared/pickups.py).
 - lift: two brushed steel leaves, parting like sliding doors: the outer
   wall of a lift car, which is the doorway cell itself (one cell off the
-  lobby, walled in behind, its doors facing out). Use
-  calls the lift, only with power; then the doors open for anyone near.
-  When every player is in a lift car, the doors close and the floor is done.
+  lobby, walled in behind, its doors facing out). The car is on some floor
+  of the building (`car=B3` in the map; doomer/shared/building.py): use
+  at the doors (the call button) and, with power, it comes, a floor every
+  FLOOR_SECONDS, the indicator over the doors counting, and opens when it
+  arrives. Called while it's here, it opens. Open, it stays open: inside,
+  use (the car's panel) shuts the doors, or opens them again. Shutting
+  doors open again for anyone standing in them, as real ones do. When every
+  player is in a car with its doors shut, the ride starts (doomer/shared/
+  sim.py) and the next floor loads. A floor that starts with the team in a
+  car (the coop start in it) is an arrival: that car's here, and its doors
+  open after ARRIVE_SECONDS. A locked lift (`lock=gold`) needs its pass to
+  be called or sent: an executive floor's keyswitch.
 - sliding: two glass leaves, each half the cell, that part towards the
   walls either side, stopping with a strip of each still showing (SLIDE).
   Automatic: they open while any player is near.
@@ -44,6 +53,7 @@ import math
 from collections.abc import Collection
 from dataclasses import dataclass
 
+from doomer.shared.building import floor_index
 from doomer.shared.collision import ThinWall
 from doomer.shared.mapfile import GameMap
 
@@ -78,6 +88,8 @@ LIFT_SET = 0.47
 # leaf is half the doorway, 0.5): they stop with ~32 cm of each leaf still
 # showing, as real ones park behind fixed side panels; a 2 m opening.
 SLIDE = {SLIDING: 0.38, LIFT: 0.38}
+FLOOR_SECONDS = 1.2  # a lift car, from one floor to the next
+ARRIVE_SECONDS = 1.0  # an arriving car waits this long before it opens
 
 
 @dataclass(slots=True)
@@ -90,7 +102,17 @@ class Door:
     open: float = 0.0  # 0 shut .. 1 open
     opening: bool = False  # moving towards open (else towards shut)
     lock: str | None = None  # the pass colour that opens it, if locked
-    called: bool = False  # a lift that's been called (it then opens for anyone near)
+    # Lifts: where the car is (a floor index, between two while moving),
+    # this floor's index, whether it's been called here, and how long until
+    # an arriving car opens (0: not arriving).
+    car_floor: float = 0.0
+    here: int = 0
+    called: bool = False
+    arrive_in: float = 0.0
+
+    @property
+    def car_here(self) -> bool:
+        return self.car_floor == self.here
 
     def unlocked_by(self, passes: Collection[str]) -> bool:
         return self.lock is None or self.lock in passes
@@ -132,15 +154,24 @@ class Door:
 
 
 def doors_from_map(game_map: GameMap) -> list[Door]:
-    """The map's doors, all shut, facing snapped to the nearest compass point."""
+    """The map's doors, all shut, facing snapped to the nearest compass point;
+    lifts with their cars where the map puts them."""
     out: list[Door] = []
+    starts = {(math.floor(t.x), math.floor(t.y)) for t in game_map.things_of_type("coop_start")}
     for t in game_map.things:
         kind = DOOR_THING_KINDS.get(t.type)
         if kind is None:
             continue
         cx, cy = math.floor(t.x), math.floor(t.y)
         facing = round(t.angle / (math.pi / 2)) % 4 * (math.pi / 2)
-        out.append(Door(len(out), kind, cx + 0.5, cy + 0.5, facing, lock=t.prop("lock")))
+        door = Door(len(out), kind, cx + 0.5, cy + 0.5, facing, lock=t.prop("lock"))
+        if kind == LIFT:
+            door.here = floor_index(game_map.storey)
+            car = t.prop("car")
+            door.car_floor = float(floor_index(car) if car else door.here)
+            if (cx, cy) in starts:  # the team arrives in this car
+                door.car_floor, door.arrive_in = float(door.here), ARRIVE_SECONDS
+        out.append(door)
     return out
 
 
@@ -194,14 +225,19 @@ def try_use(
     passes: Collection[str],
     power: bool = True,
 ) -> tuple[Door, bool] | None:
-    """The door a player at (x, y) facing `angle` is using: the nearest within
-    reach, roughly in front of them; and whether they could. A hinged or
-    double door the team can open is toggled. A locked one stays as it is
-    (False: say which pass it needs). Sliding doors open by themselves, so
-    using one only matters when it's locked."""
-    best: Door | None = None
+    """The door a player at (x, y) facing `angle` is using, and whether they
+    could. Standing in a lift's car, it's that lift's panel, whichever way
+    they face. Otherwise the nearest door within reach, roughly in front of
+    them. A hinged or double door the team can open is toggled; a lift is
+    called (or, if its car's here, opened), or from inside, its doors shut
+    or opened. A locked one stays as it is (False: say which pass it
+    needs), as does a lift without power. Sliding doors open by themselves,
+    so using one only matters when it's locked."""
+    cell = (math.floor(x), math.floor(y))
+    inside = next((d for d in doors if d.kind == LIFT and d.car == cell), None)
+    best: Door | None = inside
     best_d = USE_REACH
-    for door in doors:
+    for door in doors if inside is None else ():
         if door.kind == SLIDING and door.unlocked_by(passes):
             continue  # opens by itself
         cx, cy = door.centre  # the door itself, at the end of its doorway
@@ -216,13 +252,25 @@ def try_use(
         return None
     if not best.unlocked_by(passes):
         return best, False
-    if best.kind == LIFT:  # the call button: works only with power
+    if best.kind == LIFT:
         if not power:
             return best, False
-        best.called = best.opening = True
+        if inside is not None:  # the car's panel: shut the doors, or open them
+            best.opening = not best.opening
+        elif best.car_here:  # the call button, the car already here: open
+            best.opening = True
+        else:  # the call button: it comes
+            best.called = True
         return best, True
     best.opening = not best.opening
     return best, True
+
+
+def in_lift_doorway(door: Door, x: float, y: float, radius: float) -> bool:
+    """Is a box at (x, y) where a lift's doors close: across their plane?"""
+    across = (x - door.plane) if door.across_x else (y - door.plane)
+    along = (y - door.y) if door.across_x else (x - door.x)
+    return abs(across) < radius + DOOR_HALF and abs(along) < 0.5 + radius
 
 
 def update_doors(
@@ -235,19 +283,34 @@ def update_doors(
     departing: bool = False,
 ) -> None:
     """Advance every door one tick. Sliding doors open for anyone near (if
-    the team can open them); called lifts too, while there's power, until
-    everyone's aboard (`departing`: then they close). A hinged door that's
-    closing stops (and reopens) rather than shut on someone."""
+    the team can open them). A called lift's car travels towards this floor
+    (only with power) and opens when it gets here; an arriving one opens
+    after its wait; lift doors that are shutting open again for anyone in
+    them, unless the car's leaving (`departing`: then they stay shut). A
+    hinged door that's closing stops (and reopens) rather than shut on
+    someone."""
     for door in doors:
         if door.kind == LIFT:
-            door.opening = (
-                door.called
-                and power
-                and not departing
-                # From the doorway's middle, not the doors: that covers the car,
-                # so they stay open for someone at the back of it.
-                and any(math.hypot(px - door.x, py - door.y) < SLIDING_SENSE for px, py in players)
-            )
+            if door.called and power and not departing:
+                step_ = dt / FLOOR_SECONDS
+                if door.car_floor < door.here:
+                    door.car_floor = min(float(door.here), door.car_floor + step_)
+                else:
+                    door.car_floor = max(float(door.here), door.car_floor - step_)
+                if door.car_here:
+                    door.called, door.opening = False, True
+            if door.arrive_in > 0.0:
+                door.arrive_in = max(0.0, door.arrive_in - dt)
+                if door.arrive_in == 0.0:
+                    door.opening = True
+            if departing:
+                door.opening = False
+            elif (
+                not door.opening
+                and door.open > 0.0
+                and any(in_lift_doorway(door, px, py, radius) for px, py in players)
+            ):
+                door.opening = True  # the safety edge: open again
         elif door.kind == SLIDING:
             door.opening = door.unlocked_by(passes) and any(
                 math.dist((px, py), door.centre) < SLIDING_SENSE for px, py in players

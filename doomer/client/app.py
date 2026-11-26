@@ -17,6 +17,7 @@ from doomer.client.hud import Hud
 from doomer.client.input import KeyboardMouseInput
 from doomer.client.render import MAX_PITCH, Renderer, make_frame_surface
 from doomer.client.session import GameSession
+from doomer.shared.events import LevelComplete
 
 log = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
         font = pygame.font.Font(None, 22)
         renderer = Renderer(rc, config.lighting if config.lighting.enabled else None)
         hud = Hud(font)
+        hud.arrive(session.game_map, 0.0)
         automap = Automap(session.game_map)
         show_map = False
         controls = KeyboardMouseInput(config.controls, start_angle, MAX_PITCH)
@@ -72,7 +74,18 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
 
             player_input = controls.poll(real_dt)
             now = pygame.time.get_ticks() / 1000.0
-            hud.handle(session.update(real_dt, player_input), now)
+            events = session.update(real_dt, player_input)
+            hud.handle(events, now)
+            arrived = next(
+                (e.next_floor for e in events if isinstance(e, LevelComplete) and e.next_floor),
+                None,
+            )
+            if arrived is not None:  # the lift's there: on to the next floor
+                session.change_floor(arrived)
+                automap = Automap(session.game_map)
+                controls.angle = session.spawn_angle()
+                hud.arrive(session.game_map, now)
+                log.info("arrived at %r", session.game_map.name)
 
             camera = session.camera(controls.angle, controls.pitch)
             renderer.render(

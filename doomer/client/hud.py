@@ -10,6 +10,7 @@ from collections.abc import Collection, Iterable
 import pygame
 
 from doomer.client.boxes import pass_card_rgba
+from doomer.shared.building import floor_name
 from doomer.shared.dispensers import DISPENSERS
 from doomer.shared.events import (
     CubicleDoorUsed,
@@ -17,13 +18,16 @@ from doomer.shared.events import (
     DoorLocked,
     Event,
     LevelComplete,
+    LiftCalled,
     LiftNoPower,
     PassPickedUp,
     Refreshed,
     SwitchThrown,
 )
+from doomer.shared.mapfile import GameMap
 
 MESSAGE_SECONDS = 3.0
+TITLE_SECONDS = 3.0  # a floor's name, as you arrive on it
 PASS_COLOURS_RGB = {"blue": (90, 140, 240), "red": (230, 90, 70), "gold": (240, 210, 90)}
 TEXT = (255, 255, 255)
 SHADOW = (0, 0, 0)
@@ -67,6 +71,8 @@ def message_for(event: Event) -> str | None:
         return "Engaged: someone's in there"
     if isinstance(event, LiftNoPower):
         return "The lift has no power"
+    if isinstance(event, LiftCalled):
+        return "The lift's on its way"
     return None
 
 
@@ -75,13 +81,23 @@ class Hud:
         self.font = font
         self._message: str | None = None
         self._until = 0.0
-        self.complete = False  # the floor's done: a banner until you quit
+        self.complete = False  # the top floor built is done: a banner until you quit
+        self._storey = "G"
+        self._title: tuple[str, str] | None = None  # a floor's name, on arrival
+        self._title_until = 0.0
+
+    def arrive(self, game_map: GameMap, now: float) -> None:
+        """A floor's begun: its name for a few seconds."""
+        self._storey = game_map.storey
+        self._title = (floor_name(game_map.storey), game_map.name)
+        self._title_until = now + TITLE_SECONDS
+        self._message = None
 
     def handle(self, events: Iterable[Event], now: float) -> None:
         """Take this frame's events; the latest message wins."""
         for event in events:
-            if isinstance(event, LevelComplete):
-                self.complete = True
+            if isinstance(event, LevelComplete) and event.next_floor is None:
+                self.complete = True  # the top of what's built
             text = message_for(event)
             if text is not None:
                 self._message, self._until = text, now + MESSAGE_SECONDS
@@ -93,8 +109,14 @@ class Hud:
             shade = pygame.Surface(banner.size, pygame.SRCALPHA)
             shade.fill((0, 0, 0, 170))
             window.blit(shade, banner)
-            self._text(window, "GROUND FLOOR COMPLETE", (width // 2, height // 2 - 14), centre=True)
-            self._text(window, "Esc to quit", (width // 2, height // 2 + 22), centre=True)
+            done = f"{floor_name(self._storey)} COMPLETE"
+            self._text(window, done, (width // 2, height // 2 - 24), centre=True)
+            self._text(window, "More floors to come", (width // 2, height // 2 + 4), centre=True)
+            self._text(window, "Esc to quit", (width // 2, height // 2 + 30), centre=True)
+        elif self._title is not None and now < self._title_until:
+            storey, name = self._title
+            self._text(window, storey, (width // 2, height // 3 - 14), centre=True)
+            self._text(window, name, (width // 2, height // 3 + 12), centre=True)
         if self._message is not None and now < self._until:
             self._text(window, self._message, (width // 2, height // 6), centre=True)
         # Passes held: a card in each colour, bottom left.

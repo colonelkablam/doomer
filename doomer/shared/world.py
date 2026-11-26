@@ -48,6 +48,9 @@ class World:
     # Toilet cubicle doors, open or shut (doomer/shared/cubicles.py).
     cubicle_doors: list[CubicleDoor] = field(default_factory=list)
     flags: set[str] = field(default_factory=set)
+    # The lift ride up: seconds into it, or -1 (not riding). It starts when
+    # everyone's in a lift car with its doors shut (doomer/shared/sim.py).
+    ride: float = -1.0
     complete: bool = False  # everyone left by lift (LevelComplete)
 
 

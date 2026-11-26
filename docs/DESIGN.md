@@ -205,6 +205,8 @@ dm_spawn      1.5   3.5   0
   block on its plant-room side. A bulkhead (where the ceiling steps down)
   follows the same rule: it looks like the area it's seen from. Looks are
   in `client/areas.py`.
+- `storey: <floor>` (optional header, after `name:`): which floor of the
+  building the map is (`shared/building.py`; G if none).
 - `[things]`: one per line, `type x y angle [key=value ...]`. Positions are
   floats in cell units (`1.5` = centre of cell 1). Unknown types are an
   error at load time. Properties after the angle are declared per thing
@@ -469,6 +471,25 @@ dm_spawn      1.5   3.5   0
   a sofa, a vanity counter; taller things (a counter, a cabinet, the
   boss's desk at 0.33) still block. Things with only a radius block at
   any height. The map checker uses the same rules.
+- **Lifts and the building** (`shared/doors.py`, `shared/building.py`):
+  the building's floors are data (`FLOOR_LABELS` bottom to top, B3 to the
+  penthouse; `FLOOR_MAPS` the ones built), and a map's `storey:` header
+  says which it is. A lift `Door` carries where its car is (`car_floor`, a
+  floor index, fractional while moving), this floor's index (`here`),
+  `called`, and `arrive_in`. The call button (E outside) brings the car,
+  a floor every `FLOOR_SECONDS`, and opens it; E inside the car (its
+  panel, whichever way you face) shuts or opens the doors; shutting doors
+  reopen for anyone in them (`in_lift_doorway`). The ride (`sim._ride`):
+  once every player is in a car that's here, shut, unlocked for the team
+  and not just arrived, `World.ride` runs for `RIDE_SECONDS`, the occupied
+  cars' `car_floor` climbing a floor (the panel counts), then
+  `LevelComplete(next_floor)`. The client loads that floor
+  (`LocalSession.change_floor`: a new world, the player at its
+  `coop_start` in a car, health and coffee carried, passes not); the
+  server will do the same for everyone. A floor whose `coop_start` is in a
+  car is an arrival: that car starts here and opens after
+  `ARRIVE_SECONDS`. The map checker treats it as open, and counts a lift
+  as a way out only once the team can unlock it.
 - **Doors** (prototype; `shared/doors.py`, drawn by `boxes.door_boxes`): a
   door is a thing in a doorway cell (open floor between two wall cells),
   standing at one end of it, `DOOR_SET` (0.45) from the cell's middle:
@@ -847,8 +868,9 @@ Rules that have come out of it (details in the sections above):
 
 Noted at the end of a session, to pick up next:
 
-- **To close the single-player loop**: the lift ride and a second floor to
-  arrive on (the full ground floor is built: GAME.md, Game loop). Enemies, weapons and pickups (milestones 3b,
+- **The single-player loop is closed**: the ground floor, the lift ride,
+  floor 1 (GAME.md, Game loop). Next: more floors; sound (lift music, the
+  ding); a start screen when networking needs one (host or join). Enemies, weapons and pickups (milestones 3b,
   4) come after networking.
 - **Health and coffee** (GAME.md, Pickups; Networking above): two meters
   per player, coffee as armour (soaks a third of each hit). Built: the
@@ -893,7 +915,8 @@ Noted at the end of a session, to pick up next:
 ## Setup
 
 - Linux: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`,
-  then `.venv/bin/python -m doomer.client` (single-player, `maps/test.map`).
+  then `.venv/bin/python -m doomer.client` (single-player: the ground floor,
+  `maps/office.map`; or name a map, e.g. `maps/floor1.map`).
 - Client settings: copy `client.example.toml` to `client.toml` and pass
   `--config client.toml`.
 - Windows: native Python (not WSL), venv, launched from `play.bat` which cds to

@@ -93,17 +93,33 @@ start the climb. Its plan:
    breaker** (use, E; its red lamp blinks until you do, then shows green):
    the power comes back, the servers' lamps start blinking.
    On the way back the lounge's vending machine is lit and working. The lights come on, the sign lights up, the lifts get power.
-5. **Call a lift** (E at its doors), step into the car. When every player is
-   in a lift car the doors close: "GROUND FLOOR COMPLETE".
+5. **Call a lift** (E at the button by its doors). Its car is down at B3:
+   it comes up a floor every 1.2 s, the indicator over the doors counting
+   (B3, B2, B1, G, an arrow the way it's going), and opens when it arrives.
+   The doors stay open (it's a lift, not an automatic door). Step in and
+   press E (the car's panel) to shut them, or again to open them; they
+   won't shut on anyone standing in them. Once every player is in a car
+   with its doors shut, it rides up: the panel's display counts G to 1,
+   and floor 1 loads with the team in its lift, the doors opening after a
+   moment. Health and coffee come with you; passes don't (each floor has
+   its own).
+
+Floor 1, the sales floor (`maps/floor1.map`) [built], a simple second
+floor: arrive in the lift lobby; the sales floor (four pods) and the sales
+manager's office north of a corridor, a break room (vending machine,
+cooler, sofa) south. The power's already on. The lifts are an executive
+floor's: locked (gold), so going on up needs the **executive (gold) pass**,
+which is on the manager's desk, behind a door the **facilities (red) pass**
+opens; that's on a sales desk. Ride up and it's "FLOOR 1 COMPLETE" (more
+floors to come).
 
 Planned, roughly in order [planned]:
 
-- **The lift ride**: the doors close, a short ride (indicator counting up,
-  maybe a lift-music sting), then the next floor loads with the team in its
-  lift lobby. Until then the floor just ends on the banner.
-- **Later floors** reuse the loop with variations: the **executive (gold)
-  pass** for the upper floors, a stairwell as an alternative exit, power
-  that's already on but a different blocker (a jammed lift, a fire door).
+- **Lift music**, and a ding as the doors open (no sound yet).
+- **A start screen**: the title, start a game, (with networking) host or
+  join. Not needed while it's single-player from the command line.
+- **Later floors** reuse the loop with variations: a stairwell as an
+  alternative exit, a different blocker (a jammed lift, a fire door).
 - **Enemies** on the route (see Enemies), so the passes and breaker are
   fought for, not just collected.
 - **Where you start** (open, revisit): the game starts in the ground-floor
@@ -281,9 +297,10 @@ carpet runner on the treads, each with a metal nosing. Plain raised floors
 
 Lifts [built]: one cell off the lobby, the brushed stainless doors the
 car's outer wall, in a steel architrave with a sill; a black indicator strip
-above (an amber G, dark without power), a plain call plate beside with one
-round button (glows once called), and inside the car a panel of round
-buttons by the door (G lit).
+above (the floor the car's at in amber, an arrow while it moves; dark
+without power), a plain call plate beside with one round button (glows
+once called), and inside the car a panel by the door: a small amber display
+of the floor, round buttons under it, the top one lit as it rides up.
 
 ## Walls [built]
 

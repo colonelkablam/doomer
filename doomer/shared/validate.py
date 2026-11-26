@@ -11,7 +11,9 @@ thrown, which can open more doors: flood again, until nothing changes.
 
 Then the floor is completable if every locked door's pass is reachable (so
 the door is), the breaker (if any) is reachable, and you can get into a lift
-car with the power on, or to an exit. Each problem comes back as a sentence.
+car with the power on (and its pass, if it's locked), or to an exit. A
+floor the team arrives on by lift starts with them in its car, its doors
+open. Each problem comes back as a sentence.
 
 Standard library only: the server, tools and the level generator use it.
 """
@@ -104,7 +106,9 @@ def _problems(
     for sw in world.switches:
         if not _can_throw(sw, spots):
             out.append(f"the {sw.type} at ({sw.x:g}, {sw.y:g}) can't be reached")
-    cars = {door.car for door in world.doors if door.kind == LIFT}
+    cars = {
+        door.car for door in world.doors if door.kind == LIFT and door.unlocked_by(state.passes)
+    }
     exits = {(math.floor(t.x), math.floor(t.y)) for t in world.map.things_of_type(EXIT.name)}
     standing = {(math.floor(x), math.floor(y)) for x, y, _ in spots}
     if not (state.power and standing & cars) and not standing & exits:
@@ -161,6 +165,8 @@ def _reachable(
 
 
 def _opens(door: Door, state: _State) -> bool:
+    if door.kind == LIFT and door.arrive_in > 0.0:
+        return True  # the car the team arrives in opens to let them out
     if not door.unlocked_by(state.passes):
         return False
     return door.kind != LIFT or state.power

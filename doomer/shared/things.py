@@ -9,6 +9,8 @@ same name.
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from doomer.shared.building import FLOOR_LABELS
+
 
 @dataclass(frozen=True, slots=True)
 class Footprint:
@@ -251,9 +253,17 @@ for _name, _description in (
     ("door_hinged", "Hinged office door: press use to open or close"),
     ("door_double", "Double office doors: press use to open or close"),
     ("door_sliding", "Sliding glass doors: open by themselves as you approach"),
-    ("door_lift", "Lift doors: use to call the lift (needs power); a car behind"),
 ):
     register_thing_type(ThingType(_name, _description, properties={"lock": PASS_COLOURS}))
+# A lift (doomer/shared/doors.py): `car=<floor>` where its car waits when the
+# floor starts (default: here); `lock=` a pass it needs to be called or sent.
+register_thing_type(
+    ThingType(
+        "door_lift",
+        "Lift doors: use to call the lift (needs power); a car behind",
+        properties={"lock": PASS_COLOURS, "car": FLOOR_LABELS},
+    )
+)
 
 # Washroom fittings (drawn by doomer/client/boxes.py, sizes matching), each
 # against a wall (`at=`), +x out of it. A run of cubicles: laminate

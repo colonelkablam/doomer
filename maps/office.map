@@ -163,11 +163,12 @@ phone           4.68  4.47  6
 # On the wall behind reception, above the glass doors (the wall's face is x = 8)
 welcome_sign    7.99  4.5   180
 # The lifts, in the lobby's south wall: each one cell (the car), its doors on
-# the lobby line. Call one (E) once the power's on, step in; when everyone's
-# aboard the doors close and the floor is done
-door_lift       2.5   7.5   270
-door_lift       4.5   7.5   270
-door_lift       6.5   7.5   270
+# the lobby line, their cars waiting down at B3. Call one (E) once the
+# power's on: it comes up (the indicator counts), opens; step in, press E
+# to shut the doors; when everyone's aboard it rides up to floor 1
+door_lift       2.5   7.5   270   car=B3
+door_lift       4.5   7.5   270   car=B3
+door_lift       6.5   7.5   270   car=B3
 ceiling_light   2.5   7.5   0
 ceiling_light   4.5   7.5   0
 ceiling_light   6.5   7.5   0

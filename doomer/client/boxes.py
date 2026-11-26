@@ -47,6 +47,7 @@ from doomer.client.palette import (
     U8Array,
 )
 from doomer.client.pixelart import FONT_3X5, BoolArray, Canvas, noise
+from doomer.shared.building import FLOOR_LABELS, floor_label
 from doomer.shared.cubicles import OPEN_ANGLE, CubicleDoor
 from doomer.shared.doors import (
     DOOR_HALF,
@@ -1913,33 +1914,53 @@ def call_button(lit: bool) -> int:
     return _texture(c)
 
 
-def floor_indicator(lit: bool) -> int:
-    """Above a lift: a black strip, the floor (G) in amber when powered."""
+def floor_indicator(label: str | None, arrow: int = 0) -> int:
+    """Above a lift: a black strip, the floor the car's at (`label`) in
+    amber, and while it's moving an arrow the way it's going (+1 up, -1
+    down); None: dark (no power)."""
     c = Canvas()
     c.paint(c.rect(0, 64, 0, 64), GREY, 1.0)
     c.paint(c.rect(0, 64, 0, 64) & ~c.rect(3, 61, 2, 62), GREY, 10.0)  # thin steel frame
-    if lit:
-        c.text("G", 22, 26, OCHRE, 15.0, scale=4)
+    if label is not None:
+        # Drawn tall: the strip is three times wider than high, so the
+        # texture's squashed upright and the digits come out square.
+        su = 4 if len(label) == 1 else 3
+        u0 = 34 - c.text_width(label, su) // 2
+        c.text(label, 12, u0, OCHRE, 15.0, scale=8, scale_u=su)
+        if arrow:  # a triangle at the left; tall, as the strip squashes it
+            for k in range(8):
+                v = 16 + 4 * (k if arrow > 0 else 7 - k)
+                c.paint(c.rect(v, v + 4, 11 - k, 12 + k), OCHRE, 15.0)
     return _texture(c)
 
 
-def car_panel(power: bool) -> int:
-    """Inside the car by the door: steel, a column of round floor buttons,
-    the lowest (G: you're here) lit amber with power."""
+def car_panel(label: str | None, going: bool = False) -> int:
+    """Inside the car by the door: steel, a small amber display of the floor
+    the car's at (`label`), and a column of round buttons under it, the top
+    one lit while it's going up (`going`). None: dark (no power)."""
     c = Canvas()
     c.paint(c.rect(0, 64, 0, 64), GREY, 11.0)
     c.paint(c.rect(0, 64, 0, 64) & ~c.rect(3, 61, 4, 60), GREY, 8.0)
-    for k in range(4):
-        here = power and k == 3
-        c.paint(c.ellipse(12 + k * 13, 32, 5, 9), OCHRE if here else GREY, 15.0 if here else 7.0)
+    c.paint(c.rect(6, 20, 14, 50), GREY, 1.0)  # the display
+    if label is not None:
+        c.text(label, 9, 32 - c.text_width(label, 2) // 2, OCHRE, 15.0, scale=2)
+    for k in range(3):
+        lit = label is not None and going and k == 0
+        c.paint(c.ellipse(30 + k * 12, 32, 5, 9), OCHRE if lit else GREY, 15.0 if lit else 7.0)
     return _texture(c)
 
 
 _STEEL_LEAF, _STEEL_EDGE = steel_leaf(), steel_edge()
 _POLISHED, _SILL, _CALL_PLATE = polished_steel(), sill(), call_plate()
 _CALL = {lit: call_button(lit) for lit in (False, True)}
-_INDICATOR = {lit: floor_indicator(lit) for lit in (False, True)}
-_CAR_PANEL = {lit: car_panel(lit) for lit in (False, True)}
+_INDICATOR = {
+    (label, arrow): floor_indicator(label, arrow) for label in FLOOR_LABELS for arrow in (-1, 0, 1)
+}
+_INDICATOR_DARK = floor_indicator(None)
+_CAR_PANEL = {
+    (label, going): car_panel(label, going) for label in FLOOR_LABELS for going in (False, True)
+}
+_CAR_PANEL_DARK = car_panel(None)
 
 
 def _lift_fittings(door: Door) -> list[PlacedBox]:
@@ -1947,8 +1968,9 @@ def _lift_fittings(door: Door) -> list[PlacedBox]:
     space (x across the doorway, + towards the lobby; y along it). The lift
     is one cell, its car the doorway cell itself, its doors at the lobby
     end: a steel architrave on the lobby wall round them, the sill under
-    them, the floor indicator over them and the call plate beside them; and
-    inside the car, on its side wall by the door, its button panel. The
+    them, the floor indicator over them (the floor the car's at, counting
+    as it moves) and the call plate beside them; and inside the car, on its
+    side wall by the door, its button panel with a floor display. The
     indicator, the call button and the car's panel are on the main circuit:
     lit while the floor has power, dark (their off faces) without."""
     f = door.facing
@@ -1968,14 +1990,17 @@ def _lift_fittings(door: Door) -> list[PlacedBox]:
     at(Box(sill, (-0.5, 0.5), (0.0, 0.006), (_SILL,) * 5))  # under the doors
     # Only the fronts carry the display and buttons; their thin sides are steel.
     sides = (_POLISHED,) * 4
+    label = floor_label(door.car_floor)
+    moving = not door.car_here
+    arrow = 0 if not moving else (1 if door.car_floor < door.here or not door.called else -1)
     indicator = Box(
         (0.5, 0.52),
         (-0.12, 0.12),
         (top + 0.07, top + 0.15),
-        (_INDICATOR[True], *sides),
+        (_INDICATOR[(label, arrow)], *sides),
         glow=True,
         mains=True,
-        off_faces=(_INDICATOR[False], *sides),
+        off_faces=(_INDICATOR_DARK, *sides),
     )
     at(indicator)
     # The call plate, on the wall beside the doors, and its one button.
@@ -1993,8 +2018,9 @@ def _lift_fittings(door: Door) -> list[PlacedBox]:
     at(button, bx, by)
     # The car's panel, on its side wall (y = 0.5) just inside the doors.
     # Its buttons on the face into the car: -y, the box's left face.
-    lit_panel = (_POLISHED, _POLISHED, _POLISHED, _CAR_PANEL[True], _POLISHED)
-    dark_panel = (_POLISHED, _POLISHED, _POLISHED, _CAR_PANEL[False], _POLISHED)
+    going = moving and not door.called  # riding up, not coming to be called
+    lit_panel = (_POLISHED, _POLISHED, _POLISHED, _CAR_PANEL[(label, going)], _POLISHED)
+    dark_panel = (_POLISHED, _POLISHED, _POLISHED, _CAR_PANEL_DARK, _POLISHED)
     at(Box((0.05, 0.22), (0.485, 0.5), (0.3, 0.52), lit_panel, mains=True, off_faces=dark_panel))
     return out
 

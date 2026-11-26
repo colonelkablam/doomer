@@ -13,6 +13,7 @@ and bump your head on ceilings.
 import math
 from collections.abc import Mapping
 
+from doomer.shared.building import next_floor
 from doomer.shared.collision import (
     Obstacle,
     ThinWall,
@@ -36,6 +37,8 @@ from doomer.shared.events import (
     DoorLocked,
     DoorToggled,
     LevelComplete,
+    LiftCalled,
+    LiftDeparting,
     LiftNoPower,
     PassPickedUp,
     Refreshed,
@@ -49,6 +52,7 @@ from doomer.shared.switches import POWER, try_switch
 from doomer.shared.world import World
 
 TAU = math.tau
+RIDE_SECONDS = 2.5  # the lift ride up a floor, doors shut
 _EPS = 1e-9
 
 
@@ -59,7 +63,9 @@ def step(world: World, inputs: Mapping[int, PlayerInput]) -> None:
         apply_input(world, player, inputs.get(player_id, PlayerInput(angle=player.angle)))
     positions = [(p.x, p.y) for p in world.players.values()]
     power = POWER in world.flags
-    departing = power and bool(positions) and _all_in_lifts(world, positions)
+    if world.ride < 0.0 and power and positions and _ready_to_ride(world, positions):
+        world.ride = 0.0
+        world.events.append(LiftDeparting(world.tick))
     update_doors(
         world.doors,
         positions,
@@ -67,15 +73,27 @@ def step(world: World, inputs: Mapping[int, PlayerInput]) -> None:
         world.config.dt,
         world.passes,
         power,
-        departing,
+        departing=world.ride >= 0.0,
     )
     update_cubicle_doors(
         world.cubicle_doors, world.config.dt, positions, world.config.movement.radius
     )
-    if departing and not world.complete and _lifts_shut(world, positions):
-        world.complete = True
-        world.events.append(LevelComplete(world.tick))
+    if world.ride >= 0.0 and not world.complete:
+        _ride(world, positions)
     world.tick += 1
+
+
+def _ride(world: World, positions: list[tuple[float, float]]) -> None:
+    """The ride up: the occupied cars climb a floor over RIDE_SECONDS (their
+    indicators count), then the floor's done."""
+    world.ride += world.config.dt
+    occupied = {(math.floor(x), math.floor(y)) for x, y in positions}
+    for door in world.doors:
+        if door.kind == LIFT and door.car in occupied:
+            door.car_floor = door.here + min(1.0, world.ride / RIDE_SECONDS)
+    if world.ride >= RIDE_SECONDS:
+        world.complete = True
+        world.events.append(LevelComplete(world.tick, next_floor(world.map.storey)))
 
 
 def apply_input(world: World, player: PlayerState, player_input: PlayerInput) -> None:
@@ -123,7 +141,9 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
             world.events.append(SwitchThrown(world.tick, thrown.id, player.id, thrown.flag))
         if used is not None:
             door, allowed = used
-            if allowed:
+            if allowed and door.kind == LIFT and door.called:
+                world.events.append(LiftCalled(world.tick, door.id, player.id))
+            elif allowed:
                 world.events.append(DoorToggled(world.tick, door.id, player.id, door.opening))
             elif door.lock is not None and door.lock not in world.passes:
                 world.events.append(DoorLocked(world.tick, door.id, player.id, door.lock))
@@ -194,16 +214,20 @@ def _meter(player: PlayerState, meter: str) -> int:
     return value
 
 
-def _all_in_lifts(world: World, positions: list[tuple[float, float]]) -> bool:
-    """Is every player standing in a lift car?"""
-    cars = {door.car for door in world.doors if door.kind == LIFT}
-    return bool(cars) and all((math.floor(x), math.floor(y)) in cars for x, y in positions)
-
-
-def _lifts_shut(world: World, positions: list[tuple[float, float]]) -> bool:
-    """Are the doors of every lift with someone in it fully shut?"""
-    occupied = {(math.floor(x), math.floor(y)) for x, y in positions}
-    return all(d.open == 0.0 for d in world.doors if d.kind == LIFT and d.car in occupied)
+def _ready_to_ride(world: World, positions: list[tuple[float, float]]) -> bool:
+    """Is every player in a lift car that's here, with its doors shut (and
+    not just arrived), that the team may send (its pass, if it's locked)?"""
+    ready = {
+        door.car
+        for door in world.doors
+        if door.kind == LIFT
+        and door.car_here
+        and door.open == 0.0
+        and not door.opening
+        and door.arrive_in == 0.0
+        and door.unlocked_by(world.passes)
+    }
+    return all((math.floor(x), math.floor(y)) in ready for x, y in positions)
 
 
 def body_height(player: PlayerState, move: MovementConfig) -> float:
