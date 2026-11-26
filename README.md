@@ -11,8 +11,8 @@ editor.
 
 Current state: single-player on the ground floor: a two-storey glazed lobby
 with the main doors, a reception desk and stairs up to a railed balcony; desk
-pods you can jump onto; look up/down, jump and crouch. A server runs and
-bots can join it; the game client joining is next.
+pods you can jump onto; look up/down, jump and crouch. Multiplayer: a server,
+the game joining it, and bots.
 
 ## Play (Linux)
 
@@ -34,16 +34,21 @@ Options: a map path as the first argument (default `maps/office.map`),
 
 ## Server and bots
 
-The game client can't join a server yet (that's next), but the server runs
-and bots can play in it:
+Run a server, then join it from the game (and add bots to have company):
 
 ```bash
 .venv/bin/python -m ok_doomer.server --port 5029
 ```
 
 ```bash
+.venv/bin/python -m ok_doomer.client --connect 127.0.0.1:5029 --name ann
+```
+
+```bash
 .venv/bin/python -m ok_doomer.bot --connect 127.0.0.1:5029 --count 3
 ```
+
+From another machine, use the server's IP address instead of 127.0.0.1.
 
 The server starts on the ground floor in co-op; `--map maps/x.map` plays a
 map instead, `--config server.toml` reads settings (`ServerConfig` in

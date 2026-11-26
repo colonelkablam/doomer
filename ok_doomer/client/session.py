@@ -1,8 +1,8 @@
 """A game session: where the world lives, from the client's point of view.
 
-LocalSession runs the simulation in-process (single-player). Milestone 3 adds
-a NetworkSession with the same interface that sends inputs to the server and
-interpolates snapshots, so the game loop doesn't change.
+LocalSession runs the simulation in-process (single-player);
+NetworkSession (client/network.py) has the same interface, sending inputs
+to a server and drawing its snapshots, so the game loop doesn't change.
 """
 
 from typing import Protocol
@@ -56,6 +56,40 @@ class GameSession(Protocol):
         there: `game_map` is then a different map."""
         ...
 
+    def ended(self) -> str | None:
+        """Why the game's over (the server said goodbye, or went away), or
+        None while it goes on."""
+        ...
+
+    def close(self) -> None:
+        """Done with it (leave the server)."""
+        ...
+
+
+def static_sprites(world: World) -> list[SpriteInstance]:
+    """The map's things that never move. Pickups aren't among them: they
+    come from the world (they get taken)."""
+    pickup_types = {p.type for p in world.pickups}
+    return [s for s in sprites_from_things(world.map) if s.name not in pickup_types]
+
+
+def lying_pickups(world: World) -> list[SpriteInstance]:
+    return [SpriteInstance(p.type, p.x, p.y, p.z, p.angle) for p in world.pickups if not p.taken]
+
+
+def world_boxes(world: World) -> list[PlacedBox]:
+    """Moving geometry as it is now: doors, switches, cubicle doors."""
+    doors = door_boxes(world.doors, world.passes)
+    return doors + switch_boxes(world.switches) + cubicle_door_boxes(world.cubicle_doors)
+
+
+def ease_eye(eye: float, player: PlayerState, world: World, real_dt: float) -> float:
+    """Eye height eases towards standing/crouching height rather than
+    snapping, so crouching dips the view over ~0.1 s."""
+    target = eye_height(player, world.config.movement)
+    change = EYE_EASE_SPEED * real_dt
+    return eye + max(-change, min(change, target - eye))
+
 
 class LocalSession:
     def __init__(self, world: World, player_name: str, player_id: int = 1) -> None:
@@ -66,14 +100,8 @@ class LocalSession:
         self._spawn_angle = player.angle
         self.timestep = FixedTimestep(world.config.dt)
         self._prev = (self.player.x, self.player.y, self.player.z)
-        # Eye height eases towards standing/crouching height rather than
-        # snapping, so crouching dips the view over ~0.1 s.
         self._eye = eye_height(self.player, world.config.movement)
-        # Map things never move; pickups come from the world (they get taken).
-        pickup_types = {p.type for p in world.pickups}
-        self._static_sprites = [
-            s for s in sprites_from_things(world.map) if s.name not in pickup_types
-        ]
+        self._static_sprites = static_sprites(world)
 
     @property
     def game_map(self) -> GameMap:
@@ -94,9 +122,7 @@ class LocalSession:
                 self._start(world, world.players[self.player.id])
                 events += drain_events(world)
                 break  # the rest of this frame's time goes to the new floor next frame
-        target = eye_height(self.player, self.world.config.movement)
-        change = EYE_EASE_SPEED * real_dt
-        self._eye += max(-change, min(change, target - self._eye))
+        self._eye = ease_eye(self._eye, self.player, self.world, real_dt)
         return events
 
     def camera(self, view_angle: float, pitch: float = 0.0) -> Camera:
@@ -110,17 +136,10 @@ class LocalSession:
         return Camera(x, y, view_angle, z=z + self._eye, pitch=pitch)
 
     def sprites(self) -> list[SpriteInstance]:
-        lying = [
-            SpriteInstance(p.type, p.x, p.y, p.z, p.angle)
-            for p in self.world.pickups
-            if not p.taken
-        ]
-        return self._static_sprites + lying
+        return self._static_sprites + lying_pickups(self.world)
 
     def boxes(self) -> list[PlacedBox]:
-        doors = door_boxes(self.world.doors, self.world.passes)
-        cubicles = cubicle_door_boxes(self.world.cubicle_doors)
-        return doors + switch_boxes(self.world.switches) + cubicles
+        return world_boxes(self.world)
 
     def passes(self) -> frozenset[str]:
         return frozenset(self.world.passes)
@@ -130,3 +149,9 @@ class LocalSession:
 
     def spawn_angle(self) -> float:
         return self._spawn_angle
+
+    def ended(self) -> str | None:
+        return None
+
+    def close(self) -> None:
+        pass

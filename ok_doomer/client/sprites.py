@@ -18,13 +18,16 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ok_doomer.client.faces import GRID, JACKETS, Face, draw_portrait
 from ok_doomer.client.models import VoxelModel, bake, view_for
 from ok_doomer.client.palette import (
+    BLUE,
     BRICK,
     CREAM,
     GREEN,
     GREY,
     SAND,
+    STEEL,
     WARM_GREY,
     WOOD,
     U8Array,
@@ -133,8 +136,47 @@ def exit_sign() -> Sprite:
     return _finish(c, fullbright=True, on_ceiling=True)
 
 
+# Other players, until they have proper characters (GAME.md): an office
+# worker, a different look for each of the first PLAYER_LOOKS player ids.
+PLAYER_FACES = (
+    Face("fair", "side_part", "brown", "none", "none", "grin", "navy", "red"),
+    Face("dark", "slicked", "black", "none", "beard", "flat", "grey", "blue"),
+    Face("tan", "perm", "black", "big_glasses", "none", "grin", "pink", "none", "gold"),
+    Face("fair", "bald", "ginger", "none", "moustache", "stern", "brown", "gold"),
+    Face("fair", "slicked", "blond", "aviators", "none", "grin", "charcoal", "red"),
+    Face("dark", "side_part", "black", "big_glasses", "none", "grin", "brown", "none"),
+    Face("tan", "side_part", "brown", "none", "beard", "flat", "navy", "gold"),
+    Face("fair", "perm", "white", "none", "none", "stern", "grey", "blue"),
+)
+PLAYER_LOOKS = len(PLAYER_FACES)
+TROUSERS = {"navy": BLUE, "grey": STEEL, "charcoal": GREY, "brown": WOOD, "pink": GREY}
+
+
+def player_sprite_name(player_id: int) -> str:
+    return f"player_{(player_id - 1) % PLAYER_LOOKS + 1}"
+
+
+def player(face: Face) -> Sprite:
+    """A colleague standing, ~1.8 m: head and shoulders (the portrait,
+    faces.py), jacket, trousers, shoes. The same from every side for now."""
+    c = Canvas()
+    size = GRID  # one texel a portrait pixel: crisp
+    top, left = 21, 32 - size // 2
+    jacket = JACKETS[face.jacket]
+    trousers = TROUSERS[face.jacket]
+    c.paint(c.rect(top + size - 2, 52, left + 2, left + size - 2), *jacket.base)  # jacket
+    c.paint(c.rect(top + size - 2, 50, left + 2, left + 4), *jacket.shadow)  # its side
+    c.paint(c.rect(top + size - 2, 50, left + size - 4, left + size - 2), *jacket.shadow)
+    for u0 in (left + 4, left + size // 2 + 1):  # legs
+        c.paint(c.rect(52, 62, u0, u0 + size // 2 - 5), trousers, 4.0)
+        c.paint(c.rect(62, 64, u0 - 1, u0 + size // 2 - 4), GREY, 1.0)  # shoes
+    draw_portrait(c, top, left, size, face, None)
+    return _finish(c)
+
+
 SPRITES: dict[str, Sprite] = {
     "desk": desk(),
     "terminal": terminal(),
     "exit": exit_sign(),
+    **{player_sprite_name(i + 1): player(f) for i, f in enumerate(PLAYER_FACES)},
 }

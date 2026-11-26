@@ -76,6 +76,9 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
             floor = session.game_map
             events = session.update(real_dt, player_input)
             hud.handle(events, now)
+            if (reason := session.ended()) is not None:
+                log.info("game over: %s", reason)
+                return
             if session.game_map is not floor:  # the lift's arrived on the next floor
                 automap = Automap(session.game_map)
                 controls.angle = session.spawn_angle()

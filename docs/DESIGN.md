@@ -182,6 +182,20 @@ means adding a module and registering it, not editing a dozen files.
   every player, to every client): fine on a LAN at 8. If the Pi
   struggles, encode each tick's snapshot once rather than per client
   (only `ack` differs), then round floats, then deltas.
+- **The game client on a server** (`client/network.py`; `python -m
+  ok_doomer.client --connect HOST:PORT --name NAME`): a `Connection` (a
+  plain socket, `TCP_NODELAY`; a reader thread blocks on it and queues
+  each message, since the game loop is pygame's, not asyncio's) and a
+  `NetworkSession`, the same `GameSession` interface as `LocalSession`.
+  It sends one input per tick (its own `FixedTimestep`), drains the queue
+  once a frame onto a `WorldMirror`, and keeps players' poses in a short
+  history on the server's timeline (tick x dt: receipt times bunch up
+  when two updates land in one frame). It draws you 1 tick behind the
+  newest snapshot (no prediction: the server's word) and others 3 ticks
+  behind (50 ms, room for jitter), interpolating between the snapshots
+  either side, angles the short way round, never extrapolating. Other
+  players are sprites (`player_N`, a look per player id). The server
+  going away or saying `Bye` ends the game (`GameSession.ended`).
 - **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
   blocking (a lost packet holds up everything behind it until resent),
   matters on the internet, not here. Framing and encoding stay behind
@@ -1031,9 +1045,9 @@ Noted at the end of a session, to pick up next:
   (`python -m ok_doomer.server`, `TCP_NODELAY`, timeouts); (6) [done] a bot
   client (standard library: the test player and a load test; pulled
   ahead of the game client so there's something to join with, and
-  something moving round you once the client can join); (7)
+  something moving round you once the client can join); (7) [done]
   `NetworkSession`: a reader thread into a queue, the world copy, remote
-  players drawn ~2 snapshots behind, `--connect host:port`, a sprite for
+  players drawn 3 ticks behind, `--connect host:port`, a sprite for
   other players; (8) measure the lag on a LAN, then decide on prediction.
 
 ## Setup
