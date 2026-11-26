@@ -36,6 +36,7 @@ import numpy.typing as npt
 from doomer.client.config import LightingConfig
 from doomer.shared.doors import SLIDING, doors_from_map
 from doomer.shared.mapfile import WALL_UNITS, GameMap
+from doomer.shared.things import EXIT_SIGN_HEIGHTS
 
 FloatArray = npt.NDArray[np.float64]
 
@@ -132,7 +133,8 @@ def panels_in(game_map: GameMap, config: LightingConfig | None = None) -> list[P
         elif t.type == "exit_sign":
             # A little out from the wall it hangs on, so walls don't hide it.
             x, y = t.x + 0.1 * math.cos(t.angle), t.y + 0.1 * math.sin(t.angle)
-            out.append(Panel(x, y, 0.83, emergency=True, intensity=config.exit_sign_intensity))
+            height = EXIT_SIGN_HEIGHTS[t.prop("kind") or "door"]
+            out.append(Panel(x, y, height, emergency=True, intensity=config.exit_sign_intensity))
     return out
 
 

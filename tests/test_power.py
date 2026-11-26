@@ -181,3 +181,19 @@ def test_things_on_the_emergency_circuit_carry_it_to_their_boxes() -> None:
     reception = [s for s in sprites_from_things(office) if s.name == "mac" and s.emergency]
     assert len(reception) == 1  # the receptionist's Mac: lit in a power cut
     assert all(_placed(reception[0], b, 0.0).emergency for b in BOX_MODELS["mac"])
+
+
+def test_an_exit_sign_over_glazed_doors_hangs_on_the_transom() -> None:
+    from doomer.client.boxes import BOX_MODELS
+    from doomer.client.lighting import panels_in
+    from doomer.shared.mapfile import load_map
+
+    (door,), (transom,) = BOX_MODELS["exit_sign"], BOX_MODELS["exit_sign:transom"]
+    assert transom.z[0] > door.z[1]  # higher: clear of the entrance doors' glass
+    assert transom.z[0] < 1.0 < transom.z[1]  # across the transom at the storey line
+    office = load_map("maps/office.map")
+    entrance = next(t for t in office.things_of_type("exit_sign") if t.prop("kind") == "transom")
+    lit = [
+        p for p in panels_in(office) if abs(p.x - entrance.x) < 0.2 and abs(p.y - entrance.y) < 0.01
+    ]
+    assert lit and lit[0].height == 1.0  # its emergency light from up there too

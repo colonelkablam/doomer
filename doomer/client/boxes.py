@@ -65,7 +65,7 @@ from doomer.shared.mapfile import STAIR_RISE, STAIRS_WALL_TYPE, WALL_UNITS, Game
 from doomer.shared.screens import SCREEN_HALF, SCREEN_HEIGHT
 from doomer.shared.screens import desk_screens as shared_desk_screens
 from doomer.shared.switches import Switch
-from doomer.shared.things import POSTER_KINDS
+from doomer.shared.things import EXIT_SIGN_HEIGHTS, POSTER_KINDS
 
 FRONT, RIGHT, BACK, LEFT, TOP = range(5)  # face order in Box.faces
 
@@ -2074,7 +2074,7 @@ def _executive_desk() -> tuple[Box, ...]:
 # a power cut (doomer/client/lighting.py: a dim emergency light at the sign).
 # Model x points out of the wall; the thing stands at the wall's face.
 
-EXIT_SIGN_Z = (0.79, 0.88)  # walls: just over a door's head (DOOR_HEIGHT 0.75)
+EXIT_SIGN_HALF_HEIGHT = 0.045  # walls: centred on EXIT_SIGN_HEIGHTS (shared/things.py)
 EXIT_SIGN_HALF_WIDTH = 0.09  # cells (~49 cm wide, ~24 cm high)
 
 
@@ -2103,10 +2103,14 @@ def exit_sign_side() -> int:
     return _texture(c)
 
 
-def _exit_sign() -> tuple[Box, ...]:
-    face, side = exit_sign_face(), exit_sign_side()
-    w = EXIT_SIGN_HALF_WIDTH
-    return (Box((0.0, 0.03), (-w, w), EXIT_SIGN_Z, (face, side, side, side, side), glow=True),)
+def _exit_sign(middle: float) -> tuple[Box, ...]:
+    face, side = _EXIT_FACE, _EXIT_SIDE
+    w, h = EXIT_SIGN_HALF_WIDTH, EXIT_SIGN_HALF_HEIGHT
+    z = (middle - h, middle + h)
+    return (Box((0.0, 0.03), (-w, w), z, (face, side, side, side, side), glow=True),)
+
+
+_EXIT_FACE, _EXIT_SIDE = exit_sign_face(), exit_sign_side()
 
 
 # --- The plant room's breaker (doomer/shared/switches.py has its state) ---------
@@ -2401,7 +2405,8 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     "ficus": _ficus(),
     "reception_desk": _reception_desk(),
     "welcome_sign": _welcome_sign(),
-    "exit_sign": _exit_sign(),
+    "exit_sign": _exit_sign(EXIT_SIGN_HEIGHTS["door"]),
+    **{f"exit_sign:{k}": _exit_sign(z) for k, z in EXIT_SIGN_HEIGHTS.items()},
     "executive_desk": _executive_desk(),
 }
 BOX_TEXTURES: U8Array = np.stack(_TEXTURES)  # [texture][u][v]

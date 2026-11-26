@@ -183,8 +183,18 @@ WELCOME_SIGN = register_thing_type(
 )
 # A lit green EXIT sign over a main door, on its own battery: the emergency
 # light in a power cut (a dim pool of light round it). Stand it at the face
-# of the wall over the doorway, on the side people leave from.
-EXIT_SIGN = register_thing_type(ThingType("exit_sign", "Emergency exit sign over a door"))
+# of the wall over the doorway, on the side people leave from. `kind=`
+# where it's mounted: door (the default: just over a door's head, on the
+# wall over a doorway) or transom (higher, on the transom bar at the storey
+# line over glazed doors that run up to it, as the entrance's do).
+EXIT_SIGN_HEIGHTS = {"door": 0.83, "transom": 1.0}  # walls: its middle
+EXIT_SIGN = register_thing_type(
+    ThingType(
+        "exit_sign",
+        "Emergency exit sign over a door",
+        properties={"kind": tuple(EXIT_SIGN_HEIGHTS)},
+    )
+)
 
 # Doors (doomer/shared/doors.py): in a doorway cell; angle = the way it opens.
 # `lock=<colour>`: only opens for a team holding that pass.
