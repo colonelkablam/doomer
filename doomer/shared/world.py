@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from doomer.shared.collision import Obstacle
 from doomer.shared.config import SimConfig
+from doomer.shared.dispensers import Dispenser, dispensers_from_map
 from doomer.shared.doors import Door, doors_from_map
 from doomer.shared.events import Event, PlayerSpawned
 from doomer.shared.furniture import footprint_obstacles
@@ -40,6 +41,9 @@ class World:
     passes: set[str] = field(default_factory=set)
     # Switches and the level flags they set (doomer/shared/switches.py): power.
     switches: list[Switch] = field(default_factory=list)
+    # Dispensers (the water cooler) and what each has given whom
+    # (doomer/shared/dispensers.py).
+    dispensers: list[Dispenser] = field(default_factory=list)
     flags: set[str] = field(default_factory=set)
     complete: bool = False  # everyone left by lift (LevelComplete)
 
@@ -74,6 +78,7 @@ def new_world(
         doors=doors_from_map(game_map),
         pickups=pickups_from_map(game_map),
         switches=switches_from_map(game_map),
+        dispensers=dispensers_from_map(game_map),
         flags=initial_flags(game_map),
         passes=set(PASS_COLOURS) if GAME_MODES[mode].all_passes else set(),
     )

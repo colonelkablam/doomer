@@ -105,9 +105,10 @@ means adding a module and registering it, not editing a dozen files.
   - `World.pickups`: passes already, with a `taken` flag; coffee cups,
     snacks and the like join them, each pickup type's amounts from the
     thing registry (`health=`, `coffee=`; config as data).
-  - `World.dispensers`: per dispenser, its type (what it gives, how much a
-    use, the budget per player; from the registry) and what's left for each
-    player, `{player_id: remaining}`. A player who joins later starts with
+  - `World.dispensers` [built: `shared/dispensers.py`]: per dispenser, its
+    type (`DISPENSERS`: the meter, how much a use, the allowance per player)
+    and what it has given each player, `{player_id: given}`. Used with E
+    (switches first, then dispensers, then doors); `Dispensed` events. A player who joins later starts with
     the full budget. On the main circuit (the vending machine), it works
     only while there's power.
   - Snapshots carry each client its own meters and budgets (a HUD hint
@@ -793,9 +794,10 @@ Noted at the end of a session, to pick up next:
   second floor to arrive on. Enemies, weapons and pickups (milestones 3b,
   4) come after networking.
 - **Health and coffee** (GAME.md, Pickups; Networking above): two meters
-  per player, coffee as armour (soaks a third of each hit), pickups
-  (coffee cups +5, snacks) and per-player dispensers (water cooler,
-  vending machine). The data model with networking, damage with 3b.
+  per player, coffee as armour (soaks a third of each hit). Built: the
+  meters, coffee cups, the water cooler. To do: snacks, the vending
+  machine (a dispenser on the main circuit), damage and absorption with
+  3b, the meters on the HUD.
 - **Office objects to make** (GAME.md, Office furniture, the `planned`
   rows)
   on the odd desk; a kitchen area (counter, sink, kettle, microwave,

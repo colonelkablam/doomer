@@ -31,6 +31,18 @@ class DoorLocked(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class Dispensed(Event):
+    """A player used a dispenser (the water cooler): `amount` added to their
+    `meter` (0: their meter's full, or nothing's `left` for them)."""
+
+    player_id: int
+    dispenser: str  # its thing type
+    meter: str
+    amount: int
+    left: int  # for this player, after this use
+
+
+@dataclass(frozen=True, slots=True)
 class Refreshed(Event):
     """A player took a pickup that tops up a meter (a coffee cup)."""
 

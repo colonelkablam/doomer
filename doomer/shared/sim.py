@@ -15,8 +15,10 @@ from collections.abc import Mapping
 
 from doomer.shared.collision import ThinWall, move_box
 from doomer.shared.config import MovementConfig
+from doomer.shared.dispensers import dispense, dispenser_in_reach
 from doomer.shared.doors import LIFT, door_walls, try_use, update_doors
 from doomer.shared.events import (
+    Dispensed,
     DoorLocked,
     DoorToggled,
     LevelComplete,
@@ -68,9 +70,21 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
     if player_input.use and not player.use_held:  # a press, not a hold
         thrown = try_switch(world.switches, player.x, player.y, player.angle)
         power = POWER in world.flags
-        used = (
+        tap = (
             None
             if thrown
+            else dispenser_in_reach(world.dispensers, player.x, player.y, player.angle)
+        )
+        if tap is not None:
+            meter = tap.kind.meter
+            before = _meter(player, meter)
+            amount = dispense(tap, player.id, before, METER_MAX[meter])
+            setattr(player, meter, before + amount)
+            left = tap.left_for(player.id)
+            world.events.append(Dispensed(world.tick, player.id, tap.type, meter, amount, left))
+        used = (
+            None
+            if thrown or tap
             else try_use(world.doors, player.x, player.y, player.angle, world.passes, power)
         )
         if thrown is not None:

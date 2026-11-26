@@ -10,7 +10,9 @@ from collections.abc import Collection, Iterable
 import pygame
 
 from doomer.client.boxes import pass_card_rgba
+from doomer.shared.dispensers import DISPENSERS
 from doomer.shared.events import (
+    Dispensed,
     DoorLocked,
     Event,
     LevelComplete,
@@ -42,6 +44,13 @@ def _card_image(colour: str) -> pygame.Surface:
 
 
 def message_for(event: Event) -> str | None:
+    if isinstance(event, Dispensed):
+        name = DISPENSERS[event.dispenser].name
+        if event.amount:
+            return f"{event.meter.capitalize()} +{event.amount}"
+        if event.left == 0:
+            return f"{name[0].upper()}{name[1:]} has nothing left for you"
+        return f"{event.meter.capitalize()}'s full"
     if isinstance(event, Refreshed):
         return f"{event.meter.capitalize()} +{event.amount}" if event.amount else None
     if isinstance(event, PassPickedUp):

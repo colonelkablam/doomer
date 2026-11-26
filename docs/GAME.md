@@ -161,7 +161,7 @@ Passive decoration. **Blocking** things stop movement (and, later, shots).
 | Card readers by locked doors: stripe in the pass colour, red/green lamp | no | [built] |
 | Desk phone (box model, `phone`): brown 1980s plastic: on the left a raised cradle with the handset lying front to back (one solid box, its cups and narrower grip painted on: shaded beside the grip from above, a dark shadow under it from the side), on a low cradle, on the right a keypad and a column of amber line buttons; three boxes; on the boss's desk and reception's | no | [built] |
 | Late-80s business PC (box model, `pc`): pearly off-white, generic (no badge): a wide system unit lying flat (two 5.25" drives, lamps), a big CRT standing on it (deep bezel, the tube's housing behind), a green-phosphor spreadsheet screen that glows while there's power, a long heavy keyboard in front; five boxes, ~1.9x scale; on the boss's desk, turned a little towards the chair | no | [built] |
-| Water cooler (box model: cream cabinet, hot and cold taps, an upturned 19-litre bottle nearly as wide as the cabinet, ~1.45 m to its top; faces its map angle). Planned: a health dispenser (see Pickups) | yes | [built] |
+| Water cooler (box model: cream cabinet, hot and cold taps, an upturned 19-litre bottle nearly as wide as the cabinet, ~1.45 m to its top; faces its map angle). A health dispenser: use it (E) for 5 health, 25 a player (see Pickups) | yes | [built] |
 | Filing cabinet (box model: five steel drawers with pulls and label cards; faces its map angle) | yes | [built] |
 | Potted ficus (box model: octagonal terracotta pot, a single trunk, a crown of crossed see-through leaf cards drawn as individual drooping leaves in a ragged outline) | yes | [built] |
 | Fluorescent ceiling light (a panel set into the ceiling) | no | [built] |
@@ -283,7 +283,9 @@ buttons by the door (G lit).
     (full health, very rare).
   - **Dispensers** (fixed; use with E; each has a budget per player, so one
     player draining it doesn't empty it for the other): the **water
-    cooler** (1 health a use, 25 a player per floor), the **vending
+    cooler** [built] (a paper cup of water: 5 health a use, 25 a player per
+    floor; the HUD says "Health +5", "Health's full", or that it has
+    nothing left for you), the **vending
     machine** (a snack, 5 health a use, 40 a player; on the main circuit,
     so it works only once the power's back, a reward for restoring it),
     later a **coffee machine** (coffee the same way).
