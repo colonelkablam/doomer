@@ -194,7 +194,11 @@ means adding a module and registering it, not editing a dozen files.
   newest snapshot (no prediction: the server's word) and others 3 ticks
   behind (50 ms, room for jitter), interpolating between the snapshots
   either side, angles the short way round, never extrapolating. Other
-  players are sprites (`player_N`, a look per player id). The server
+  players are drawn as `office_worker` (`client/sprites.py`): a voxel
+  model baked into 16 views (white shirt, red tie, navy trousers, a dark
+  quiff; ~1.8 m), turned by the player's angle, so you see their back as
+  they walk away. One look for everyone until the characters (GAME.md)
+  are drawn. The server
   going away or saying `Bye` ends the game (`GameSession.ended`).
 - **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
   blocking (a lost packet holds up everything behind it until resent),

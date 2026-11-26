@@ -112,9 +112,13 @@ def test_pose_at_interpolates_and_never_guesses_ahead() -> None:
     assert pose_at(history, 8, 1.5) is None
 
 
-def test_every_player_look_has_a_sprite() -> None:
-    assert player_sprite_name(1) == "player_1" and player_sprite_name(9) == "player_1"
-    assert all(player_sprite_name(i) in SPRITES for i in range(1, 20))
+def test_players_are_drawn_from_every_side() -> None:
+    from ok_doomer.client.models import VIEWS
+
+    sprite = SPRITES[player_sprite_name(2)]
+    assert len(sprite.index) == VIEWS  # baked views: his back as he walks away
+    front, back = sprite.index[0], sprite.index[VIEWS // 2]
+    assert (front != back).any()
 
 
 def test_join_walk_and_leave() -> None:
@@ -152,7 +156,7 @@ def test_other_players_are_drawn_smoothly() -> None:
             now = time.monotonic()
             session.update(now - last, PlayerInput())
             last = now
-            others = [s for s in session.sprites() if s.name.startswith("player_")]
+            others = [s for s in session.sprites() if s.name == player_sprite_name(2)]
             if others:
                 (bot_sprite,) = others
                 assert bot_sprite.name == player_sprite_name(2)

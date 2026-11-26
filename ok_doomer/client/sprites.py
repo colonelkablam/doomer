@@ -18,7 +18,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ok_doomer.client.faces import GRID, JACKETS, Face, draw_portrait
 from ok_doomer.client.models import VoxelModel, bake, view_for
 from ok_doomer.client.palette import (
     BLUE,
@@ -26,8 +25,8 @@ from ok_doomer.client.palette import (
     CREAM,
     GREEN,
     GREY,
+    OCHRE,
     SAND,
-    STEEL,
     WARM_GREY,
     WOOD,
     U8Array,
@@ -136,47 +135,69 @@ def exit_sign() -> Sprite:
     return _finish(c, fullbright=True, on_ceiling=True)
 
 
-# Other players, until they have proper characters (GAME.md): an office
-# worker, a different look for each of the first PLAYER_LOOKS player ids.
-PLAYER_FACES = (
-    Face("fair", "side_part", "brown", "none", "none", "grin", "navy", "red"),
-    Face("dark", "slicked", "black", "none", "beard", "flat", "grey", "blue"),
-    Face("tan", "perm", "black", "big_glasses", "none", "grin", "pink", "none", "gold"),
-    Face("fair", "bald", "ginger", "none", "moustache", "stern", "brown", "gold"),
-    Face("fair", "slicked", "blond", "aviators", "none", "grin", "charcoal", "red"),
-    Face("dark", "side_part", "black", "big_glasses", "none", "grin", "brown", "none"),
-    Face("tan", "side_part", "brown", "none", "beard", "flat", "navy", "gold"),
-    Face("fair", "perm", "white", "none", "none", "stern", "grey", "blue"),
-)
-PLAYER_LOOKS = len(PLAYER_FACES)
-TROUSERS = {"navy": BLUE, "grey": STEEL, "charcoal": GREY, "brown": WOOD, "pink": GREY}
+def office_worker() -> Sprite:
+    """Another player, until the characters are drawn (GAME.md): a man in
+    a white shirt and red tie, navy trousers, brown shoes, a dark quiff.
+    ~1.8 m (44 voxels), slim; baked from a model, so seen from every side
+    (his back as he walks away).
+
+    Model axes (models.py): x out of his front, y to his right, z up."""
+    m = VoxelModel()
+    hair = (GREY, 2.5)
+    # Shoes, brown, toes forward.
+    for y in ((-4, -1), (1, 4)):
+        m.box((-2, 4), y, (0, 2), WOOD, 4.0)
+        m.box((-2, 4), y, (0, 1), WOOD, 2.0)  # soles
+    # Trousers, navy: two legs, joined above the crotch.
+    for y in ((-4, -1), (1, 4)):
+        m.box((-2, 2), y, (2, 15), BLUE, 3.5)
+    m.box((-2, 2), (-4, 4), (15, 20), BLUE, 3.5)
+    m.box((-2, 3), (-4, 4), (20, 21), GREY, 2.0)  # belt
+    m.box((2, 3), (-1, 1), (20, 21), OCHRE, 10.0)  # buckle
+    # White shirt: torso and sleeves, hands below.
+    m.box((-2, 3), (-5, 5), (21, 33), GREY, 14.0)
+    for y in ((-7, -5), (5, 7)):
+        m.box((-1, 2), y, (20, 33), GREY, 13.5)
+        m.box((-1, 2), y, (20, 21), GREY, 12.0)  # cuffs
+        m.box((-1, 2), y, (16, 20), SAND, 12.0)  # hands
+    # Red tie down the front, a darker knot; the collar either side.
+    m.box((3, 4), (-1, 1), (23, 31), BRICK, 8.0)
+    m.box((3, 4), (0, 1), (22, 23), BRICK, 8.0)  # its point
+    m.box((3, 4), (-1, 1), (31, 33), BRICK, 6.0)  # knot
+    m.box((2, 4), (-3, -1), (32, 33), GREY, 15.0)
+    m.box((2, 4), (1, 3), (32, 33), GREY, 15.0)
+    # Neck and head.
+    m.box((-1, 2), (-2, 2), (33, 35), SAND, 11.0)
+    m.box((-3, 3), (-3, 3), (35, 42), SAND, 13.0)
+    for y in ((-4, -3), (3, 4)):
+        m.box((-1, 1), y, (37, 40), SAND, 11.5)  # ears
+    m.box((3, 4), (-1, 1), (37, 39), SAND, 12.0)  # nose
+    m.box((2, 3), (-2, -1), (39, 40), GREY, 1.0)  # eyes
+    m.box((2, 3), (1, 2), (39, 40), GREY, 1.0)
+    m.box((2, 3), (-3, -1), (40, 41), *hair)  # eyebrows
+    m.box((2, 3), (1, 3), (40, 41), *hair)
+    m.box((2, 3), (-1, 1), (36, 37), SAND, 8.0)  # mouth
+    # Dark hair: a quiff over the front, short at the back and sides.
+    m.box((-4, 3), (-3, 3), (42, 44), *hair)
+    m.box((0, 4), (-2, 2), (43, 45), *hair)  # quiff
+    m.box((-4, -3), (-3, 3), (36, 42), *hair)  # back
+    for y in ((-4, -3), (3, 4)):
+        m.box((-3, 1), y, (40, 43), *hair)  # sides, above the ears
+    baked = bake(m)
+    return Sprite(baked.index, baked.opaque, sink=baked.sink, reach=baked.reach)
+
+
+PLAYER_SPRITE = "office_worker"
 
 
 def player_sprite_name(player_id: int) -> str:
-    return f"player_{(player_id - 1) % PLAYER_LOOKS + 1}"
-
-
-def player(face: Face) -> Sprite:
-    """A colleague standing, ~1.8 m: head and shoulders (the portrait,
-    faces.py), jacket, trousers, shoes. The same from every side for now."""
-    c = Canvas()
-    size = GRID  # one texel a portrait pixel: crisp
-    top, left = 21, 32 - size // 2
-    jacket = JACKETS[face.jacket]
-    trousers = TROUSERS[face.jacket]
-    c.paint(c.rect(top + size - 2, 52, left + 2, left + size - 2), *jacket.base)  # jacket
-    c.paint(c.rect(top + size - 2, 50, left + 2, left + 4), *jacket.shadow)  # its side
-    c.paint(c.rect(top + size - 2, 50, left + size - 4, left + size - 2), *jacket.shadow)
-    for u0 in (left + 4, left + size // 2 + 1):  # legs
-        c.paint(c.rect(52, 62, u0, u0 + size // 2 - 5), trousers, 4.0)
-        c.paint(c.rect(62, 64, u0 - 1, u0 + size // 2 - 4), GREY, 1.0)  # shoes
-    draw_portrait(c, top, left, size, face, None)
-    return _finish(c)
+    """The sprite for a player (one look for everyone, for now)."""
+    return PLAYER_SPRITE
 
 
 SPRITES: dict[str, Sprite] = {
     "desk": desk(),
     "terminal": terminal(),
     "exit": exit_sign(),
-    **{player_sprite_name(i + 1): player(f) for i, f in enumerate(PLAYER_FACES)},
+    PLAYER_SPRITE: office_worker(),
 }
