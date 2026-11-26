@@ -481,7 +481,7 @@ dm_spawn      1.5   3.5   0
   `now` (seconds) and turns those box models by it, with a small bob, as
   an ID pass card does. Cosmetic, so not part of the simulation: each
   client turns its own.
-- **The automap** (`client/automap.py`): held Tab draws a 64 x 64 map into
+- **The automap** (`client/automap.py`): held Tab draws an 88 x 88 map into
   the 8-bit frame's top-right corner before it's scaled up (chunky pixels
   like the rest). North up: each zoom (2, 4, 8 px a cell) has an image of
   the whole floor drawn once (`floor_image`: wall faces, desk outlines,

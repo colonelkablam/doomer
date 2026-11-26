@@ -24,7 +24,7 @@ from doomer.shared.doors import LIFT, doors_from_map
 from doomer.shared.mapfile import GameMap
 
 ZOOMS = (2, 4, 8)  # pixels a cell
-SIZE = 64  # pixels across the display
+SIZE = 88  # pixels across the display (of the 320 x 200 frame)
 MARGIN = 4  # from the frame's top and right edges
 SEE_STEP = 0.33  # cells between the points sampled along each ray
 SEE_FAR = 24.0  # cells: the furthest a glance reveals
