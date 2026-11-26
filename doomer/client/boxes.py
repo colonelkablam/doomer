@@ -698,16 +698,67 @@ TABLE_TOP = 0.15  # walls
 _LEG = 0.012
 
 
+def _cover(
+    c: Canvas,
+    left: int,
+    top: int,
+    width: int,
+    height: int,
+    paper: tuple[int, float],
+    masthead: tuple[int, float],
+    picture: Callable[[Canvas, BoolArray, BoolArray], None],
+) -> None:
+    """A magazine lying on a box top, upright to someone looking from its +y
+    side (the coffee table's open side): on a top face, texel rows (v) run
+    along the box's x and columns (u) across it from +y, so the cover's top
+    is at high u. `left`, `top`: its top-left corner (v, u); `width` along v,
+    `height` along u, in texels. A masthead band, a picture, cover lines
+    (bars: no lettering). `picture(c, area, ...)` paints in `area`, given
+    a mask of its upper half (for skies)."""
+    q = c.v - left  # across the cover, left to right
+    r = (top - 1) - c.u  # down the cover, top to bottom
+    cover = (q >= 0) & (q < width) & (r >= 0) & (r < height)
+    c.paint(cover, *paper)
+    c.paint(cover & (r < 6), *masthead)
+    c.paint(cover & (r >= 2) & (r < 4) & (q >= 2) & (q < width - 3), paper[0], paper[1] + 1.0)
+    area = cover & (r >= 8) & (r < height - 8) & (q >= 2) & (q < width - 2)
+    picture(c, area, area & (r < (8 + height - 8) // 2))
+    for k, length in enumerate((width - 6, width - 9)):  # cover lines
+        c.paint(cover & (r == height - 6 + 2 * k) & (q >= 2) & (q < 2 + length), GREY, 3.0)
+    c.paint(~cover & (q >= 0) & (q <= width) & (r == height), GREY, 1.0)  # its shadow edge
+
+
+def _city_picture(c: Canvas, area: BoolArray, sky: BoolArray) -> None:
+    c.paint(area, BLUE, 10.0)
+    c.paint(area & ~sky, STEEL, 5.0)  # towers
+    c.paint(area & ~sky & (c.v % 3 == 0), STEEL, 9.0)
+
+
+def _portrait_picture(c: Canvas, area: BoolArray, sky: BoolArray) -> None:
+    c.paint(area, OCHRE, 12.0)
+    c.paint(area & ~sky, GREY, 3.0)  # a suit
+    c.paint(area & sky & (c.v % 7 > 1), SAND, 13.0)  # a head, roughly
+
+
+def _chart_picture(c: Canvas, area: BoolArray, sky: BoolArray) -> None:
+    c.paint(area, CREAM, 14.0)
+    c.paint(area & (c.v % 4 == 0) & ~sky, GREEN, 8.0)  # rising bars
+    c.paint(area & (c.v % 4 == 0) & sky & (c.v % 8 == 0), GREEN, 8.0)
+
+
 def table_glass() -> int:
+    """The coffee table's top: amber glass in a dark frame, and at its -x
+    end three magazines, two side by side and one fanned over them, upright
+    to someone at its +y side (the fern stands at the other end)."""
     c = Canvas()
     c.paint(c.rect(0, 64, 0, 64), ORANGE, 12.0)  # amber glass
     c.paint(c.rect(0, 64, 0, 64) & ((c.u + c.v) % 40 < 2), ORANGE, 13.0)  # faint reflections
     c.paint(~c.rect(2, 62, 2, 62), GREY, 2.0)  # the frame
-    for k, (ramp, shade) in enumerate(((BLUE, 8.0), (CREAM, 14.0), (CREAM, 15.0))):
-        v0, u0 = 8 + k * 4, 6 + k * 5  # fanned, each a little further over
-        c.paint(c.rect(v0, v0 + 22, u0, u0 + 16), ramp, shade)
-        c.paint(c.rect(v0, v0 + 4, u0, u0 + 16), BRICK if k != 1 else BLUE, 10.0)  # mastheads
-    c.text("NEWS", 21, 18, GREY, 3.0)
+    # 64 texels span the table's 0.5 along v and 0.3 across u: texels are
+    # ~1.7x longer along v, so a magazine is ~15 wide (v) by ~33 tall (u).
+    _cover(c, 4, 46, 15, 33, (CREAM, 15.0), (BRICK, 10.0), _city_picture)
+    _cover(c, 20, 44, 15, 33, (CREAM, 14.0), (BLUE, 7.0), _chart_picture)
+    _cover(c, 12, 56, 15, 33, (CREAM, 15.0), (GREEN, 7.0), _portrait_picture)  # on top
     return _texture(c)
 
 
