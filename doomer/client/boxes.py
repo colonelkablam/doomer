@@ -70,10 +70,8 @@ from doomer.shared.things import (
     BASIN_DEPTH,
     BASIN_PITCH,
     BASIN_TOP,
-    BIN_HALF_X,
-    BIN_HALF_Y,
     BIN_KINDS,
-    BIN_TOP,
+    BIN_SIZES,
     CISTERN_HALF,
     CISTERN_TOP,
     CISTERN_X,
@@ -3230,16 +3228,10 @@ def bin_top(kind: str) -> int:
     return _texture(c)
 
 
-def _bin(kind: str) -> tuple[Box, ...]:
+def _bin(kind: str, size: str = "bin") -> tuple[Box, ...]:
+    hx, hy, top = BIN_SIZES[size]
     word, plain = bin_side(kind, True), bin_side(kind, False)
-    return (
-        Box(
-            (-BIN_HALF_X, BIN_HALF_X),
-            (-BIN_HALF_Y, BIN_HALF_Y),
-            (0.0, BIN_TOP),
-            (word, plain, word, plain, bin_top(kind)),
-        ),
-    )
+    return (Box((-hx, hx), (-hy, hy), (0.0, top), (word, plain, word, plain, bin_top(kind))),)
 
 
 # Keyed by thing type name, like SPRITES.
@@ -3274,8 +3266,8 @@ BOX_MODELS: dict[str, tuple[Box, ...]] = {
     **{f"urinals_{w}": _urinals(n) for n, w in ((2, "two"), (3, "three"), (4, "four"))},
     **{f"basins_{w}": _basins(n) for n, w in ((2, "two"), (3, "three"), (4, "four"))},
     "hand_dryer": _hand_dryer(),
-    "bin": _bin("steel"),
-    **{f"bin:{kind}": _bin(kind) for kind in BIN_KINDS},
+    **{size: _bin("steel", size) for size in BIN_SIZES},
+    **{f"{size}:{kind}": _bin(kind, size) for size in BIN_SIZES for kind in BIN_KINDS},
     "wet_floor_sign": _wet_floor_sign(),
 }
 BOX_TEXTURES: U8Array = np.stack(_TEXTURES)  # [texture][u][v]

@@ -207,12 +207,13 @@ def test_the_nooks_ferns_stand_on_their_coffee_tables() -> None:
         assert resting_height(office, fern) == pytest.approx(0.15)  # the table's top
 
 
+@pytest.mark.parametrize("size", ["bin", "bin_tall"])
 @pytest.mark.parametrize("kind", ["steel", "wood", "orange", "chrome"])
-def test_a_bins_footprint_matches_its_model(kind: str) -> None:
+def test_a_bins_footprint_matches_its_model(size: str, kind: str) -> None:
     from doomer.client.boxes import BOX_MODELS
 
-    (body,) = BOX_MODELS[f"bin:{kind}"]
-    (fp,) = THING_TYPES["bin"].footprints
+    (body,) = BOX_MODELS[f"{size}:{kind}"]
+    (fp,) = THING_TYPES[size].footprints
     assert (body.x, body.y, body.z[1]) == (fp.x, fp.y, fp.top)
 
 
@@ -220,8 +221,8 @@ def test_there_are_bins_round_the_floor_and_in_both_washrooms() -> None:
     from doomer.shared.mapfile import WASHROOM, load_map
 
     office = load_map("maps/office.map")
-    bins = office.things_of_type("bin")
-    assert len(bins) >= 10
+    bins = office.things_of_type("bin") + office.things_of_type("bin_tall")
+    assert len(bins) >= 10 and office.things_of_type("bin_tall")
     in_washrooms = [b for b in bins if office.area_at(math.floor(b.x), math.floor(b.y)) == WASHROOM]
     assert len(in_washrooms) == 2 and all(b.prop("kind") == "chrome" for b in in_washrooms)
     for b in bins:  # on the floor, not in a desk or a wall

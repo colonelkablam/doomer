@@ -338,16 +338,24 @@ for _n, _word in ((2, "two"), (3, "three"), (4, "four")):
 # bump into it (and could hop onto it).
 BIN_KINDS = ("steel", "wood", "orange", "chrome")
 BIN_HALF_X, BIN_HALF_Y, BIN_TOP = 0.065, 0.09, 0.19
-BIN = register_thing_type(
-    ThingType(
-        "bin",
-        "An office bin",
-        blocking=True,
-        radius=BIN_HALF_Y,
-        properties={"kind": BIN_KINDS},
-        footprints=(Footprint((-BIN_HALF_X, BIN_HALF_X), (-BIN_HALF_Y, BIN_HALF_Y), BIN_TOP),),
+# A tall bin (`bin_tall`, the same styles): ~80 cm, for lounges, corridors,
+# washrooms and plant rooms rather than beside a desk.
+BIN_TALL_HALF_X, BIN_TALL_HALF_Y, BIN_TALL_TOP = 0.085, 0.11, 0.3
+BIN_SIZES = {
+    "bin": (BIN_HALF_X, BIN_HALF_Y, BIN_TOP),
+    "bin_tall": (BIN_TALL_HALF_X, BIN_TALL_HALF_Y, BIN_TALL_TOP),
+}
+for _name, (_hx, _hy, _top) in BIN_SIZES.items():
+    register_thing_type(
+        ThingType(
+            _name,
+            "An office bin" if _name == "bin" else "A tall bin",
+            blocking=True,
+            radius=_hy,
+            properties={"kind": BIN_KINDS},
+            footprints=(Footprint((-_hx, _hx), (-_hy, _hy), _top),),
+        )
     )
-)
 HAND_DRYER = register_thing_type(ThingType("hand_dryer", "Hand dryer on a wall"))
 WET_FLOOR_SIGN = register_thing_type(
     ThingType("wet_floor_sign", "A yellow CAUTION WET FLOOR A-frame", blocking=True, radius=0.08)

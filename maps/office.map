@@ -336,22 +336,24 @@ poster          28.4  9.5   0     kind=wash_hands at=s
 ceiling_light   29.5  7.5   0
 # Office bins (kind= their style): charcoal steel in the offices and plant
 # room, wood-effect in the executive suite, orange plastic in the lounge
-# and corridor, chrome flip-tops in the washrooms. At pod ends, by desks,
-# against walls: never in an aisle.
+# and corridor, chrome flip-tops in the washrooms. Small ones at pod ends
+# and by desks; tall ones (bin_tall) in the lounge, corridor, washrooms and
+# plant room. Never in an aisle.
 bin             13.12 2.35  0     kind=steel
 bin             13.12 6.62  0     kind=steel
 bin             19.12 2.62  0     kind=steel
 bin             15.88 6.4   180   kind=steel
 bin             7.5   6.2   0     kind=steel at=e
+bin_tall        15.5  12.5  0     kind=orange at=s
 bin             28.25 3.3   0     kind=steel
 bin             22.5  19.5  0     kind=steel at=e
-bin             24.5  14.5  0     kind=steel at=nw
+bin_tall        24.5  14.5  0     kind=steel at=nw
 bin             6.12  11.4  0     kind=wood
 bin             2.2   19.78 0     kind=wood
-bin             9.5   16.35 0     kind=orange at=w
-bin             30.5  11.5  0     kind=orange at=ne
-bin             24.5  9.5   0     kind=chrome at=sw
-bin             28.5  9.5   0     kind=chrome at=sw
+bin_tall        9.5   16.35 0     kind=orange at=w
+bin_tall        30.5  11.5  0     kind=orange at=ne
+bin_tall        24.5  9.5   0     kind=chrome at=sw
+bin_tall        28.5  9.5   0     kind=chrome at=sw
 # --- The corridor: two cells wide, the length of the floor, the open plan's
 # double doors and an opening on its north side; the secretary's doors at
 # its west end, the lounge, meeting room and plant room off its south side.
