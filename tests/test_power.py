@@ -132,7 +132,7 @@ def test_the_breaker_blinks_red_until_thrown_then_shows_steady_green() -> None:
     (red,) = [p.box for p in switch_boxes([off]) if p.box.indicator]
     (green,) = [p.box for p in switch_boxes([on]) if p.box.indicator]
     assert red.blink > 0 and green.blink == 0 and not red.mains  # on its own battery
-    assert red.y != green.y  # two lamps side by side
+    assert red.y == green.y and red.z[0] > green.z[1]  # one column, red over green
 
 
 def test_server_lamps_blink_out_of_step_and_only_with_power() -> None:

@@ -2065,9 +2065,14 @@ def _exit_sign() -> tuple[Box, ...]:
 
 BREAKER_DEPTH, BREAKER_HALF_WIDTH = 0.16, 0.22
 BREAKER_Z = (0.26, 0.8)  # walls: its foot and top
-_PIVOT, _LEVER = 0.44, 0.1  # walls: the lever's pivot height and length
-_LAMP_Y = {"red": -0.14, "green": 0.14}  # across the front
-_LAMP_V = (21, 25)  # their rows on the front texture
+_PIVOT, _LEVER = 0.46, 0.1  # walls: the lever's pivot height and length
+# The front, in texels: a left column (lamps, red over green; the padlock
+# hasp), the yellow backplate and its slot in the middle, the ON and OFF
+# labels in a right column, each level with its end of the slot.
+_LAMP_U = 12  # the lamps' column
+_LAMP_V = {"red": (26, 31), "green": (34, 39)}
+_PLATE_U = (22, 42)
+_LABEL_U = 46
 _CONDUIT_HALF = 0.03
 _JUNCTION_Z = (0.88, 0.95)
 BREAKER_BLINK = 1.0  # seconds per blink of its red lamp
@@ -2088,6 +2093,12 @@ def _z_of_v(v: float, z0: float, z1: float) -> float:
     return z1 - v / 64 * (z1 - z0)
 
 
+def _y_of_u(u: float, half: float) -> float:
+    """Model y of texel column u on a box's front face: u runs from +y to
+    -y (left to right as you face it)."""
+    return half - (u + 0.5) / 64 * (2 * half)
+
+
 def _hazard(c: Canvas, mask: BoolArray, step: int = 8) -> None:
     """Yellow and black diagonal stripes."""
     c.paint(mask, OCHRE, 12.5)
@@ -2106,16 +2117,15 @@ def switchgear_front() -> int:
     c.paint(c.rect(7, 12, 9, 55), BRICK, 10.0)
     _centred(c, "DANGER", 7, CREAM, 15.0)
     _centred(c, "415V", 13, BRICK, 10.0)
-    for y in _LAMP_Y.values():  # the lamps' dark sockets (lit lamps sit proud of them)
-        u = _front_u(y, BREAKER_HALF_WIDTH)
-        c.paint(c.rect(*_LAMP_V, u - 3, u + 3), GREY, 0.5)
+    for v0, v1 in _LAMP_V.values():  # the lamps' dark sockets (lit lamps sit proud of them)
+        c.paint(c.rect(v0, v1, _LAMP_U - 3, _LAMP_U + 3), GREY, 0.5)
     top = _front_v(_PIVOT + _LEVER + 0.03, z0, z1)
     bottom = _front_v(_PIVOT - _LEVER - 0.03, z0, z1)
-    c.paint(c.rect(top - 2, bottom + 2, 20, 44), OCHRE, 12.5)  # the yellow backplate
+    c.paint(c.rect(top - 2, bottom + 2, *_PLATE_U), OCHRE, 12.5)  # the yellow backplate
     c.paint(c.rect(top, bottom, 30, 34), GREY, 0.0)  # the slot the lever runs in
-    c.text("ON", top, 36, GREY, 1.0)
-    c.text("OFF", bottom - 5, 36, GREY, 1.0)
-    c.paint(c.rect(bottom - 7, bottom - 3, 22, 27), GREY, 11.0)  # a padlock hasp
+    c.text("ON", top, _LABEL_U, CREAM, 14.0)  # level with the slot's ends, on the grey
+    c.text("OFF", bottom - 5, _LABEL_U, CREAM, 14.0)
+    c.paint(c.rect(bottom - 6, bottom - 1, _LAMP_U - 2, _LAMP_U + 3), GREY, 11.0)  # padlock hasp
     return _texture(c)
 
 
@@ -2211,12 +2221,12 @@ def switch_boxes(switches: Iterable[Switch]) -> list[PlacedBox]:
         arm = Box((d, d + 0.04), (-0.014, 0.014), z, (_ARM,) * 5)
         grip = Box((d + 0.015, d + 0.08), (-0.07, 0.07), (end - 0.025, end + 0.025), (_HANDLE,) * 5)
         # One lamp lit: red, blinking, until it's thrown; then green, steady.
-        y = _LAMP_Y["green" if sw.on else "red"]
-        lamp_z = (_z_of_v(_LAMP_V[1], *BREAKER_Z), _z_of_v(_LAMP_V[0], *BREAKER_Z))
+        v0, v1 = _LAMP_V["green" if sw.on else "red"]
+        y = _y_of_u(_LAMP_U, BREAKER_HALF_WIDTH)
         light = Box(
             (d, d + 0.01),
-            (y - 0.025, y + 0.025),
-            lamp_z,
+            (y - 0.022, y + 0.022),
+            (_z_of_v(v1, *BREAKER_Z), _z_of_v(v0, *BREAKER_Z)),
             ((_LAMP_ON if sw.on else _LAMP_OFF),) * 5,
             glow=True,
             indicator=True,
