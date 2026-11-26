@@ -454,6 +454,19 @@ dm_spawn      1.5   3.5   0
   `now` (seconds) and turns those box models by it, with a small bob, as
   an ID pass card does. Cosmetic, so not part of the simulation: each
   client turns its own.
+- **The map checker** (`shared/validate.py`, `check_floor`; on the command
+  line `python -m doomer.shared.validate maps/*.map`): can a co-op floor
+  be finished? It floods the space a player can reach from the co-op start
+  on a quarter-cell grid of positions, each step tested with the
+  simulation's own `move_box` and height rules (steps, a jump onto a desk,
+  railings, furniture, cubicle screens, door leaves), so it can't disagree
+  with how players move. Doors open only if the team can open them (its
+  pass in hand; a lift's with power); passes and the breaker within the
+  game's reach are taken, which can open more: flood again until nothing
+  changes. Problems come back as sentences ("the red pass is only
+  reachable through the red-locked door at (11.5, 12.5)"). A test runs it
+  on every map in `maps/`; the level generator will run it on what it
+  makes. ~1 s for the office.
 - **Posters** (`poster` things, `kind=`): one thin box each against a
   wall, drawn as `type:kind` from BOX_MODELS. The fire plan (`kind=plan`)
   is drawn from the map with a dot where it hangs, so its texture is made
@@ -749,9 +762,7 @@ Rules that have come out of it (details in the sections above):
 
 Noted at the end of a session, to pick up next:
 
-- **To close the single-player loop**, in order: the map checker
-  (`shared/validate.py`: every locked door's pass reachable before it,
-  the breaker reachable, a lift or exit); the full-size ground floor
+- **To close the single-player loop**, in order: the full-size ground floor
   (~32 x 24, laid out for the loop; the current map is the test bed); the
   automap (Tab; the fire plan already draws a floor); the lift ride and a
   second floor to arrive on. Enemies, weapons and pickups (milestones 3b,
@@ -790,7 +801,7 @@ Noted at the end of a session, to pick up next:
   the cast (`CAST`) stays hand-picked. Until then the templates are the
   bank: every new template multiplies the faces possible.
 - Also outstanding: the `corner=` property for things (LEVELS.md);
-  `shared/validate.py` (a floor is completable); the automap; the lift
+  the automap; the lift
   ride to the next floor; networking (milestone 3).
 
 ## Setup

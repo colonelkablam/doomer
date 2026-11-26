@@ -194,15 +194,19 @@ What costs:
    raised floors have a wall type, ceilings above floors).
 2. **Modes**: co-op ready (1 `coop_start`, 1 `exit`) and/or deathmatch ready
    (>= 4 `dm_spawn`).
-3. **Reachable on foot**: from `coop_start`, the `exit` and every `dm_spawn`
-   can be reached by walking (steps of 1 unit, stairs from the low end; no
-   jumping assumed), with headroom >= 6 units all the way. Locked doors
-   count as walls until their pass is reachable: every pass must be
-   reachable before the door it opens (no pass behind its own door), and the
-   exit after them all. If the map has a `breaker`, it must be reachable
-   (the lifts don't work without power).
-4. **No blocked passages**: no blocking furniture in a 1-cell-wide passage or
-   at the ends of stairs.
+3. **Can be finished** [built: `shared/validate.py`; run
+   `python -m doomer.shared.validate maps/<name>.map`]: from `coop_start`,
+   walking by the game's own movement rules (steps up to 1 unit, stairs
+   from the low end, a jump onto a desk but not a counter, railings,
+   furniture and screens in the way), every locked door's pass is reachable
+   before the door it opens (no pass behind its own door), the `breaker`
+   (if any) is reachable, and a lift car (with the power on) or an `exit`
+   after them all. It says what's wrong in a sentence. A test runs it on
+   every map in `maps/`.
+4. **No blocked passages**: covered by 3 where it matters (furniture that
+   cuts off the route fails it); still worth keeping blocking furniture out
+   of 1-cell-wide passages and the ends of stairs. Deathmatch spawns
+   reachable from each other: not checked yet.
 5. **Stairs are well formed**: the cell before the low end is at the low
    height; the cell beyond the top end is level with the top (a landing,
    balcony or raised floor).

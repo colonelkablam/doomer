@@ -58,9 +58,6 @@ Planned, roughly in order [planned]:
 - **A full-size ground floor**: about 32 x 24 cells, laid out for the loop
   above (the current map is the test bed).
 - **Automap** (Tab): a HUD map of the floor plan as you've seen it.
-- **Map checker** (`shared/validate.py`): a floor is completable: every
-  locked door's pass is reachable before it, the breaker is reachable,
-  there's a lift or exit.
 - **The lift ride**: the doors close, a short ride (indicator counting up,
   maybe a lift-music sting), then the next floor loads with the team in its
   lift lobby. Until then the floor just ends on the banner.
