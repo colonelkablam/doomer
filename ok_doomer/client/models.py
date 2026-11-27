@@ -54,6 +54,10 @@ class VoxelModel:
         default_factory=lambda: np.zeros((GRID, GRID, GRID), dtype=np.float64)
     )
     glow: BoolArray = field(default_factory=lambda: np.zeros((GRID, GRID, GRID), dtype=np.bool_))
+    # Shade from normals smoothed over this many voxels (0: each voxel's own
+    # faces). Slopes built of voxels (a leaning body, a swung arm) are
+    # staircases, and faceted normals light their steps alternately: stripes.
+    smooth: int = 0
 
     def box(
         self,
@@ -98,6 +102,10 @@ def bake(model: VoxelModel) -> Baked:
     view VIEWS / 4 = from the thing's right)."""
     solid = model.ramp >= 0
     normals = _normals(solid)
+    if model.smooth:
+        normals = np.where(
+            normals.any(axis=-1, keepdims=True), _smooth_normals(solid, model.smooth), 0.0
+        )
     surface = solid & normals.any(axis=-1)
     px, py, pz = (a.astype(np.float64) for a in np.nonzero(surface))
     px, py = px - _HALF + 0.5, py - _HALF + 0.5  # voxel centres, origin at the thing
@@ -141,6 +149,31 @@ def _normals(solid: BoolArray) -> npt.NDArray[np.float64]:
             neighbour = np.roll(padded, -sign, axis=axis)[1:-1, 1:-1, 1:-1]
             out[..., axis] += np.where(neighbour, 0.0, float(sign))
     return out
+
+
+def _smooth_normals(solid: BoolArray, radius: int) -> npt.NDArray[np.float64]:
+    """Outward normals of the surface as a whole: down the gradient of the
+    solid's occupancy, box-blurred over `radius` voxels each way."""
+    blurred = solid.astype(np.float64)
+    for axis in range(3):
+        blurred = _box_blur(blurred, radius, axis)
+    out = -np.stack([np.asarray(g) for g in np.gradient(blurred)], axis=-1)
+    # A thin part (a voxel or two) has no gradient across it: fall back on
+    # its own faces there.
+    flat = np.linalg.norm(out, axis=-1) < 1e-6
+    out[flat] = _normals(solid)[flat]
+    return out
+
+
+def _box_blur(a: npt.NDArray[np.float64], radius: int, axis: int) -> npt.NDArray[np.float64]:
+    """The mean over 2 * radius + 1 cells along `axis` (zero beyond the edge)."""
+    pad = [(0, 0)] * a.ndim
+    pad[axis] = (radius + 1, radius)
+    c = np.cumsum(np.pad(a, pad), axis=axis)
+    n = a.shape[axis]
+    hi = np.take(c, np.arange(2 * radius + 1, 2 * radius + 1 + n), axis=axis)
+    lo = np.take(c, np.arange(0, n), axis=axis)
+    return (hi - lo) / (2 * radius + 1)
 
 
 def _fill_pinholes(index: U8Array, opaque: BoolArray) -> None:

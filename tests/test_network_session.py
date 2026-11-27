@@ -21,7 +21,7 @@ from ok_doomer.client.network import (
     lerp_pose,
     pose_at,
 )
-from ok_doomer.client.sprites import SPRITES, player_sprite_name
+from ok_doomer.client.sprites import PLAYER_SPRITE, PLAYER_WALK, SPRITES, player_sprite_name
 from ok_doomer.server.config import ServerConfig
 from ok_doomer.server.game import GameServer
 from ok_doomer.server.net import TcpServer
@@ -149,6 +149,7 @@ def test_other_players_are_drawn_smoothly() -> None:
         )
         bot.start()
         xs: list[tuple[float, float]] = []
+        names: set[str] = set()
         end = time.monotonic() + 1.0
         last = time.monotonic()
         while time.monotonic() < end:
@@ -156,10 +157,10 @@ def test_other_players_are_drawn_smoothly() -> None:
             now = time.monotonic()
             session.update(now - last, PlayerInput())
             last = now
-            others = [s for s in session.sprites() if s.name == player_sprite_name(2)]
+            others = [s for s in session.sprites() if s.name.startswith(PLAYER_SPRITE)]
             if others:
                 (bot_sprite,) = others
-                assert bot_sprite.name == player_sprite_name(2)
+                names.add(bot_sprite.name)
                 xs.append((bot_sprite.x, bot_sprite.y))
         bot.join(5)
         session.close()
@@ -168,6 +169,7 @@ def test_other_players_are_drawn_smoothly() -> None:
     assert len(moving) > 60  # it moves on most frames...
     walk_per_tick = 3.5 / 60
     assert max(steps) < 1.5 * walk_per_tick  # ...by less than a tick's worth each
+    assert set(PLAYER_WALK) <= names  # drawn walking, every step of the cycle
 
 
 def test_the_lift_moves_the_client_to_the_next_floor() -> None:

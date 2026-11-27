@@ -27,6 +27,7 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Protocol
 
+from ok_doomer.client.animation import Stride
 from ok_doomer.client.boxes import PlacedBox
 from ok_doomer.client.render import Camera, SpriteInstance
 from ok_doomer.client.session import (
@@ -35,7 +36,6 @@ from ok_doomer.client.session import (
     static_sprites,
     world_boxes,
 )
-from ok_doomer.client.sprites import player_sprite_name
 from ok_doomer.shared.events import Event
 from ok_doomer.shared.mapfile import GameMap
 from ok_doomer.shared.mirror import WorldMirror
@@ -150,16 +150,21 @@ class Pose:
     y: float
     z: float
     angle: float
+    crouching: bool = False
+    airborne: bool = False
 
 
 def lerp_pose(a: Pose, b: Pose, t: float) -> Pose:
     """Between two poses; the angle the short way round."""
     turn = (b.angle - a.angle + math.pi) % math.tau - math.pi
+    near = a if t < 0.5 else b  # yes-or-no things: the nearer snapshot's
     return Pose(
         a.x + (b.x - a.x) * t,
         a.y + (b.y - a.y) * t,
         a.z + (b.z - a.z) * t,
         (a.angle + turn * t) % math.tau,
+        near.crouching,
+        near.airborne,
     )
 
 
@@ -225,6 +230,7 @@ class NetworkSession:
 
     def _new_floor(self) -> None:
         self.history.clear()
+        self._strides: dict[int, Stride] = {}  # other players' walks (client/animation.py)
         self.predictor.reset(None)  # from the new floor's first update
         self._static = static_sprites(self.mirror.world)
         self._eye = self.mirror.config.movement.eye_height
@@ -263,7 +269,10 @@ class NetworkSession:
             self._new_floor()
         elif isinstance(message, Update):
             when = message.snapshot.tick * self.mirror.config.dt
-            poses = {p.id: Pose(p.x, p.y, p.z, p.angle) for p in self.mirror.world.players.values()}
+            poses = {
+                p.id: Pose(p.x, p.y, p.z, p.angle, p.crouching, not p.on_ground)
+                for p in self.mirror.world.players.values()
+            }
             self.history.append((when, poses))
             self._newest = (when, self._clock)
             me = self.mirror.player
@@ -301,9 +310,11 @@ class NetworkSession:
                 continue
             pose = pose_at(self.history, pid, when)
             if pose is not None:
-                others.append(
-                    SpriteInstance(player_sprite_name(pid), pose.x, pose.y, pose.z, pose.angle)
-                )
+                stride = self._strides.setdefault(pid, Stride())
+                name = stride.pose(pose.x, pose.y, pose.angle, pose.crouching, pose.airborne)
+                others.append(SpriteInstance(name, pose.x, pose.y, pose.z, pose.angle))
+        for gone in set(self._strides) - set(self.mirror.world.players):
+            del self._strides[gone]
         return self._static + lying_pickups(self.mirror.world) + others
 
     def boxes(self) -> list[PlacedBox]:

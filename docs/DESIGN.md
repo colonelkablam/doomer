@@ -207,7 +207,20 @@ means adding a module and registering it, not editing a dozen files.
   model baked into 16 views (white shirt, red tie, navy trousers, a dark
   quiff; ~1.8 m), turned by the player's angle, so you see their back as
   they walk away. One look for everyone until the characters (GAME.md)
-  are drawn. The server
+  are drawn. Posed (`client/people.py`): standing, a 4-pose walk (left
+  foot forward, passing, right forward, passing; arms against the legs),
+  crouching and jumping, each a model baked to its own 16 views and
+  sprite name. Legs and arms are straight segments swung from hip and
+  shoulder; the crouch leans the upper body 30 degrees about the hip (a
+  resampled rotation: a shear would keep its height); smoothed normals
+  (`VoxelModel.smooth`) stop staircase slopes shading in stripes. The pose
+  is picked by `client/animation.py` (`Stride`): the walk advances by
+  distance (`STRIDE_CELLS`, a cycle per cell, set by eye: the game moves
+  at ~7x a real walk), so feet keep pace, a blocked player stops
+  mid-stride, backwards runs it backwards; standing after 4 still frames.
+  From the interpolated positions: nothing new on the wire. The crouch is
+  33 voxels against the game's crouch height of 27 (a big head; a lean
+  steep enough looks like falling): decide hit boxes with 3b. The server
   going away or saying `Bye` ends the game (`GameSession.ended`).
 - **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
   blocking (a lost packet holds up everything behind it until resent),
