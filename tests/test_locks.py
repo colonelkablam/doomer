@@ -221,6 +221,6 @@ def test_the_hud_shows_passes_held_as_the_same_cards() -> None:
 
     pygame.font.init()
     window = pygame.Surface((320, 200))
-    Hud(pygame.font.Font(None, 16)).draw(window, {"red"}, 0.0)
+    Hud().draw(window, {"red"})
     corner = pygame.surfarray.array3d(window)[:60, 200 - CARD_SIZE[1] - 12 :]
     assert (corner[..., 0] > 150).sum() > 200  # mostly red, like the card itself

@@ -13,14 +13,13 @@ import pygame
 
 from ok_doomer.client.automap import RAY_STRIDE, Automap
 from ok_doomer.client.config import ClientConfig
-from ok_doomer.client.hud import Hud, draw_name_tags, name_tags
+from ok_doomer.client.hud import Hud, draw_name_tags, draw_text, name_tags
 from ok_doomer.client.input import KeyboardMouseInput
+from ok_doomer.client.pixelart import FONT_5X7
 from ok_doomer.client.render import MAX_PITCH, Renderer, make_frame_surface
 from ok_doomer.client.session import GameSession
 
 log = logging.getLogger(__name__)
-
-HUD_COLOUR = (255, 255, 120)
 
 
 def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
@@ -32,9 +31,8 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
         window = _open_window(windowed_size, rc.vsync, fullscreen)
         pygame.display.set_caption("OK Doomer")
         frame = make_frame_surface(rc)
-        font = pygame.font.Font(None, 22)
         renderer = Renderer(rc, config.lighting if config.lighting.enabled else None)
-        hud = Hud(font)
+        hud = Hud()
         hud.arrive(session.game_map, 0.0)
         automap = Automap(session.game_map)
         show_map = False
@@ -105,7 +103,15 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
             draw_name_tags(pixels, tags, rc.name_scale, rc.name_panel)
             if show_map:
                 automap.draw(pixels, camera.x, camera.y, camera.angle)
-            hud.draw_messages(pixels, now, rc.message_scale)  # over the map too
+            hud.draw_frame(pixels, now, rc.message_scale)  # over the map too
+            corner = [f"{clock.get_fps():.0f} fps"] if rc.show_fps else []
+            if show_net:
+                corner += session.net_stats().lines()
+            for i, text in enumerate(corner):  # top left, a line under another
+                draw_text(pixels, text, FONT_5X7, 3, 9 + i * 10, centre=False)
+            if not controls.captured:
+                mid = rc.height // 2
+                draw_text(pixels, "Click to play - Esc to quit", FONT_5X7, rc.width / 2, mid + 3)
             del pixels  # unlock the surface
             # 8-bit frame -> window format, then nearest-neighbour scale into
             # the picture's place in the window (it may have been resized).
@@ -115,15 +121,7 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
                 window.fill((0, 0, 0))  # the borders
             view = window.subsurface(rect)
             pygame.transform.scale(frame.convert(window), rect.size, view)
-            hud.draw(view, session.passes(), now)
-            corner = [f"{clock.get_fps():.0f} fps"] if rc.show_fps else []
-            if show_net:
-                corner += session.net_stats().lines()
-            for i, line in enumerate(corner):
-                view.blit(font.render(line, True, HUD_COLOUR), (8, 8 + 18 * i))
-            if not controls.captured:
-                hint = font.render("Click to play - Esc to quit", True, HUD_COLOUR)
-                view.blit(hint, hint.get_rect(center=view.get_rect().center))
+            hud.draw(view, session.passes())
             pygame.display.flip()
     finally:
         pygame.quit()

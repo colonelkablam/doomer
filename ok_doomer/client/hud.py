@@ -38,8 +38,6 @@ MESSAGE_SECONDS = 3.0
 MAX_MESSAGES = 4  # shown at once, stacked
 TITLE_SECONDS = 3.0  # a floor's name, as you arrive on it
 PASS_COLOURS_RGB = {"blue": (90, 140, 240), "red": (230, 90, 70), "gold": (240, 210, 90)}
-TEXT = (255, 255, 255)
-SHADOW = (0, 0, 0)
 
 
 _CARDS: dict[str, pygame.Surface] = {}
@@ -157,17 +155,19 @@ def draw_text(
     bottom: int,
     scale: int = 1,
     panel: bool = True,
+    centre: bool = True,
 ) -> int:
     """`text` into the frame in `font` (capitals; what it can't draw, a
     space), phosphor green on a black panel (or outlined): centred on
-    `column`, its last row at `bottom`. How tall it came out (0: nothing)."""
+    `column` (or starting at it), its last row at `bottom`. How tall it
+    came out, panel and all (0: nothing)."""
     text = "".join(c if c in font else " " for c in text.upper()).strip()
     if not text:
         return 0
     w, h = pixels.shape
     glyphs = text_mask(text, font, scale)
     tw, th = glyphs.shape
-    left, top = round(column - tw / 2), bottom + 1 - th
+    left, top = round(column - tw / 2) if centre else round(column), bottom + 1 - th
     border = 1
     back = np.ones((tw + 2 * border, th + 2 * border), dtype=bool)
     if not panel:  # just round the letters: grow them by a pixel
@@ -226,8 +226,7 @@ def _blit(
 
 
 class Hud:
-    def __init__(self, font: pygame.font.Font) -> None:
-        self.font = font
+    def __init__(self) -> None:
         self._messages: list[tuple[str, float]] = []  # (text, until), oldest first
         self.complete = False  # the top floor built is done: a banner until you quit
         self._storey = "G"
@@ -256,38 +255,36 @@ class Hud:
         """What's showing, oldest first."""
         return [text for text, until in self._messages if now < until]
 
-    def draw_messages(self, pixels: U8Array, now: float, scale: int = 1) -> None:
-        """The messages into the frame (before it's scaled up): the 5x7 font,
-        green on black panels like the names, stacked down from a sixth of
-        the way down the screen, each wrapped to fit."""
+    def draw_frame(self, pixels: U8Array, now: float, scale: int = 1) -> None:
+        """All the HUD's words, into the frame before it's scaled up, in the
+        5x7 font, green on black panels (`scale`: messages and small lines;
+        titles twice that): the "complete" banner across the middle, or a
+        floor's name on arrival; then the messages, under the name."""
         w, h = pixels.shape
-        row = h // 6
-        for text in self.messages(now):
-            for line in wrap(text, FONT_5X7, w - 8, scale):
-                row += draw_text(pixels, line, FONT_5X7, w / 2, row + 7 * scale, scale) + 1
-
-    def draw(self, window: pygame.Surface, passes: Collection[str], now: float) -> None:
-        width, height = window.get_size()
+        big = 2 * scale
+        line = 7 * scale  # rows of a line of small text
         if self.complete:
-            banner = pygame.Rect(0, height // 2 - 50, width, 100)
-            shade = pygame.Surface(banner.size, pygame.SRCALPHA)
-            shade.fill((0, 0, 0, 170))
-            window.blit(shade, banner)
+            mid = h // 2
+            pixels[:, mid - 3 * line : mid + 3 * line] = NAME_BACK  # a black band
             done = f"{floor_name(self._storey)} COMPLETE"
-            self._text(window, done, (width // 2, height // 2 - 24), centre=True)
-            self._text(window, "More floors to come", (width // 2, height // 2 + 4), centre=True)
-            self._text(window, "Esc to quit", (width // 2, height // 2 + 30), centre=True)
-        elif self._title is not None and now < self._title_until:
+            draw_text(pixels, done, FONT_5X7, w / 2, mid - line // 2, big)
+            draw_text(pixels, "More floors to come", FONT_5X7, w / 2, mid + line, scale)
+            draw_text(pixels, "Esc to quit", FONT_5X7, w / 2, mid + 2 * line + 2, scale)
+        row = h // 6  # the top of what's next
+        if not self.complete and self._title is not None and now < self._title_until:
             storey, name = self._title
-            self._text(window, storey, (width // 2, height // 3 - 14), centre=True)
-            self._text(window, name, (width // 2, height // 3 + 12), centre=True)
-        # Passes held: a card in each colour, bottom left.
+            row += draw_text(pixels, storey, FONT_5X7, w / 2, row + 2 * line, big) + 1
+            if name.upper() != storey.upper():  # "FLOOR 1", "SALES FLOOR"; not twice
+                row += draw_text(pixels, name, FONT_5X7, w / 2, row + line, scale)
+            row += 3
+        for text in self.messages(now):
+            for part in wrap(text, FONT_5X7, w - 8, scale):
+                row += draw_text(pixels, part, FONT_5X7, w / 2, row + line, scale) + 1
+
+    def draw(self, window: pygame.Surface, passes: Collection[str]) -> None:
+        """What goes on the window once it's scaled: the passes held, a card
+        in each colour, bottom left."""
+        height = window.get_height()
         for i, colour in enumerate(c for c in PASS_COLOURS_RGB if c in passes):
             card = _card_image(colour)
             window.blit(card, (16 + i * (card.get_width() + 8), height - card.get_height() - 12))
-
-    def _text(self, window: pygame.Surface, text: str, at: tuple[int, int], centre: bool) -> None:
-        for offset, colour in (((2, 2), SHADOW), ((0, 0), TEXT)):
-            image = self.font.render(text, True, colour)
-            rect = image.get_rect(center=at) if centre else image.get_rect(topleft=at)
-            window.blit(image, rect.move(offset))

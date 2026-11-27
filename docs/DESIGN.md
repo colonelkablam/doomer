@@ -257,8 +257,11 @@ means adding a module and registering it, not editing a dozen files.
   (`pixelart.FONT_5X7`, capitals, digits, the punctuation messages use;
   completed from the lobby sign's letters, which are unchanged), green on
   black panels, wrapped to the frame's width (`message_scale`). A test
-  checks every character any message can produce is in the font. The
-  floor titles and the "complete" banner are still the system font. Names over heads: the renderer records
+  checks every character any message can produce is in the font. All
+  the game's words are drawn this way now (no system font): a floor's
+  name on arrival (5x7 at twice; the map's name under it unless it says
+  the same), the "complete" banner across a black band, the fps and F3
+  stats top left, "Click to play" (`Hud.draw_frame`, `hud.draw_text`). Names over heads: the renderer records
   what it drew of each sprite, after walls and desks hid their share
   (`Renderer.seen`: pixels, top row, middle); a name goes just over the
   top of what's seen of someone, if at least a few pixels are and

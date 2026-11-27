@@ -196,12 +196,11 @@ def test_on_joining_you_hear_whos_already_here() -> None:
 
 def test_two_joining_at_once_both_show() -> None:
     """Bots started together join within a tick: both messages stack."""
-    import pygame
+    import numpy as np
 
     from ok_doomer.client.hud import MAX_MESSAGES, MESSAGE_SECONDS, Hud
 
-    pygame.font.init()
-    hud = Hud(pygame.font.Font(None, 22))
+    hud = Hud()
     hud.handle([PlayerJoined(5, 2, "bot 1"), PlayerJoined(5, 3, "bot 2")], now=10.0)
     assert hud.messages(10.0) == ["bot 1 joined", "bot 2 joined"]
     hud.handle([PlayerLeft(9, 2, "bot 1", "quit")], now=11.0)
@@ -209,21 +208,19 @@ def test_two_joining_at_once_both_show() -> None:
     assert hud.messages(10.0 + MESSAGE_SECONDS + 0.1) == ["bot 1 left"]  # each its own time
     hud.handle([PlayerJoined(9, i, f"p{i}") for i in range(10)], now=12.0)
     assert len(hud.messages(12.0)) == MAX_MESSAGES  # the latest few
-    hud.draw(pygame.Surface((960, 600)), set(), 12.0)  # and they draw
+    hud.draw_frame(np.zeros((320, 200), dtype=np.uint8), 12.0)  # and they draw
 
 
 def test_messages_are_drawn_in_5x7_green_stacked_and_wrapped() -> None:
     import numpy as np
-    import pygame
 
     from ok_doomer.client.hud import NAME_COLOUR, Hud, wrap
     from ok_doomer.client.pixelart import FONT_5X7
 
-    pygame.font.init()
-    hud = Hud(pygame.font.Font(None, 22))
+    hud = Hud()
     hud.handle([PlayerJoined(1, 2, "Bob"), PlayerJoined(1, 3, "Cath")], now=0.0)
     pixels = np.zeros((320, 200), dtype=np.uint8)
-    hud.draw_messages(pixels, now=1.0)
+    hud.draw_frame(pixels, now=1.0)
     rows = np.nonzero((pixels == NAME_COLOUR).any(axis=0))[0]
     lines = np.split(rows, np.nonzero(np.diff(rows) > 1)[0] + 1)
     assert [len(line) for line in lines] == [7, 7]  # two lines of 5x7 text
@@ -278,4 +275,42 @@ def test_every_message_can_be_written_in_the_5x7_font() -> None:
                 texts.add(text)
     assert len(texts) > 15
     missing = {c for t in texts for c in t.upper()} - set(FONT_5X7)
+    assert not missing, missing
+
+
+def test_titles_and_the_banner_are_pixel_text_too() -> None:
+    """A floor's name on arrival (twice the size), messages under it; the
+    "complete" banner across a black band. Every floor and map name can be
+    written in the font."""
+    import numpy as np
+
+    from ok_doomer.client.hud import NAME_BACK, NAME_COLOUR, Hud
+    from ok_doomer.client.pixelart import FONT_5X7
+    from ok_doomer.shared.building import FLOOR_LABELS, floor_name
+    from ok_doomer.shared.events import LevelComplete, PlayersHere
+    from ok_doomer.shared.mapfile import load_map
+    from tests.test_mapfile import MAPS
+
+    hud = Hud()
+    hud.arrive(parse_map(ROOM), 0.0)
+    hud.handle([PlayersHere(0, ("Bob",))], 0.1)
+    pixels = np.zeros((320, 200), dtype=np.uint8)
+    hud.draw_frame(pixels, 1.0)
+    rows = np.nonzero((pixels == NAME_COLOUR).any(axis=0))[0]
+    runs = [len(r) for r in np.split(rows, np.nonzero(np.diff(rows) > 1)[0] + 1)]
+    assert runs == [14, 7, 7]  # the floor (5x7 at twice), the map's name, the message
+    same = Hud()  # a map named as its floor is: the name once
+    same.arrive(parse_map("name: Ground Floor\n" + ROOM), 0.0)
+    pixels[:] = 0
+    same.draw_frame(pixels, 1.0)
+    assert (pixels == NAME_COLOUR).any(axis=0).sum() == 14
+
+    hud.handle([LevelComplete(5, None)], 2.0)
+    pixels[:] = 0
+    hud.draw_frame(pixels, 2.0)
+    assert (pixels[:, 100] == NAME_BACK).sum() + (pixels[:, 100] == NAME_COLOUR).sum() == 320
+
+    names = [floor_name(label) for label in FLOOR_LABELS]
+    names += [load_map(path).name for path in MAPS.glob("*.map")]
+    missing = {c for name in names for c in name.upper()} - set(FONT_5X7)
     assert not missing, missing
