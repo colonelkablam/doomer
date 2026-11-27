@@ -1,6 +1,6 @@
 """Beside the start screen's menu: one of the game's own objects, picked at
 random each time, turning slowly. The Mac SE/30, the boss's computer, a
-cup of coffee.
+cup of coffee, the water cooler, a desk phone.
 
 They're box models (client/boxes.py), drawn by the renderer itself, so
 they're shown as they are in the game: rendered in an empty room from
@@ -23,12 +23,14 @@ from ok_doomer.client.palette import U8Array
 from ok_doomer.client.render import Camera, Renderer, SpriteInstance
 from ok_doomer.shared.mapfile import parse_map
 
-SHOWPIECES = ("mac", "pc", "coffee_cup")
+SHOWPIECES = ("mac", "pc", "coffee_cup", "water_cooler", "phone")
 VIEWS = 48  # round it: a step of 7.5 degrees
 TURN_SECONDS = 12.0  # once round
 SIZE = 120  # pixels: the square it's drawn in
 FILL = 0.85  # of SIZE its widest view fills
-LOOK_DOWN = 0.35  # the camera's height above the object's middle, in its heights
+# Looking down on it at this angle: its top shows (a phone's buttons, a
+# keyboard), whatever its height. Within the renderer's MAX_PITCH (25).
+LOOK_DOWN = math.radians(20)
 ROOM = 21  # cells across the empty room it's shown in
 
 
@@ -85,8 +87,8 @@ class Showcase:
         ox = self.centre - (mx * cos_t - my * sin_t)  # so its middle is at the centre
         oy = self.centre - (mx * sin_t + my * cos_t)
         thing = SpriteInstance(self.name, ox, oy, 0.0, turn)
-        eye = self.height * (0.5 + LOOK_DOWN)
-        pitch = -math.atan2(self.height * LOOK_DOWN, self.distance)
+        eye = self.height / 2 + math.tan(LOOK_DOWN) * self.distance
+        pitch = -LOOK_DOWN
         camera = Camera(self.centre - self.distance, self.centre, 0.0, z=eye, pitch=pitch)
         with_it = self.renderer.render_indices(self.map, camera, [thing]).copy()
         without = self.renderer.render_indices(self.map, camera, [])

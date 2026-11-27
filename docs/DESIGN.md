@@ -311,7 +311,9 @@ means adding a module and registering it, not editing a dozen files.
   others indented to line up). On the right (main and name screens; the
   game list wants the width) one of the game's own objects, picked at
   random, turning once every 12 s (`client/showcase.py`): the Mac SE/30,
-  the boss's PC, a cup of coffee. Box models, so drawn by the renderer
+  the boss's PC, a cup of coffee, the water cooler, a desk phone; seen
+  from 20 degrees above (a fixed angle, so a flat phone shows its top,
+  not an edge). Box models, so drawn by the renderer
   itself, in an empty room from 48 points round: each view rendered with
   the object and without, the pixels that differ are the object (the room
   cut away). The camera's distance is guessed from the model's size, then

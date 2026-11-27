@@ -36,5 +36,9 @@ def test_each_is_cut_out_filling_its_square_and_turning() -> None:
 
 
 def test_one_is_picked_at_random() -> None:
-    picks = {Showcase(seed=seed).name for seed in range(12)}
+    picks = set()
+    for seed in range(60):
+        showcase = Showcase(seed=seed)
+        showcase.close()
+        picks.add(showcase.name)
     assert picks == set(SHOWPIECES)
