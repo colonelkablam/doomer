@@ -38,6 +38,7 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
         hud.arrive(session.game_map, 0.0)
         automap = Automap(session.game_map)
         show_map = False
+        show_net = False  # F3: the connection's stats
         controls = KeyboardMouseInput(config.controls, start_angle, MAX_PITCH)
         controls.set_captured(True)
         clock = pygame.time.Clock()
@@ -68,6 +69,8 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
                     automap.change_zoom(1 if event.y > 0 else -1)
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
                     show_map = not show_map
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_F3:
+                    show_net = not show_net
                 elif event.type == pygame.KEYDOWN and event.key in _ZOOM_KEYS:
                     automap.change_zoom(_ZOOM_KEYS[event.key])
 
@@ -110,8 +113,11 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
             view = window.subsurface(rect)
             pygame.transform.scale(frame.convert(window), rect.size, view)
             hud.draw(view, session.passes(), now)
-            if rc.show_fps:
-                view.blit(font.render(f"{clock.get_fps():.0f} fps", True, HUD_COLOUR), (8, 8))
+            corner = [f"{clock.get_fps():.0f} fps"] if rc.show_fps else []
+            if show_net:
+                corner += session.net_stats().lines()
+            for i, line in enumerate(corner):
+                view.blit(font.render(line, True, HUD_COLOUR), (8, 8 + 18 * i))
             if not controls.captured:
                 hint = font.render("Click to play - Esc to quit", True, HUD_COLOUR)
                 view.blit(hint, hint.get_rect(center=view.get_rect().center))

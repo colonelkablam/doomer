@@ -6,7 +6,7 @@ a server in the game's own process. The game loop sees only this
 interface.
 """
 
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from ok_doomer.client.boxes import PlacedBox, cubicle_door_boxes, door_boxes, switch_boxes
 from ok_doomer.client.render import Camera, SpriteInstance, sprites_from_things
@@ -15,6 +15,9 @@ from ok_doomer.shared.mapfile import GameMap
 from ok_doomer.shared.player import PlayerInput, PlayerState
 from ok_doomer.shared.sim import eye_height
 from ok_doomer.shared.world import World
+
+if TYPE_CHECKING:
+    from ok_doomer.client.network import NetStats
 
 EYE_EASE_SPEED = 2.5  # walls per second: standing <-> crouching in ~0.1 s
 
@@ -51,6 +54,10 @@ class GameSession(Protocol):
         """The way the player faced when they arrived on this floor. The
         session moves on to the next floor itself, when the lift gets
         there: `game_map` is then a different map."""
+        ...
+
+    def net_stats(self) -> "NetStats":
+        """How the connection's doing (F3)."""
         ...
 
     def ended(self) -> str | None:

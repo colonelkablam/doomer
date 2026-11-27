@@ -232,6 +232,18 @@ means adding a module and registering it, not editing a dozen files.
   33 voxels against the game's crouch height of 27 (a big head; a lean
   steep enough looks like falling): decide hit boxes with 3b. The server
   going away or saying `Bye` ends the game (`GameSession.ended`).
+- **A bad network on one machine** (`server/lagproxy.py`, `python -m
+  ok_doomer.server.lagproxy --to HOST:PORT --listen 5030 --lag 30
+  --jitter 10 --loss 1`): a TCP proxy delaying each direction by `lag`
+  plus up to `jitter` ms. By TCP's rules: nothing lost or reordered; loss
+  is a stall of 200 ms (about TCP's shortest resend delay) holding up
+  everything behind it, as head-of-line blocking does. A separate
+  process, so the server keeps no test-only paths.
+- **Network stats** (F3 in the game; `NetworkSession.net_stats`): round
+  trip (an input sent to the update confirming it, median of 60: wire,
+  plus the waits for a tick at each end), jitter (spread of the gaps
+  between updates), updates a second, inputs unconfirmed, prediction
+  corrections. All measured by the client: nothing extra on the wire.
 - **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
   blocking (a lost packet holds up everything behind it until resent),
   matters on the internet, not here. Framing and encoding stay behind

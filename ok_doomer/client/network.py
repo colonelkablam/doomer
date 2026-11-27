@@ -22,6 +22,7 @@ import logging
 import math
 import queue
 import socket
+import statistics
 import threading
 from collections import deque
 from dataclasses import dataclass
@@ -182,6 +183,27 @@ def pose_at(history: deque[tuple[float, dict[int, Pose]]], pid: int, when: float
     return times[-1][1]
 
 
+@dataclass(frozen=True, slots=True)
+class NetStats:
+    """How the connection's doing, for the F3 overlay (all measured by the
+    client: nothing extra on the wire)."""
+
+    round_trip_ms: float | None  # input sent -> the update confirming it (median of 60)
+    jitter_ms: float | None  # spread of the gaps between updates
+    updates_per_second: int  # in the last second
+    unconfirmed: int  # inputs sent and not yet confirmed
+    corrections: int  # times the server disagreed with the prediction
+
+    def lines(self) -> list[str]:
+        rtt = "-" if self.round_trip_ms is None else f"{self.round_trip_ms:.0f} ms"
+        jitter = "-" if self.jitter_ms is None else f"{self.jitter_ms:.0f} ms"
+        return [
+            f"round trip {rtt}, jitter {jitter}",
+            f"{self.updates_per_second} updates/s, {self.unconfirmed} inputs unconfirmed",
+            f"{self.corrections} corrections",
+        ]
+
+
 class Link(Protocol):
     """What a NetworkSession needs of its connection (a Connection; in
     tests, a link straight to a GameServer with made-up latency)."""
@@ -213,6 +235,10 @@ class NetworkSession:
         self._clock = 0.0  # local seconds, from the frame times given
         self._newest = (0.0, 0.0)  # (server time, local clock) of the newest update
         self._ended: str | None = None
+        # For the stats (F3): when each input went, round trips, arrivals.
+        self._sent_at: dict[int, float] = {}
+        self._round_trips: deque[float] = deque(maxlen=60)
+        self._arrivals: deque[float] = deque(maxlen=120)
         self._new_floor()
 
     @classmethod
@@ -244,6 +270,7 @@ class NetworkSession:
         for _ in range(self.timestep.advance(real_dt)):  # one input a tick
             sent = self.mirror.next_input(player_input)
             self.connection.send(sent)
+            self._sent_at[sent.seq] = self._clock
             if self.predict:
                 self.predictor.input(self.mirror.world, sent.seq, player_input)
         events: list[Event] = []
@@ -275,12 +302,36 @@ class NetworkSession:
             }
             self.history.append((when, poses))
             self._newest = (when, self._clock)
+            self._note_update(message.ack)
             me = self.mirror.player
             if self.predict and me is not None:
                 self.predictor.reconcile(self.mirror.world, me, message.ack)
         elif isinstance(message, Bye):
             self._ended = message.reason or "the server said goodbye"
         return events
+
+    def _note_update(self, ack: int) -> None:
+        """For the stats: when it came, and how long the input it confirms
+        took (sent, applied, confirmed)."""
+        self._arrivals.append(self._clock)
+        sent = self._sent_at.get(ack)
+        if sent is not None:
+            self._round_trips.append(self._clock - sent)
+        for seq in [s for s in self._sent_at if s <= ack]:
+            del self._sent_at[seq]
+
+    def net_stats(self) -> NetStats:
+        trips = sorted(self._round_trips)
+        arrivals = list(self._arrivals)
+        recent = [t for t in arrivals if t > self._clock - 1.0]
+        gaps = [b - a for a, b in zip(arrivals, arrivals[1:], strict=False)]
+        return NetStats(
+            round_trip_ms=1000 * trips[len(trips) // 2] if trips else None,
+            jitter_ms=1000 * statistics.pstdev(gaps) if len(gaps) > 1 else None,
+            updates_per_second=len(recent),
+            unconfirmed=self.mirror.seq - self.mirror.ack,
+            corrections=self.predictor.corrections,
+        )
 
     def _server_now(self) -> float:
         """The server's time now, by the newest update and the time since

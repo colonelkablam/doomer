@@ -27,7 +27,8 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 Controls: mouse to look around (including up and down), WASD to move, arrow
 keys also work, Space to jump (you can get onto desks), Ctrl or C to crouch.
 Esc releases the mouse; Esc again quits. Click to recapture. F11 (or Alt+Enter)
-toggles full screen; the window can be resized too.
+toggles full screen; the window can be resized too. Tab shows the map; F3 the
+network stats.
 
 Options: a map path as the first argument (default `maps/office.map`),
 `--mode coop|deathmatch`, `--config client.toml` (see `client.example.toml`).
@@ -49,6 +50,22 @@ Run a server, then join it from the game (and add bots to have company):
 ```
 
 From another machine, use the server's IP address instead of 127.0.0.1.
+
+To feel a slower network on one machine, put the lag proxy in between and
+join its port instead (here 30 ms each way, up to 10 ms of jitter, 1% of
+data stalled as a lost packet would be):
+
+```bash
+.venv/bin/python -m ok_doomer.server.lagproxy --to 127.0.0.1:5029 --listen 5030 --lag 30 --jitter 10 --loss 1
+```
+
+```bash
+.venv/bin/python -m ok_doomer.client --connect 127.0.0.1:5030 --name ann
+```
+
+In the game, F3 shows the connection's round trip, jitter, updates a
+second and prediction corrections; `--no-predict` turns prediction off to
+compare.
 
 The server starts on the ground floor in co-op; `--map maps/x.map` plays a
 map instead, `--config server.toml` reads settings (`ServerConfig` in
