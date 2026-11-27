@@ -301,6 +301,19 @@ means adding a module and registering it, not editing a dozen files.
   replies, one address answered at most every 0.2 s. `python -m
   ok_doomer.client --find` lists what it hears. Wi-Fi with AP isolation
   passes no broadcasts: join by address there.
+- **The start screen** (`client/menu.py`; `python -m ok_doomer.client`
+  with no map and no `--connect`, which still go straight in): SINGLE
+  PLAYER, HOST GAME (to come), JOIN GAME (the games found, live, and an
+  address to type), NAME (remembered: `client/settings.py`,
+  `~/.ok-doomer/settings.json`), QUIT; keys or the mouse, Esc back a
+  screen. Green 5x7 text over the lobby turning slowly, dimmed (each
+  pixel half as bright in its own ramp). A failed join says why on the
+  menu; leaving a game (Esc twice) comes back to it, closing the window
+  quits. `Menu` is the state and what keys and clicks do, apart from
+  pygame's loop (`run_menu`) and the program (`start`), so it's tested
+  without a window. The window is a `Display` (`client/app.py`), shared
+  by the menu and the game (`play`). The font gained `>` and `_`; a test
+  checks everything the menu writes is in it.
 - **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
   blocking (a lost packet holds up everything behind it until resent),
   matters on the internet, not here. Framing and encoding stay behind
@@ -1185,7 +1198,7 @@ Noted at the end of a session, to pick up next:
   single-player on the in-process server, the CPU cut, the lag proxy and
   F3 stats, who's here and names). To do, in this order:
   1. **Host from the game, find games on the LAN, a start screen.**
-     [finding games: built (Networking above); the start screen and
+     [finding games and the start screen: built (Networking above);
      hosting to do] Host
      = `LocalSession`'s in-process server plus a TCP listener (no Pi or
      server terminal needed). Servers announce themselves by UDP

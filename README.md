@@ -24,14 +24,20 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m ok_doomer.client
 ```
 
+That opens the start screen: single player, join a game on your network
+(or type an address), and your name (remembered). Arrow keys and Enter or
+the mouse; Esc goes back.
+
 Controls: mouse to look around (including up and down), WASD to move, arrow
 keys also work, Space to jump (you can get onto desks), Ctrl or C to crouch.
 Esc releases the mouse; Esc again quits. Click to recapture. F11 (or Alt+Enter)
 toggles full screen; the window can be resized too. Tab shows the map; F3 the
 network stats; the backquote key (`) a console of everything that happens.
 
-Options: a map path as the first argument (default `maps/office.map`),
-`--mode coop|deathmatch`, `--config client.toml` (see `client.example.toml`).
+Options: a map path as the first argument plays it straight away (no start
+screen), as does `--connect HOST:PORT`; `--mode coop|deathmatch`, `--name`,
+`--config client.toml` (see `client.example.toml`). In a game, Esc releases
+the mouse and Esc again goes back to the start screen.
 
 ## Server and bots
 

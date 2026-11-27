@@ -190,6 +190,7 @@ def draw_text(
     scale: int = 1,
     panel: bool = True,
     centre: bool = True,
+    colour: int = NAME_COLOUR,
 ) -> int:
     """`text` into the frame in `font` (capitals; what it can't draw, a
     space), phosphor green on a black panel (or outlined): centred on
@@ -210,7 +211,7 @@ def draw_text(
             for dv in (0, 1, 2):
                 back[du : du + tw, dv : dv + th] |= glyphs
     _blit(pixels, back, left - border, top - border, NAME_BACK, w, h)
-    _blit(pixels, glyphs, left, top, NAME_COLOUR, w, h)
+    _blit(pixels, glyphs, left, top, colour, w, h)
     return int(th) + 2 * border
 
 

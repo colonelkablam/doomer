@@ -1,5 +1,6 @@
-"""Play: python -m ok_doomer.client [map] [--mode coop|deathmatch] for
-single-player, or --connect HOST:PORT to join a server."""
+"""Play: python -m ok_doomer.client for the start screen (single player,
+join a game, your name). Straight in, for testing: a map path for
+single-player on it (--mode coop|deathmatch), or --connect HOST:PORT."""
 
 import argparse
 import logging
@@ -10,21 +11,21 @@ from ok_doomer.client.app import run
 from ok_doomer.client.config import ClientConfig
 from ok_doomer.client.discovery import find
 from ok_doomer.client.local import LocalSession
+from ok_doomer.client.menu import start
 from ok_doomer.client.network import JoinFailed, NetworkSession
 from ok_doomer.client.session import GameSession
+from ok_doomer.client.settings import load_name
 from ok_doomer.shared.config import ConfigError, load_toml
 from ok_doomer.shared.mapfile import MapError, parse_map
 from ok_doomer.shared.modes import supported_modes
 from ok_doomer.shared.world import ModeNotSupported
 
-DEFAULT_MAP = Path(__file__).resolve().parents[2] / "maps" / "office.map"
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m ok_doomer.client", description=__doc__)
-    parser.add_argument("map", nargs="?", type=Path, default=DEFAULT_MAP)
+    parser.add_argument("map", nargs="?", type=Path, help="play this map, no start screen")
     parser.add_argument("--mode", help="coop or deathmatch (default: first the map supports)")
-    parser.add_argument("--name", default="player")
+    parser.add_argument("--name", help="your name (default: the last you used)")
     parser.add_argument("--config", type=Path, help="TOML file overriding client settings")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--connect", metavar="HOST:PORT", help="join a server instead")
@@ -44,19 +45,28 @@ def main(argv: list[str] | None = None) -> int:
             print("networks block this: join by address with --connect HOST:PORT.)")
         return 0
 
-    session: GameSession
     try:
         config = load_toml(ClientConfig, args.config) if args.config else ClientConfig()
+    except (OSError, ConfigError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    if args.map is None and not args.connect:
+        start(config, args.name, not args.no_predict)
+        return 0
+
+    name = args.name or load_name()
+    session: GameSession
+    try:
         if args.connect:
             host, _, port = args.connect.rpartition(":")
             if not host or not port.isdigit():
                 raise ConfigError("--connect wants HOST:PORT, e.g. 192.168.1.20:5029")
-            session = NetworkSession.join(host, int(port), args.name, not args.no_predict)
+            session = NetworkSession.join(host, int(port), name, not args.no_predict)
         else:
             map_text = args.map.read_text(encoding="utf-8")
             modes = supported_modes(parse_map(map_text))
             mode = args.mode or (modes[0] if modes else "coop")
-            session = LocalSession(map_text, args.name, mode, args.seed)
+            session = LocalSession(map_text, name, mode, args.seed)
     except (OSError, MapError, ConfigError, ModeNotSupported, JoinFailed) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
