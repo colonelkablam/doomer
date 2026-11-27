@@ -314,3 +314,69 @@ def test_titles_and_the_banner_are_pixel_text_too() -> None:
     names += [load_map(path).name for path in MAPS.glob("*.map")]
     missing = {c for name in names for c in name.upper()} - set(FONT_5X7)
     assert not missing, missing
+
+
+def test_your_hud_tells_you_your_news_and_the_teams_not_others_doings() -> None:
+    from ok_doomer.client.hud import Hud, news_for
+    from ok_doomer.shared.events import (
+        Dispensed,
+        DoorLocked,
+        LiftNoPower,
+        PassPickedUp,
+        SwitchThrown,
+    )
+
+    me, bob = 1, 2
+    names = {1: "Ann", 2: "Bob"}
+    theirs = [
+        DoorLocked(5, 0, bob, "red"),
+        Dispensed(5, bob, "water_cooler", "health", 5, 20),
+        LiftNoPower(5, 0, bob),
+    ]
+    for event in theirs:
+        assert news_for(event, me, names) is None  # a bot's stuck at a door: not your news
+    assert news_for(DoorLocked(5, 0, me, "red"), me, names) == "Locked: you need the red pass"
+    assert news_for(PassPickedUp(5, bob, "blue"), me, names) == "Bob picked up the blue pass"
+    assert news_for(PassPickedUp(5, me, "blue"), me, names) == "Picked up the blue pass"
+    assert news_for(SwitchThrown(5, 0, bob, "power"), me, names) == "The power is back on"
+    assert news_for(PlayerJoined(5, 3, "Cath"), me, names) == "Cath joined"
+
+    hud = Hud()
+    hud.handle([DoorLocked(5, 0, bob, "red"), PlayerJoined(5, 3, "Cath")], 0.0, me, names)
+    assert hud.messages(0.0) == ["Cath joined"]
+
+
+def test_the_console_has_everyones_doings_with_who() -> None:
+    from ok_doomer.client.console import LINES_KEPT, Console
+    from ok_doomer.client.hud import console_line
+    from ok_doomer.shared.events import DoorLocked, PlayerSpawned
+
+    names = {1: "Ann", 2: "Bob"}
+    assert (
+        console_line(DoorLocked(7, 0, 2, "red"), names) == "[7] Bob: Locked: you need the red pass"
+    )
+    assert console_line(PlayerJoined(8, 2, "Bob"), names) == "[8] Bob joined"
+    assert (
+        console_line(PlayerSpawned(0, 9, 1.5, 2.0), names)
+        == "[0] player 9: PlayerSpawned x=1.5 y=2.0"
+    )
+    console = Console()
+    for i in range(LINES_KEPT + 5):
+        console.add(f"line {i}")
+    assert len(console.lines) == LINES_KEPT and console.lines[-1] == f"line {LINES_KEPT + 4}"
+
+
+def test_names_are_remembered_after_leaving() -> None:
+    link = LaggyLink(GameServer(ServerConfig(), map_text=ROOM), latency=0)
+    session = NetworkSession(link)
+    bob = link.server.join(Hello(PROTOCOL_VERSION, "Bob"))
+    assert isinstance(bob, Welcome)
+    for _ in range(3):
+        session.update(1 / 60, PlayerInput())
+        link.tick()
+    link.server.receive(bob.player_id, Bye("quit"))
+    for _ in range(3):
+        session.update(1 / 60, PlayerInput())
+        link.tick()
+    assert session.me() == 1 and session.names() == {1: "ann", 2: "Bob"}
+    assert bob.player_id not in session.mirror.world.players  # gone, but still named

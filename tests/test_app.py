@@ -95,3 +95,16 @@ def test_network_stats_show_with_f3() -> None:
     session = NetStatsThenQuit(6, (MAPS / "test.map").read_text(), "smoke")
     run(session, ClientConfig(render=RenderConfig(vsync=False)), session.player.angle)
     assert session.frames_left <= 0
+
+
+class ConsoleThenQuit(QuitAfter):
+    def update(self, real_dt: float, player_input: PlayerInput) -> list[Event]:
+        if self.frames_left == 4:  # the backquote key: the console
+            pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_BACKQUOTE, mod=0))
+        return super().update(real_dt, player_input)
+
+
+def test_the_console_shows_with_backquote() -> None:
+    session = ConsoleThenQuit(6, (MAPS / "test.map").read_text(), "smoke")
+    run(session, ClientConfig(render=RenderConfig(vsync=False)), session.player.angle)
+    assert session.frames_left <= 0

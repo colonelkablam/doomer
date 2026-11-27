@@ -237,6 +237,7 @@ class NetworkSession:
         self._ended: str | None = None
         self._people: list[tuple[str, float, float]] = []
         self._greeted = False  # told you who's here (on the first update)
+        self._names: dict[int, str] = {}  # everyone seen, by id
         self._news: list[Event] = []  # events of our own, for the next update()
         # For the stats (F3): when each input went, round trips, arrivals.
         self._sent_at: dict[int, float] = {}
@@ -309,6 +310,8 @@ class NetworkSession:
             self.history.append((when, poses))
             self._newest = (when, self._clock)
             self._note_update(message.ack)
+            for p in self.mirror.world.players.values():  # kept after they leave
+                self._names[p.id] = p.name
             if not self._greeted:  # the first: who's already here
                 self._greeted = True
                 # Anyone joining in the same tick is in it: not news twice.
@@ -386,6 +389,12 @@ class NetworkSession:
 
     def people(self) -> list[tuple[str, float, float]]:
         return list(self._people)
+
+    def me(self) -> int:
+        return self.mirror.player_id
+
+    def names(self) -> dict[int, str]:
+        return dict(self._names)
 
     def boxes(self) -> list[PlacedBox]:
         return world_boxes(self.mirror.world)

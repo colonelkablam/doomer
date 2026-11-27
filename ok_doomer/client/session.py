@@ -56,6 +56,14 @@ class GameSession(Protocol):
         there: `game_map` is then a different map."""
         ...
 
+    def me(self) -> int:
+        """Your player id."""
+        ...
+
+    def names(self) -> dict[int, str]:
+        """Every player's name by id, including those who've left."""
+        ...
+
     def people(self) -> list[tuple[str, float, float]]:
         """Other players as last drawn (by `sprites`): (name, x, y), for
         names over their heads."""

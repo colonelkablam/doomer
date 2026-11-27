@@ -5,7 +5,8 @@ What to say about an event (`message_for`) is a pure function, so it's tested
 without a display; Hud only keeps messages on screen for a while and draws.
 """
 
-from collections.abc import Collection, Iterable
+import dataclasses
+from collections.abc import Collection, Iterable, Mapping
 from dataclasses import dataclass
 
 import numpy as np
@@ -53,6 +54,39 @@ def _card_image(colour: str) -> pygame.Surface:
         pygame.surfarray.pixels_alpha(image)[...] = rgba[..., 3]
         _CARDS[colour] = pygame.transform.scale(image, CARD_SIZE)
     return _CARDS[colour]
+
+
+# What happens to you alone: your HUD tells you, nobody else's does (the
+# console tells everyone everything).
+PERSONAL = (Dispensed, Refreshed, DoorLocked, CubicleDoorUsed, LiftNoPower, LiftCalled)
+
+
+def news_for(event: Event, me: int, names: Mapping[int, str]) -> str | None:
+    """What your HUD says of an event: yours, or the team's. Another
+    player's use of a door or the cooler isn't news to you; their finding
+    a pass is (the team holds it), by name; joining, leaving and the power
+    are everyone's."""
+    who = getattr(event, "player_id", None)
+    if isinstance(event, PassPickedUp) and who != me:
+        return f"{names.get(event.player_id, 'Someone')} picked up the {event.colour} pass"
+    if isinstance(event, PERSONAL) and who != me:
+        return None
+    return message_for(event)
+
+
+def console_line(event: Event, names: Mapping[int, str]) -> str:
+    """An event for the console (debugging): everyone's, with who did it,
+    and the ones the HUD never shows too."""
+    text = message_for(event)
+    if text is None:
+        fields = {f.name: getattr(event, f.name) for f in dataclasses.fields(event)}
+        fields.pop("tick")
+        fields.pop("player_id", None)
+        text = type(event).__name__ + "".join(f" {k}={v}" for k, v in fields.items())
+    who = getattr(event, "player_id", None)
+    if who is None or isinstance(event, PlayerJoined | PlayerLeft):
+        return f"[{event.tick}] {text}"
+    return f"[{event.tick}] {names.get(who, f'player {who}')}: {text}"
 
 
 def message_for(event: Event) -> str | None:
@@ -240,13 +274,21 @@ class Hud:
         self._title_until = now + TITLE_SECONDS
         self._messages = []
 
-    def handle(self, events: Iterable[Event], now: float) -> None:
+    def handle(
+        self,
+        events: Iterable[Event],
+        now: float,
+        me: int | None = None,
+        names: Mapping[int, str] | None = None,
+    ) -> None:
         """Take this frame's events: each message shows for MESSAGE_SECONDS,
-        the last MAX_MESSAGES stacked (two players joining at once: both)."""
+        the last MAX_MESSAGES stacked (two players joining at once: both).
+        `me`: you, so others' doings aren't your news (`news_for`); None:
+        every message."""
         for event in events:
             if isinstance(event, LevelComplete) and event.next_floor is None:
                 self.complete = True  # the top of what's built
-            text = message_for(event)
+            text = message_for(event) if me is None else news_for(event, me, names or {})
             if text is not None:
                 self._messages.append((text, now + MESSAGE_SECONDS))
         self._messages = [m for m in self._messages if m[1] > now][-MAX_MESSAGES:]

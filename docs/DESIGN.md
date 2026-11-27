@@ -261,7 +261,15 @@ means adding a module and registering it, not editing a dozen files.
   the game's words are drawn this way now (no system font): a floor's
   name on arrival (5x7 at twice; the map's name under it unless it says
   the same), the "complete" banner across a black band, the fps and F3
-  stats top left, "Click to play" (`Hud.draw_frame`, `hud.draw_text`). Names over heads: the renderer records
+  stats top left, "Click to play" (`Hud.draw_frame`, `hud.draw_text`).
+- **Whose news.** Every event goes to every client, but your HUD tells you
+  only yours and the team's (`hud.news_for`): someone else at a locked
+  door, the cooler or a lift button isn't news to you (a stuck bot
+  pressing use was filling everyone's screen); a pass anyone finds is
+  ("BOB PICKED UP THE BLUE PASS": the team holds it); joins, leaves and
+  the power are everyone's. Everything, everyone's, with who and the
+  tick, goes to the console (backquote; `client/console.py`, the system
+  font: a debugging tool), and to the log at debug level. Names over heads: the renderer records
   what it drew of each sprite, after walls and desks hid their share
   (`Renderer.seen`: pixels, top row, middle); a name goes just over the
   top of what's seen of someone, if at least a few pixels are and

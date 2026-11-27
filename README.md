@@ -28,7 +28,7 @@ Controls: mouse to look around (including up and down), WASD to move, arrow
 keys also work, Space to jump (you can get onto desks), Ctrl or C to crouch.
 Esc releases the mouse; Esc again quits. Click to recapture. F11 (or Alt+Enter)
 toggles full screen; the window can be resized too. Tab shows the map; F3 the
-network stats.
+network stats; the backquote key (`) a console of everything that happens.
 
 Options: a map path as the first argument (default `maps/office.map`),
 `--mode coop|deathmatch`, `--config client.toml` (see `client.example.toml`).

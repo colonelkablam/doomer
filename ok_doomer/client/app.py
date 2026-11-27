@@ -13,7 +13,8 @@ import pygame
 
 from ok_doomer.client.automap import RAY_STRIDE, Automap
 from ok_doomer.client.config import ClientConfig
-from ok_doomer.client.hud import Hud, draw_name_tags, draw_text, name_tags
+from ok_doomer.client.console import Console
+from ok_doomer.client.hud import Hud, console_line, draw_name_tags, draw_text, name_tags
 from ok_doomer.client.input import KeyboardMouseInput
 from ok_doomer.client.pixelart import FONT_5X7
 from ok_doomer.client.render import MAX_PITCH, Renderer, make_frame_surface
@@ -37,6 +38,8 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
         automap = Automap(session.game_map)
         show_map = False
         show_net = False  # F3: the connection's stats
+        console = Console()  # backquote: every event, everyone's
+        console_font = pygame.font.Font(None, 20)
         controls = KeyboardMouseInput(config.controls, start_angle, MAX_PITCH)
         controls.set_captured(True)
         clock = pygame.time.Clock()
@@ -69,6 +72,8 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
                     show_map = not show_map
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_F3:
                     show_net = not show_net
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_BACKQUOTE:
+                    console.visible = not console.visible
                 elif event.type == pygame.KEYDOWN and event.key in _ZOOM_KEYS:
                     automap.change_zoom(_ZOOM_KEYS[event.key])
 
@@ -76,7 +81,10 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
             now = pygame.time.get_ticks() / 1000.0
             floor = session.game_map
             events = session.update(real_dt, player_input)
-            hud.handle(events, now)
+            names = session.names()
+            hud.handle(events, now, session.me(), names)
+            for happened in events:
+                console.add(console_line(happened, names))
             if (reason := session.ended()) is not None:
                 log.info("game over: %s", reason)
                 return
@@ -122,6 +130,7 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
             view = window.subsurface(rect)
             pygame.transform.scale(frame.convert(window), rect.size, view)
             hud.draw(view, session.passes())
+            console.draw(view, console_font)
             pygame.display.flip()
     finally:
         pygame.quit()
