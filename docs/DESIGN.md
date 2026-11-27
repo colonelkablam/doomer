@@ -188,9 +188,19 @@ means adding a module and registering it, not editing a dozen files.
   server): 60 ticks/s held at 4, 8 and 16 bots; tick median 0.96 / 1.32 /
   2.37 ms, p99 1.28 / 2.38 / 7.33 ms; sent 2.1 / 5.5 / 16.4 Mbit/s.
   Bandwidth grows with the square of the players (each update carries
-  every player, to every client): fine on a LAN at 8. If the Pi
-  struggles, encode each tick's snapshot once rather than per client
-  (only `ack` differs), then round floats, then deltas.
+  every player, to every client): fine on a LAN at 8.
+- **Server CPU, cut ~3x** (profiled, then measured; a tick's work, 8 / 16
+  players: 2.02 / 4.56 ms before, 0.69 / 1.46 ms after). Two-thirds of
+  the simulation was collision checking every player against every desk
+  and door on the floor: `sim.move_player` now keeps only obstacles,
+  doors and cubicle doors within reach of the move (conservative; tested
+  bit-identical to unfiltered over 3,000 moves aimed at all three, and
+  each too-tight filter fails it). Encoding was a third of the rest, the
+  same snapshot once per client: `protocol.Encoder` encodes a tick's
+  shared snapshot and events once and splices on each client's `ack`
+  (byte-identical to `encode`). Not done: rounding floats (would make the
+  client's world differ from the server's by rounding, so prediction would
+  correct every update) or deltas (not needed at these sizes).
 - **The game client on a server** (`client/network.py`; `python -m
   ok_doomer.client --connect HOST:PORT --name NAME`): a `Connection` (a
   plain socket, `TCP_NODELAY`; a reader thread blocks on it and queues

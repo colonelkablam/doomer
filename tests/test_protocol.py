@@ -169,3 +169,22 @@ def test_bad_lines_are_protocol_errors(line: bytes) -> None:
 def test_a_good_input_line_decodes() -> None:
     message = decode(json.dumps(GOOD_INPUT).encode())
     assert message == Input(1, PlayerInput(forward=1.0, angle=0.5))
+
+
+def test_the_encoder_makes_the_same_bytes_encoding_each_update_once() -> None:
+    """A tick's updates share their snapshot and events; the Encoder's lines
+    are exactly encode's, for every client's ack, every message type, and a
+    new tick's snapshot."""
+    from ok_doomer.shared.protocol import Encoder
+
+    world = _world()
+    snap, events = capture(world), (PassPickedUp(9, 1, "blue"),)
+    encoder = Encoder()
+    for ack in (0, 7, 12345):
+        update = Update(ack, snap, events)
+        assert encoder.encode(update) == encode(update)
+    for message in _messages():
+        assert encoder.encode(message) == encode(message)
+    step(world, {})
+    newer = Update(3, capture(world), ())
+    assert encoder.encode(newer) == encode(newer)  # not the last tick's, cached

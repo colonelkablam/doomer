@@ -121,6 +121,29 @@ def encode(message: Message) -> bytes:
     return text.encode() + b"\n"
 
 
+class Encoder:
+    """`encode`, but each tick's Update encoded once, not once per client:
+    a server sends every client the same snapshot and events, only the
+    `ack` differs. The JSON of the shared part is kept and each client's
+    line is its ack spliced on (the same bytes `encode` makes). Use one
+    per tick."""
+
+    def __init__(self) -> None:
+        self._shared: tuple[Snapshot, tuple[Event, ...], bytes] | None = None
+
+    def encode(self, message: Message) -> bytes:
+        if not isinstance(message, Update):
+            return encode(message)
+        cached = self._shared
+        if cached is None or cached[0] is not message.snapshot or cached[1] is not message.events:
+            rest = {k: v for k, v in _message_to_dict(message).items() if k != "ack"}
+            text = json.dumps(rest, separators=(",", ":"), allow_nan=False)
+            cached = (message.snapshot, message.events, text[1:].encode())  # less its "{"
+            self._shared = cached
+        head = f'{{"type":"{Update.TYPE}","ack":{message.ack},'.encode()
+        return head + cached[2] + b"\n"
+
+
 def decode(line: bytes) -> Message:
     """A line of JSON as a message; ProtocolError if it isn't one."""
     if len(line) > MAX_LINE:

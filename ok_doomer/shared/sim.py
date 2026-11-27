@@ -49,6 +49,7 @@ from ok_doomer.shared.pickups import METER_MAX, Pickup, take_pickups
 from ok_doomer.shared.player import PlayerInput, PlayerState
 from ok_doomer.shared.screens import SCREEN_HALF, screens_at_height
 from ok_doomer.shared.switches import POWER, try_switch
+from ok_doomer.shared.things import CUBICLE_WIDTH
 from ok_doomer.shared.world import World
 
 TAU = math.tau
@@ -228,8 +229,24 @@ def move_player(world: World, player: PlayerState, dx: float, dy: float) -> None
         ThinWall(sc.axis, sc.at, sc.lo, sc.hi, SCREEN_HALF)
         for sc in screens_at_height(world.screens, player.z)
     ]
-    walls += [wall for door in world.doors for wall in door_walls(door)]
-    walls += cubicle_door_walls(world.cubicle_doors)
+    # Only what's within reach of this move can stop it: on a floor of dozens
+    # of desks and doors, checking the rest was most of the server's tick.
+    reach = move.radius + max(abs(dx), abs(dy)) + _NEAR_MARGIN
+    x, y = player.x, player.y
+    walls += [
+        wall
+        for door in world.doors
+        if abs(door.x - x) <= 0.5 + reach and abs(door.y - y) <= 0.5 + reach  # in its cell
+        for wall in door_walls(door)
+    ]
+    walls += cubicle_door_walls(
+        [d for d in world.cubicle_doors if _near(d.centre(), x, y, CUBICLE_WIDTH + reach)]
+    )
+    obstacles = [
+        ob
+        for ob in all_obstacles(world)
+        if abs(ob.x - x) <= ob.half_x + reach and abs(ob.y - y) <= ob.half_y + reach
+    ]
     player.x, player.y = move_box(
         world.map,
         player.x,
@@ -237,13 +254,20 @@ def move_player(world: World, player: PlayerState, dx: float, dy: float) -> None
         dx,
         dy,
         move.radius,
-        obstacles_in_the_way(all_obstacles(world), player.z, move.step_height),
+        obstacles_in_the_way(obstacles, player.z, move.step_height),
         lambda cx, cy: (
             cell_blocks(world.map, cx, cy, player.z, body, move.step_height, player.x, player.y)
             or (railed and _drops_away(world.map, cx, cy, player, move.step_height))
         ),
         walls,
     )
+
+
+_NEAR_MARGIN = 0.01  # cells: slack on "within reach", so the filter is never the edge case
+
+
+def _near(point: tuple[float, float], x: float, y: float, within: float) -> bool:
+    return abs(point[0] - x) <= within and abs(point[1] - y) <= within
 
 
 def _meter(player: PlayerState, meter: str) -> int:

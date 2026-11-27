@@ -20,6 +20,7 @@ from ok_doomer.server.game import GameServer
 from ok_doomer.shared.protocol import (
     MAX_LINE,
     Bye,
+    Encoder,
     Hello,
     Message,
     ProtocolError,
@@ -116,11 +117,12 @@ class TcpServer:
         if writer is not None:
             writer.close()
 
-    def _send(self, pid: int, messages: list[Message]) -> None:
+    def _send(self, pid: int, messages: list[Message], encoder: Encoder | None = None) -> None:
         writer = self.writers.get(pid)
         if writer is None or writer.is_closing():
             return
-        writer.write(b"".join(encode(m) for m in messages))
+        encoder = encoder or Encoder()
+        writer.write(b"".join(encoder.encode(m) for m in messages))
         if writer.transport.get_write_buffer_size() > MAX_BUFFERED:
             log.warning("player %d can't keep up; dropped", pid)
             self._drop(pid, "too far behind")
@@ -135,8 +137,9 @@ class TcpServer:
         due = loop.time()
         while True:
             out = self.game.tick()
+            encoder = Encoder()  # the tick's snapshot encoded once, for everyone
             for pid, messages in out.items():
-                self._send(pid, messages)
+                self._send(pid, messages, encoder)
                 if any(isinstance(m, Bye) for m in messages):  # timed out
                     self._drop(pid, "timed out")
             due += dt
