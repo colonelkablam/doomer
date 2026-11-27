@@ -6,11 +6,9 @@ import pytest
 from ok_doomer.client.app import run
 from ok_doomer.client.config import ClientConfig, ControlsConfig, RenderConfig
 from ok_doomer.client.input import KeyboardMouseInput
-from ok_doomer.client.session import LocalSession
+from ok_doomer.client.local import LocalSession
 from ok_doomer.shared.events import Event
-from ok_doomer.shared.mapfile import load_map
 from ok_doomer.shared.player import PlayerInput
-from ok_doomer.shared.world import new_world
 from tests.test_mapfile import MAPS
 
 
@@ -27,7 +25,7 @@ class QuitAfter(LocalSession):
 
 
 def test_game_loop_runs_and_quits() -> None:
-    session = QuitAfter(5, new_world(load_map(MAPS / "test.map"), "coop"), "smoke")
+    session = QuitAfter(5, (MAPS / "test.map").read_text(), "smoke")
     run(session, ClientConfig(render=RenderConfig(vsync=False)), session.player.angle)
     assert session.frames_left <= 0
 
@@ -80,7 +78,7 @@ class ToggleThenQuit(QuitAfter):
 
 @pytest.mark.parametrize("start_fullscreen", [False, True])
 def test_full_screen_starts_and_toggles(start_fullscreen: bool) -> None:
-    session = ToggleThenQuit(5, new_world(load_map(MAPS / "test.map"), "coop"), "smoke")
+    session = ToggleThenQuit(5, (MAPS / "test.map").read_text(), "smoke")
     config = ClientConfig(render=RenderConfig(vsync=False, fullscreen=start_fullscreen))
     run(session, config, session.player.angle)
     assert session.frames_left <= 0

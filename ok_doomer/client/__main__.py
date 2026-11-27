@@ -8,12 +8,13 @@ from pathlib import Path
 
 from ok_doomer.client.app import run
 from ok_doomer.client.config import ClientConfig
+from ok_doomer.client.local import LocalSession
 from ok_doomer.client.network import JoinFailed, NetworkSession
-from ok_doomer.client.session import GameSession, LocalSession
+from ok_doomer.client.session import GameSession
 from ok_doomer.shared.config import ConfigError, load_toml
-from ok_doomer.shared.mapfile import MapError, load_map
+from ok_doomer.shared.mapfile import MapError, parse_map
 from ok_doomer.shared.modes import supported_modes
-from ok_doomer.shared.world import ModeNotSupported, new_world
+from ok_doomer.shared.world import ModeNotSupported
 
 DEFAULT_MAP = Path(__file__).resolve().parents[2] / "maps" / "office.map"
 
@@ -41,10 +42,10 @@ def main(argv: list[str] | None = None) -> int:
                 raise ConfigError("--connect wants HOST:PORT, e.g. 192.168.1.20:5029")
             session = NetworkSession.join(host, int(port), args.name, not args.no_predict)
         else:
-            game_map = load_map(args.map)
-            modes = supported_modes(game_map)
+            map_text = args.map.read_text(encoding="utf-8")
+            modes = supported_modes(parse_map(map_text))
             mode = args.mode or (modes[0] if modes else "coop")
-            session = LocalSession(new_world(game_map, mode, seed=args.seed), args.name)
+            session = LocalSession(map_text, args.name, mode, args.seed)
     except (OSError, MapError, ConfigError, ModeNotSupported, JoinFailed) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1

@@ -237,11 +237,10 @@ def test_the_cars_handrail_stops_short_of_the_doors() -> None:
 
 
 def test_ride_from_the_ground_floor_to_floor_1() -> None:
-    from ok_doomer.client.session import LocalSession
+    from ok_doomer.client.local import LocalSession
     from ok_doomer.shared.building import floor_map_path
-    from ok_doomer.shared.mapfile import load_map
 
-    session = LocalSession(new_world(load_map(floor_map_path("G")), "coop"), "p")
+    session = LocalSession(floor_map_path("G").read_text(), "p")
     world, p = session.world, session.player
     world.flags.add(POWER)  # the breaker's thrown
     p.health = 63

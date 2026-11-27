@@ -30,9 +30,11 @@ module name can't hold).
   in-memory link instead of a socket (no JSON). One code path for spawning,
   floor changes and pickups, so single-player exercises the multiplayer
   code. Hosting from the game is the same plus a TCP listener; the
-  dedicated Pi server is the same core with no client in it. Until then
-  `LocalSession` calls `step` itself; what both need (spawning, the next
-  floor) is in `shared/spawn.py`, not in the client.
+  dedicated Pi server is the same core with no client in it. [built:
+  `client/local.py`: `LocalSession` is a `NetworkSession` on a
+  `LocalLink`, the server ticking in lockstep, one tick per input sent;
+  it plays to the same numbers as calling `step` directly (tested), and
+  costs ~0.2 ms a tick more (a snapshot each way, the predictor).]
 - **Fixed timestep**: the model advances in fixed steps (`shared/timestep.py`).
   Rendering runs as fast as it can and interpolates the camera between the last
   two simulation states, so a 60 Hz simulation looks smooth on a 144 Hz screen.
@@ -46,7 +48,9 @@ The aim is that adding a feature (a weapon, a pickup, a door, a game mode)
 means adding a module and registering it, not editing a dozen files.
 
 1. **Dependencies point one way**: `client`, `server` and `editor` import
-   `shared`; `shared` imports nothing of theirs. Enforced by
+   `shared`; `shared` imports nothing of theirs. The client also imports
+   the server's core (`server/game.py`, for single-player in-process);
+   the server never imports the client. Enforced by
    `tests/test_architecture.py` (extend it as packages are added).
 2. **Data and logic are separate.** State is plain typed `@dataclass(slots=True)`
    objects. Behaviour lives in functions that take state and return or mutate
@@ -1064,7 +1068,7 @@ Noted at the end of a session, to pick up next:
   welcome, reject, input, snapshot, map change, bye), the version, JSON
   lines, events by a registry of their types [done]; (4) [done] the server core,
   socket-free (`GameServer`: join, leave, input, tick -> messages out);
-  `LocalSession` moves onto it once networking works; (5) [done] the asyncio TCP transport
+  `LocalSession` moved onto it [done]; (5) [done] the asyncio TCP transport
   (`python -m ok_doomer.server`, `TCP_NODELAY`, timeouts); (6) [done] a bot
   client (standard library: the test player and a load test; pulled
   ahead of the game client so there's something to join with, and

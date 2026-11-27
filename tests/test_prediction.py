@@ -95,11 +95,9 @@ def _frames_to_move(session: NetworkSession, link: LaggyLink) -> int:
 
 def _local_frames_to_move() -> int:
     """Single-player, the same room: how soon a key press shows."""
-    from ok_doomer.client.session import LocalSession
-    from ok_doomer.shared.mapfile import parse_map
-    from ok_doomer.shared.world import new_world
+    from ok_doomer.client.local import LocalSession
 
-    session = LocalSession(new_world(parse_map(ROOM), "coop"), "ann")
+    session = LocalSession(ROOM, "ann")
     x0 = session.camera(0.0).x
     frames = 1
     while True:

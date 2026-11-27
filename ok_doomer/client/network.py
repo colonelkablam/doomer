@@ -196,14 +196,14 @@ class NetworkSession:
     yourself at once and let the server correct you (shared/prediction.py);
     without, you're drawn where the server last said, a little behind."""
 
-    def __init__(self, connection: Link, predict: bool = True) -> None:
+    def __init__(self, connection: Link, predict: bool = True, max_sends: int = MAX_SENDS) -> None:
         self.connection = connection
         self.predict = predict
         self.predictor = Predictor()
         self.mirror = WorldMirror.from_welcome(connection.welcome)
         # At most MAX_SENDS inputs a frame: a long frame (loading, a stall)
         # mustn't become a burst the server would have to merge.
-        self.timestep = FixedTimestep(self.mirror.config.dt, max_steps=MAX_SENDS)
+        self.timestep = FixedTimestep(self.mirror.config.dt, max_steps=max_sends)
         self.history: deque[tuple[float, dict[int, Pose]]] = deque(maxlen=HISTORY)
         self._clock = 0.0  # local seconds, from the frame times given
         self._newest = (0.0, 0.0)  # (server time, local clock) of the newest update

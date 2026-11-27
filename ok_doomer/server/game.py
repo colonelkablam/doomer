@@ -104,6 +104,11 @@ class GameServer:
         log.info("%s joined as player %d", name, player_id)
         return Welcome(player_id, self.world.mode, self.world.config, self.map_text)
 
+    def update_for(self, player_id: int) -> Update:
+        """The world as it is, for a client that's just joined (so it's in
+        the world before the next tick)."""
+        return Update(self.clients[player_id].ack, capture(self.world))
+
     def receive(self, player_id: int, message: Message) -> None:
         """A message from a client that's joined."""
         client = self.clients.get(player_id)

@@ -154,11 +154,12 @@ def test_card_readers_by_locked_doors_light_once_the_team_can_open_them() -> Non
 
 
 def test_taken_passes_are_no_longer_drawn() -> None:
-    from ok_doomer.client.session import LocalSession
+    from ok_doomer.client.local import LocalSession
 
-    session = LocalSession(new_world(parse_map(LOCKED), "coop"), "p")
+    session = LocalSession(LOCKED, "p")
     assert sum(s.name.startswith("pass_") for s in session.sprites()) == 2
-    session.world.pickups[0].taken = True
+    session.world.pickups[0].taken = True  # on the server: drawn once a snapshot says
+    session.update(session.world.config.dt, PlayerInput())
     assert [s.name for s in session.sprites() if s.name.startswith("pass_")] == ["pass_red"]
 
 
