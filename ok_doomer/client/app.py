@@ -33,7 +33,7 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
         pygame.display.set_caption("OK Doomer")
         frame = make_frame_surface(rc)
         renderer = Renderer(rc, config.lighting if config.lighting.enabled else None)
-        hud = Hud()
+        hud = Hud(rc.max_messages)
         hud.arrive(session.game_map, 0.0)
         automap = Automap(session.game_map)
         show_map = False

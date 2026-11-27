@@ -31,6 +31,7 @@ class RenderConfig:
     # HUD messages ("Bob joined", "Picked up the blue pass"): the 5x7 pixel
     # font, green on black, this many frame pixels a font pixel.
     message_scale: int = 1
+    max_messages: int = 6  # stacked at once; each shows for 3 s
 
 
 @dataclass(frozen=True, slots=True)

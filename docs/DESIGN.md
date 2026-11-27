@@ -256,7 +256,7 @@ means adding a module and registering it, not editing a dozen files.
   connection), as events: the HUD says "Bob joined", "Bob timed out"
   (your own joining isn't news); on joining, "Here: Bob, Cath" (from the
   first update; anyone joining in that same tick is in it, not news
-  twice). HUD messages stack, up to 4, each for its own 3 s, so bots
+  twice). HUD messages stack, up to 6 (`max_messages`), each for its own 3 s, so bots
   joining together all show (it was one line, the newest replacing the
   last). Messages are drawn into the frame like the names: the 5x7 font
   (`pixelart.FONT_5X7`, capitals, digits, the punctuation messages use;

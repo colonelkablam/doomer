@@ -207,7 +207,10 @@ def test_two_joining_at_once_both_show() -> None:
     assert hud.messages(11.0) == ["bot 1 joined", "bot 2 joined", "bot 1 left"]
     assert hud.messages(10.0 + MESSAGE_SECONDS + 0.1) == ["bot 1 left"]  # each its own time
     hud.handle([PlayerJoined(9, i, f"p{i}") for i in range(10)], now=12.0)
-    assert len(hud.messages(12.0)) == MAX_MESSAGES  # the latest few
+    assert len(hud.messages(12.0)) == MAX_MESSAGES == 6  # the latest few
+    fewer = Hud(max_messages=2)  # the setting
+    fewer.handle([PlayerJoined(9, i, f"p{i}") for i in range(5)], now=12.0)
+    assert fewer.messages(12.0) == ["p3 joined", "p4 joined"]
     hud.draw_frame(np.zeros((320, 200), dtype=np.uint8), 12.0)  # and they draw
 
 

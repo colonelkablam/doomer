@@ -36,7 +36,7 @@ from ok_doomer.shared.events import (
 from ok_doomer.shared.mapfile import GameMap
 
 MESSAGE_SECONDS = 3.0
-MAX_MESSAGES = 4  # shown at once, stacked
+MAX_MESSAGES = 6  # shown at once, stacked (the default: RenderConfig.max_messages)
 TITLE_SECONDS = 3.0  # a floor's name, as you arrive on it
 PASS_COLOURS_RGB = {"blue": (90, 140, 240), "red": (230, 90, 70), "gold": (240, 210, 90)}
 
@@ -260,7 +260,8 @@ def _blit(
 
 
 class Hud:
-    def __init__(self) -> None:
+    def __init__(self, max_messages: int = MAX_MESSAGES) -> None:
+        self.max_messages = max_messages
         self._messages: list[tuple[str, float]] = []  # (text, until), oldest first
         self.complete = False  # the top floor built is done: a banner until you quit
         self._storey = "G"
@@ -282,7 +283,7 @@ class Hud:
         names: Mapping[int, str] | None = None,
     ) -> None:
         """Take this frame's events: each message shows for MESSAGE_SECONDS,
-        the last MAX_MESSAGES stacked (two players joining at once: both).
+        the latest `max_messages` stacked (two players joining at once: both).
         `me`: you, so others' doings aren't your news (`news_for`); None:
         every message."""
         for event in events:
@@ -291,7 +292,7 @@ class Hud:
             text = message_for(event) if me is None else news_for(event, me, names or {})
             if text is not None:
                 self._messages.append((text, now + MESSAGE_SECONDS))
-        self._messages = [m for m in self._messages if m[1] > now][-MAX_MESSAGES:]
+        self._messages = [m for m in self._messages if m[1] > now][-self.max_messages :]
 
     def messages(self, now: float) -> list[str]:
         """What's showing, oldest first."""
