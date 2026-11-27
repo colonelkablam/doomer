@@ -1141,11 +1141,14 @@ Noted at the end of a session, to pick up next:
   view 1.3, wall texels, floors and ceilings, low blocks...): numpy's
   overhead per call and its temporary arrays, not one hot spot, and all
   of it on the CPU. Target: 60 fps on the laptop. In order:
-  1. **Stop redoing what doesn't move**: ~475 box-model placements a
-     frame (`render._placed`) for furniture that never moves; cache them.
-  2. **Compile the hot stages with numba**, as the ray casting was
-     (`client/fastcast.py`, now 0.25 ms): box models, sprites, light
-     lookups, floors and ceilings, a stage at a time, the dearest first,
+  1. **Box models first** (measured, a lobby view: building the list of
+     ~590 boxes 0.75 ms, under 4% of a 20 ms frame, so caching the ones
+     that don't move would save ~0.5 ms at most: an early guess said
+     more; drawing them 5.6 ms, 28%: the biggest stage). Compile
+     `_draw_boxes` with numba; cache static placements along the way.
+  2. **Then the other hot stages with numba**, as the ray casting was
+     (`client/fastcast.py`, now 0.25 ms): light lookups, what's in view,
+     sprites, floors and ceilings, a stage at a time, the dearest first,
      measured each time. Plain loops compiled to machine code: no Python
      per call, no temporary arrays. Guard: fixed views rendered by the
      old code and the new must match pixel for pixel. Guess, to be
