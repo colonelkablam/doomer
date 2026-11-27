@@ -48,16 +48,15 @@ def test_single_player_and_quit() -> None:
     assert _keys(Menu("ann"), pygame.K_ESCAPE) == Quit()
 
 
-def test_host_isnt_choosable_yet() -> None:
-    menu = Menu("ann")
-    menu.move(1)
-    assert menu.items()[menu.selected].label == "JOIN GAME"  # past HOST GAME
-    assert menu.activate(1) is None
+def test_host_game_is_chosen() -> None:
+    from ok_doomer.client.menu import HostGame
+
+    assert _keys(Menu("ann"), pygame.K_DOWN, pygame.K_RETURN) == HostGame()
 
 
 def test_joining_a_game_found() -> None:
     menu = Menu("ann")
-    _keys(menu, pygame.K_DOWN, pygame.K_RETURN)  # JOIN GAME
+    _keys(menu, pygame.K_DOWN, pygame.K_DOWN, pygame.K_RETURN)  # JOIN GAME
     assert menu.screen == "join"
     assert menu.items()[0].label == "LOOKING FOR GAMES..." and not menu.items()[0].enabled
     assert menu.items()[menu.selected].label == "ENTER AN ADDRESS..."
@@ -147,7 +146,9 @@ def test_start_goes_menu_game_menu(monkeypatch: pytest.MonkeyPatch) -> None:
     choices: list[object] = [SinglePlayer(), Quit()]
     played: list[str] = []
 
-    def fake_play(display: object, session: object, config: object, angle: float) -> bool:
+    def fake_play(
+        display: object, session: object, config: object, angle: float, greeting: object = None
+    ) -> bool:
         played.append(type(session).__name__)
         return False  # left the game: back to the menu
 

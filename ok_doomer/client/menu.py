@@ -21,6 +21,7 @@ import pygame
 from ok_doomer.client.app import Display, _is_fullscreen_toggle, play
 from ok_doomer.client.config import ClientConfig
 from ok_doomer.client.discovery import FoundGame, GameFinder
+from ok_doomer.client.hosting import HostedServer, HostFailed
 from ok_doomer.client.hud import NAME_COLOUR, draw_text, wrap
 from ok_doomer.client.local import LocalSession
 from ok_doomer.client.network import JoinFailed, NetworkSession
@@ -51,6 +52,11 @@ class SinglePlayer:
 
 
 @dataclass(frozen=True, slots=True)
+class HostGame:
+    pass
+
+
+@dataclass(frozen=True, slots=True)
 class JoinGame:
     host: str
     port: int
@@ -61,7 +67,7 @@ class Quit:
     pass
 
 
-Choice = SinglePlayer | JoinGame | Quit
+Choice = SinglePlayer | HostGame | JoinGame | Quit
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,7 +110,7 @@ class Menu:
         if self.screen == "main":
             return [
                 Item("SINGLE PLAYER", "single"),
-                Item("HOST GAME", "host", enabled=False),  # (to come)
+                Item("HOST GAME", "host"),
                 Item("JOIN GAME", "join"),
                 Item(f"NAME: {self.name}", "name"),
                 Item("QUIT", "quit"),
@@ -159,6 +165,8 @@ class Menu:
         action = items[index].action
         if action == "single":
             return SinglePlayer()
+        if action == "host":
+            return HostGame()
         if action == "quit":
             return Quit()
         if action == "join":
@@ -367,21 +375,32 @@ def start(config: ClientConfig, name: str | None = None, predict: bool = True) -
         while True:
             choice = run_menu(display, config, menu)
             session: GameSession
+            host: HostedServer | None = None
+            greeting = None
             if isinstance(choice, Quit):
                 return
-            if isinstance(choice, SinglePlayer):
-                session = LocalSession(floor_map_text("G"), menu.name)
-            else:
-                _connecting(display, config, f"JOINING {choice.host}:{choice.port}...")
-                try:
-                    session = NetworkSession.join(choice.host, choice.port, menu.name, predict)
-                except JoinFailed as e:
-                    menu.message = str(e)
-                    continue
             try:
-                quit_all = play(display, session, config, session.spawn_angle())
+                if isinstance(choice, SinglePlayer):
+                    session = LocalSession(floor_map_text("G"), menu.name)
+                elif isinstance(choice, HostGame):
+                    _connecting(display, config, "STARTING YOUR GAME...")
+                    host = HostedServer.start(f"{menu.name}'s game")
+                    session = NetworkSession.join("127.0.0.1", host.port, menu.name, predict)
+                    greeting = f"Hosting: others can join at {host.where()}"
+                else:
+                    _connecting(display, config, f"JOINING {choice.host}:{choice.port}...")
+                    session = NetworkSession.join(choice.host, choice.port, menu.name, predict)
+            except (HostFailed, JoinFailed) as e:
+                if host is not None:
+                    host.stop()
+                menu.message = str(e)
+                continue
+            try:
+                quit_all = play(display, session, config, session.spawn_angle(), greeting)
             finally:
                 session.close()
+                if host is not None:
+                    host.stop()  # everyone's told the game's over
             if quit_all:
                 return
             menu.go("main")

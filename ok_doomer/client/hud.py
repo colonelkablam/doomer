@@ -299,6 +299,11 @@ class Hud:
                 self._messages.append((text, now + MESSAGE_SECONDS))
         self._messages = [m for m in self._messages if m[1] > now][-self.max_messages :]
 
+    def say(self, text: str, now: float, seconds: float = MESSAGE_SECONDS) -> None:
+        """A message of the game's own (not an event's), for `seconds`."""
+        self._messages.append((text, now + seconds))
+        self._messages = self._messages[-self.max_messages :]
+
     def messages(self, now: float) -> list[str]:
         """What's showing, oldest first."""
         return [text for text, until in self._messages if now < until]

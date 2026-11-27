@@ -326,6 +326,23 @@ means adding a module and registering it, not editing a dozen files.
   without a window. The window is a `Display` (`client/app.py`), shared
   by the menu and the game (`play`). The font gained `>` and `_`; a test
   checks everything the menu writes is in it.
+- **Hosting from the start screen** (`client/hosting.py`, HOST GAME): the
+  game runs the dedicated server (`python -m ok_doomer.server --name
+  "NICK'S GAME" --exit-with-stdin`) as a process of its own and joins it
+  over 127.0.0.1, prediction and all. Not the in-process server
+  single-player uses (it ticks in step with your inputs; hosting must
+  keep real time for everyone) nor a thread of the game's (it would share
+  Python's lock with the renderer: another server in-process was
+  measured taking a frame from 17 to 30 ms). As a process it has its own
+  core, is the server a Pi runs (found on the LAN as "NICK'S GAME"), and
+  can't outlive the game: it stops cleanly, telling everyone, when the
+  pipe from the game closes, however the game ends (a test kills the
+  game outright and sees the server go; without the flag it stays). Port
+  5029 if free, else another (discovery says which); a server whose
+  discovery port is taken plays on, unfound. Its log:
+  `~/.ok-doomer/host.log`; a failure to start says why on the menu. The
+  HUD starts with where others can join ("Hosting: others can join at
+  192.168.1.20:5029", 8 s).
 - **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
   blocking (a lost packet holds up everything behind it until resent),
   matters on the internet, not here. Framing and encoding stay behind
@@ -1210,8 +1227,7 @@ Noted at the end of a session, to pick up next:
   single-player on the in-process server, the CPU cut, the lag proxy and
   F3 stats, who's here and names). To do, in this order:
   1. **Host from the game, find games on the LAN, a start screen.**
-     [finding games and the start screen: built (Networking above);
-     hosting to do] Host
+     [built: finding games, the start screen, hosting (Networking above)] Host
      = `LocalSession`'s in-process server plus a TCP listener (no Pi or
      server terminal needed). Servers announce themselves by UDP
      broadcast about once a second; clients list what they hear (Fedora's

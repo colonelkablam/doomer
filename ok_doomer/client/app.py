@@ -22,6 +22,8 @@ from ok_doomer.client.session import GameSession
 
 log = logging.getLogger(__name__)
 
+GREETING_SECONDS = 8.0  # long enough to read out an address
+
 
 class Display:
     """The window, shared by the start screen and the game: open, full
@@ -69,15 +71,24 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
         pygame.quit()
 
 
-def play(display: Display, session: GameSession, config: ClientConfig, start_angle: float) -> bool:
+def play(
+    display: Display,
+    session: GameSession,
+    config: ClientConfig,
+    start_angle: float,
+    greeting: str | None = None,
+) -> bool:
     """Play a session in the display's window until it ends: True if the
     player closed the window (quit altogether), False if they left the game
-    (Esc twice) or it ended (back to the start screen)."""
+    (Esc twice) or it ended (back to the start screen). `greeting`: a
+    message to start with (where others can join you, hosting)."""
     rc = config.render
     frame = make_frame_surface(rc)
     renderer = Renderer(rc, config.lighting if config.lighting.enabled else None)
     hud = Hud(rc.max_messages)
     hud.arrive(session.game_map, 0.0)
+    if greeting:
+        hud.say(greeting, pygame.time.get_ticks() / 1000.0, GREETING_SECONDS)
     automap = Automap(session.game_map)
     show_map = False
     show_net = False  # F3: the connection's stats

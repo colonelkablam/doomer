@@ -24,8 +24,9 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m ok_doomer.client
 ```
 
-That opens the start screen: single player, join a game on your network
-(or type an address), and your name (remembered). Arrow keys and Enter or
+That opens the start screen: single player, host a game (others on your
+network can then join you: no separate server needed), join a game on
+your network (or type an address), and your name (remembered). Arrow keys and Enter or
 the mouse; Esc goes back.
 
 Controls: mouse to look around (including up and down), WASD to move, arrow

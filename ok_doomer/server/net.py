@@ -64,7 +64,10 @@ class TcpServer:
         self._ticker = asyncio.create_task(self._tick_loop())
         log.info("listening on %s:%d", host, self.port)
         if discovery_port is not None:
-            self._discovery, _ = await start_responder(self.describe, host, discovery_port)
+            try:
+                self._discovery, _ = await start_responder(self.describe, host, discovery_port)
+            except OSError as e:  # taken (another server on this machine): play on, unfound
+                log.warning("can't answer those looking for games (UDP %d): %s", discovery_port, e)
 
     @property
     def discovery_port(self) -> int | None:

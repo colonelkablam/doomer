@@ -12,6 +12,8 @@ import dataclasses
 import logging
 import signal
 import sys
+import threading
+from collections.abc import Callable
 from pathlib import Path
 
 from ok_doomer.server.config import ServerConfig
@@ -33,6 +35,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--mode", help="coop or deathmatch")
     parser.add_argument("--map", type=Path, help="a map file to play instead of the building")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--name", help="the game's name in lists of games found")
+    parser.add_argument(
+        "--exit-with-stdin",
+        action="store_true",
+        help="stop (cleanly) when standard input closes: run by a game hosting it",
+    )
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -40,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         config = load_toml(ServerConfig, args.config) if args.config else ServerConfig()
-        overrides = {k: getattr(args, k) for k in ("host", "port", "storey", "mode")}
+        overrides = {k: getattr(args, k) for k in ("host", "port", "storey", "mode", "name")}
         config = dataclasses.replace(
             config, **{k: v for k, v in overrides.items() if v is not None}
         )
@@ -58,8 +66,11 @@ def main(argv: list[str] | None = None) -> int:
             config.host, config.port, config.discovery_port if config.discovery else None
         )
         serving = asyncio.ensure_future(server.serve_forever())
+        loop = asyncio.get_running_loop()
         if sys.platform != "win32":  # systemd stops a service with SIGTERM: stop cleanly
-            asyncio.get_running_loop().add_signal_handler(signal.SIGTERM, serving.cancel)
+            loop.add_signal_handler(signal.SIGTERM, serving.cancel)
+        if args.exit_with_stdin:  # the game hosting this quit, crashed or was killed
+            _on_stdin_closed(lambda: loop.call_soon_threadsafe(serving.cancel))
         try:
             await serving
         except asyncio.CancelledError:
@@ -74,6 +85,20 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {e}", file=sys.stderr)
             return 1
     return 0
+
+
+def _on_stdin_closed(then: Callable[[], object]) -> None:
+    """Call `then` when standard input closes: a pipe from the process that
+    started this one, which closes however that process ends. On a daemon
+    thread, so it never keeps this process alive."""
+
+    def wait() -> None:
+        with contextlib.suppress(OSError, ValueError):
+            while sys.stdin.buffer.read(4096):
+                pass
+        then()
+
+    threading.Thread(target=wait, name="stdin-watch", daemon=True).start()
 
 
 if __name__ == "__main__":
