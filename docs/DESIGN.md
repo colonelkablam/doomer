@@ -1134,6 +1134,30 @@ Noted at the end of a session, to pick up next:
   with a perm, a tie with a collar already holds, variety across a row);
   the cast (`CAST`) stays hand-picked. Until then the templates are the
   bank: every new template multiplies the faces possible.
+- **Rendering speed** (a laptop ran 45 fps where the desktop ran 90;
+  networking costs the client ~0.1 ms a frame, measured: it's the
+  renderer). A lobby frame on the cloud VM: 17 ms, spread over a dozen
+  stages of 1-2 ms each (box models 2.2, light lookups 1.6, what's in
+  view 1.3, wall texels, floors and ceilings, low blocks...): numpy's
+  overhead per call and its temporary arrays, not one hot spot, and all
+  of it on the CPU. Target: 60 fps on the laptop. In order:
+  1. **Stop redoing what doesn't move**: ~475 box-model placements a
+     frame (`render._placed`) for furniture that never moves; cache them.
+  2. **Compile the hot stages with numba**, as the ray casting was
+     (`client/fastcast.py`, now 0.25 ms): box models, sprites, light
+     lookups, floors and ceilings, a stage at a time, the dearest first,
+     measured each time. Plain loops compiled to machine code: no Python
+     per call, no temporary arrays. Guard: fixed views rendered by the
+     old code and the new must match pixel for pixel. Guess, to be
+     measured: 2-5x a stage, the frame 17 -> 8-10 ms.
+  3. **Later, the graphics card.** First the cheap part: let it do the
+     final nearest-neighbour scale to the window (a CPU cost every frame,
+     worst full screen on a big monitor). Then, maybe, a GPU renderer
+     (OpenGL, e.g. `moderngl`): the world as real 3D triangles drawn at
+     320x200 and scaled up, the palette look kept by a shader, as GZDoom
+     draws Doom's maps; it would lift the ray caster's limits (sloped
+     floors, milestone 6, come free) but is a rewrite of the renderer.
+     The server never draws: the Pi isn't affected either way.
 - **Networking (milestone 3)**: built (Networking above, in build
   order: spawning in `shared`, snapshots, the protocol, the server core,
   TCP, bots, the networked client, lag measured and prediction, then
