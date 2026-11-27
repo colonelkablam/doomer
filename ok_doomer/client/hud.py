@@ -6,10 +6,12 @@ without a display; Hud only keeps messages on screen for a while and draws.
 """
 
 from collections.abc import Collection, Iterable
+from dataclasses import dataclass
 
 import pygame
 
 from ok_doomer.client.boxes import pass_card_rgba
+from ok_doomer.client.render import Renderer
 from ok_doomer.shared.building import floor_name
 from ok_doomer.shared.dispensers import DISPENSERS
 from ok_doomer.shared.events import (
@@ -21,6 +23,8 @@ from ok_doomer.shared.events import (
     LiftCalled,
     LiftNoPower,
     PassPickedUp,
+    PlayerJoined,
+    PlayerLeft,
     Refreshed,
     SwitchThrown,
 )
@@ -73,7 +77,51 @@ def message_for(event: Event) -> str | None:
         return "The lift has no power"
     if isinstance(event, LiftCalled):
         return "The lift's on its way"
+    if isinstance(event, PlayerJoined):
+        return f"{event.name} joined"
+    if isinstance(event, PlayerLeft):
+        return f"{event.name} {_LEFT.get(event.reason, 'left')}"
     return None
+
+
+# How someone left, as the HUD says it.
+_LEFT = {
+    "left": "left",
+    "quit": "left",
+    "timed out": "timed out",
+    "disconnected": "lost connection",
+    "too far behind": "lost connection",
+}
+
+
+NAME_DISTANCE = 12.0  # cells: further off, no name over their head
+NAME_GAP = 2  # frame pixels between the name and the top of what's seen of them
+MIN_SEEN = 6  # frame pixels of someone showing before they get a name
+
+
+@dataclass(frozen=True, slots=True)
+class NameTag:
+    """A name to draw over someone's head: (column, row) in the frame, the
+    bottom middle of the text."""
+
+    name: str
+    column: float
+    row: float
+
+
+def name_tags(renderer: Renderer, people: list[tuple[str, float, float]]) -> list[NameTag]:
+    """Names for the people the frame just rendered shows (name, x, y): over
+    the top of what's seen of them, if enough is, and they're near enough.
+    The renderer knows what it drew of each (Renderer.seen), after walls and
+    desks hid their parts: so someone behind a counter gets a name only if
+    their head shows over it, and the name sits on it."""
+    tags = []
+    for name, x, y in people:
+        seen = renderer.seen.get((x, y))
+        if seen is None or seen.pixels < MIN_SEEN or seen.depth > NAME_DISTANCE:
+            continue
+        tags.append(NameTag(name, seen.column, seen.top - NAME_GAP))
+    return tags
 
 
 class Hud:

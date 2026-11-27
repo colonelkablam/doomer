@@ -56,6 +56,11 @@ class GameSession(Protocol):
         there: `game_map` is then a different map."""
         ...
 
+    def people(self) -> list[tuple[str, float, float]]:
+        """Other players as last drawn (by `sprites`): (name, x, y), for
+        names over their heads."""
+        ...
+
     def net_stats(self) -> "NetStats":
         """How the connection's doing (F3)."""
         ...

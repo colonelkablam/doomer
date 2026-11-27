@@ -230,7 +230,9 @@ means adding a module and registering it, not editing a dozen files.
   mid-stride, backwards runs it backwards; standing after 4 still frames.
   From the interpolated positions: nothing new on the wire. The crouch is
   33 voxels against the game's crouch height of 27 (a big head; a lean
-  steep enough looks like falling): decide hit boxes with 3b. The server
+  steep enough looks like falling): decide hit boxes with 3b. It shows:
+  the reception counter's ledge (0.425) hides a crouched player's body
+  (0.42) but not the sprite's head (0.52), which gets a name over it. The server
   going away or saying `Bye` ends the game (`GameSession.ended`).
 - **A bad network on one machine** (`server/lagproxy.py`, `python -m
   ok_doomer.server.lagproxy --to HOST:PORT --listen 5030 --lag 30
@@ -244,6 +246,15 @@ means adding a module and registering it, not editing a dozen files.
   plus the waits for a tick at each end), jitter (spread of the gaps
   between updates), updates a second, inputs unconfirmed, prediction
   corrections. All measured by the client: nothing extra on the wire.
+- **Who's here.** The server tells everyone when someone joins or leaves
+  (`PlayerJoined`, `PlayerLeft` with why: quit, timed out, lost
+  connection), as events: the HUD says "Bob joined", "Bob timed out"
+  (your own joining isn't news). Names over heads: the renderer records
+  what it drew of each sprite, after walls and desks hid their share
+  (`Renderer.seen`: pixels, top row, middle); a name goes just over the
+  top of what's seen of someone, if at least a few pixels are and
+  they're within 12 cells. Exact, with no depth guessing: a head over a
+  desk gets a name, someone behind a wall doesn't.
 - **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
   blocking (a lost packet holds up everything behind it until resent),
   matters on the internet, not here. Framing and encoding stay behind

@@ -228,7 +228,20 @@ def make_frame_surface(config: RenderConfig) -> pygame.Surface:
     return surface
 
 
+@dataclass(frozen=True, slots=True)
+class Seen:
+    """How much of a sprite the last frame showed (after everything nearer
+    hid what it hid): for names over heads."""
+
+    pixels: int
+    column: float  # its middle
+    top: int  # the highest row of it drawn
+    depth: float
+
+
 class Renderer:
+    seen: dict[tuple[float, float], Seen]  # the last frame's sprites, by (x, y)
+
     def __init__(self, config: RenderConfig, lighting: LightingConfig | None = None) -> None:
         """`lighting`: light surfaces by a light map baked from the map's
         ceiling panels (ok_doomer/client/lighting.py). None: distance fade only."""
@@ -1671,6 +1684,7 @@ class Renderer:
     ) -> None:
         w, h = self.config.width, self.config.height
         cos_a, sin_a = math.cos(camera.angle), math.sin(camera.angle)
+        self.seen = {}
 
         for s in sprites:
             art = SPRITES.get(s.name)
@@ -1708,6 +1722,8 @@ class Renderer:
             region = frame[c0:c1, r0:r1]
             region[draw] = index[draw]
             region_z[draw] = depth
+            rows = np.nonzero(draw.any(axis=0))[0]
+            self.seen[(s.x, s.y)] = Seen(int(draw.sum()), left + size / 2, r0 + int(rows[0]), depth)
 
 
 @dataclass(slots=True)

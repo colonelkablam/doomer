@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 from ok_doomer.server.config import ServerConfig
 from ok_doomer.shared.building import floor_map_text
-from ok_doomer.shared.events import Event, LevelComplete
+from ok_doomer.shared.events import Event, LevelComplete, PlayerJoined, PlayerLeft
 from ok_doomer.shared.mapfile import parse_map
 from ok_doomer.shared.player import PlayerInput
 from ok_doomer.shared.protocol import (
@@ -101,6 +101,7 @@ class GameServer:
         self._next_id += 1  # ids aren't reused: a late message can't reach a newcomer
         spawn_player(self.world, player_id, name)
         self.clients[player_id] = Client(player_id, name, last_heard=self.ticks)
+        self.world.events.append(PlayerJoined(self.world.tick, player_id, name))
         log.info("%s joined as player %d", name, player_id)
         return Welcome(player_id, self.world.mode, self.world.config, self.map_text)
 
@@ -132,6 +133,7 @@ class GameServer:
         if client is None:
             return
         self.world.players.pop(player_id, None)
+        self.world.events.append(PlayerLeft(self.world.tick, player_id, client.name, reason))
         log.info("%s (player %d) left: %s", client.name, player_id, reason)
 
     def tick(self) -> Outbox:

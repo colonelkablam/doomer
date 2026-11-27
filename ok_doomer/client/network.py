@@ -37,7 +37,7 @@ from ok_doomer.client.session import (
     static_sprites,
     world_boxes,
 )
-from ok_doomer.shared.events import Event
+from ok_doomer.shared.events import Event, PlayerJoined
 from ok_doomer.shared.mapfile import GameMap
 from ok_doomer.shared.mirror import WorldMirror
 from ok_doomer.shared.modes import GAME_MODES
@@ -235,6 +235,7 @@ class NetworkSession:
         self._clock = 0.0  # local seconds, from the frame times given
         self._newest = (0.0, 0.0)  # (server time, local clock) of the newest update
         self._ended: str | None = None
+        self._people: list[tuple[str, float, float]] = []
         # For the stats (F3): when each input went, round trips, arrivals.
         self._sent_at: dict[int, float] = {}
         self._round_trips: deque[float] = deque(maxlen=60)
@@ -292,6 +293,9 @@ class NetworkSession:
         except ProtocolError as e:
             log.warning("server: %s", e)
             return []
+        # Your own joining isn't news to you.
+        own = self.mirror.player_id
+        events = [e for e in events if not (isinstance(e, PlayerJoined) and e.player_id == own)]
         if isinstance(message, NewFloor):
             self._new_floor()
         elif isinstance(message, Update):
@@ -356,6 +360,7 @@ class NetworkSession:
     def sprites(self) -> list[SpriteInstance]:
         when = self._server_now() - OTHERS_DELAY_TICKS * self.mirror.config.dt
         others = []
+        self._people = []
         for pid in self.mirror.world.players:
             if pid == self.mirror.player_id:
                 continue
@@ -364,9 +369,13 @@ class NetworkSession:
                 stride = self._strides.setdefault(pid, Stride())
                 name = stride.pose(pose.x, pose.y, pose.angle, pose.crouching, pose.airborne)
                 others.append(SpriteInstance(name, pose.x, pose.y, pose.z, pose.angle))
+                self._people.append((self.mirror.world.players[pid].name, pose.x, pose.y))
         for gone in set(self._strides) - set(self.mirror.world.players):
             del self._strides[gone]
         return self._static + lying_pickups(self.mirror.world) + others
+
+    def people(self) -> list[tuple[str, float, float]]:
+        return list(self._people)
 
     def boxes(self) -> list[PlacedBox]:
         return world_boxes(self.mirror.world)

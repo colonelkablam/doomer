@@ -117,3 +117,21 @@ class PlayerSpawned(Event):
     player_id: int
     x: float
     y: float
+
+
+@dataclass(frozen=True, slots=True)
+class PlayerJoined(Event):
+    """Someone joined the game (the server says; the HUD tells the rest)."""
+
+    player_id: int
+    name: str
+
+
+@dataclass(frozen=True, slots=True)
+class PlayerLeft(Event):
+    """Someone left: `reason` "left" (they quit), "timed out", "disconnected",
+    "too far behind"."""
+
+    player_id: int
+    name: str
+    reason: str = "left"

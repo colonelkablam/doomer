@@ -13,7 +13,7 @@ import pygame
 
 from ok_doomer.client.automap import RAY_STRIDE, Automap
 from ok_doomer.client.config import ClientConfig
-from ok_doomer.client.hud import Hud
+from ok_doomer.client.hud import Hud, name_tags
 from ok_doomer.client.input import KeyboardMouseInput
 from ok_doomer.client.render import MAX_PITCH, Renderer, make_frame_surface
 from ok_doomer.client.session import GameSession
@@ -33,6 +33,7 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
         pygame.display.set_caption("OK Doomer")
         frame = make_frame_surface(rc)
         font = pygame.font.Font(None, 22)
+        small_font = pygame.font.Font(None, 18)  # names over heads
         renderer = Renderer(rc, config.lighting if config.lighting.enabled else None)
         hud = Hud(font)
         hud.arrive(session.game_map, 0.0)
@@ -112,6 +113,11 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
                 window.fill((0, 0, 0))  # the borders
             view = window.subsurface(rect)
             pygame.transform.scale(frame.convert(window), rect.size, view)
+            for tag in name_tags(renderer, session.people()):
+                text = small_font.render(tag.name, True, HUD_COLOUR)
+                x = tag.column * rect.w / rc.width - text.get_width() / 2
+                y = tag.row * rect.h / rc.height - text.get_height()
+                view.blit(text, (round(x), round(y)))
             hud.draw(view, session.passes(), now)
             corner = [f"{clock.get_fps():.0f} fps"] if rc.show_fps else []
             if show_net:
