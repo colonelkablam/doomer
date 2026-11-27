@@ -1,6 +1,7 @@
 """The start screen: single player, host a game, join one, your name.
 
-Green terminal text over the lobby, slowly turning. Keys (arrows or W/S,
+Green terminal text over an 80s office block at night, turning slowly
+(client/skyline.py). Keys (arrows or W/S,
 Enter, Esc) or the mouse. JOIN GAME lists the games found on the LAN
 (client/discovery.py), live, and takes an address typed instead. Your name
 is remembered (client/settings.py). Leaving a game comes back here.
@@ -13,7 +14,6 @@ program: the menu, a game, the menu again.
 
 import contextlib
 import logging
-import math
 from dataclasses import dataclass
 
 import pygame
@@ -26,11 +26,11 @@ from ok_doomer.client.local import LocalSession
 from ok_doomer.client.network import JoinFailed, NetworkSession
 from ok_doomer.client.palette import GREEN, GREY, U8Array, colour_index
 from ok_doomer.client.pixelart import FONT_5X7
-from ok_doomer.client.render import Camera, Renderer, make_frame_surface, sprites_from_things
+from ok_doomer.client.render import make_frame_surface
 from ok_doomer.client.session import GameSession
 from ok_doomer.client.settings import MAX_NAME, load_name, save_name
+from ok_doomer.client.skyline import Skyline
 from ok_doomer.shared.building import floor_map_text
-from ok_doomer.shared.mapfile import parse_map
 from ok_doomer.shared.protocol import DISCOVERY_PORT
 
 log = logging.getLogger(__name__)
@@ -246,12 +246,6 @@ class Menu:
         draw_text(pixels, hint, FONT_5X7, w / 2, h - 4, colour=DIM)
 
 
-def dim(pixels: U8Array) -> None:
-    """Darken the frame (behind the menu): each pixel half as bright, in
-    its own colour (a palette index is ramp * 16 + shade)."""
-    pixels[:] = (pixels & 0xF0) | ((pixels & 0x0F) >> 1)
-
-
 def _typeable(screen: str, text: str) -> bool:
     """Can `text` be typed into this screen's box? A name: what the font
     has. An address: letters, digits, dots, colons, hyphens."""
@@ -273,10 +267,7 @@ def run_menu(
     """Show the menu until something's chosen."""
     rc = config.render
     frame = make_frame_surface(rc)
-    backdrop = parse_map(floor_map_text("G"))
-    renderer = Renderer(rc, config.lighting if config.lighting.enabled else None)
-    things = sprites_from_things(backdrop)
-    start = backdrop.things_of_type("coop_start")[0]
+    skyline = Skyline(rc.width, rc.height)
     clock = pygame.time.Clock()
     finder: GameFinder | None = None
     next_seek = 0.0
@@ -313,17 +304,14 @@ def run_menu(
             elif finder is not None:
                 finder.close()
                 finder, next_seek = None, 0.0
-            # The lobby behind, turning slowly.
-            angle = start.angle + 0.6 * math.sin(now * 0.1)
-            camera = Camera(start.x, start.y, angle, z=0.6)
-            renderer.render(frame, backdrop, camera, things, (), True, now)
             pixels = pygame.surfarray.pixels2d(frame)
-            dim(pixels)
+            skyline.draw(pixels, now)  # the office block at night, turning
             menu.draw(pixels)
             del pixels
             display.show(frame)
             pygame.display.flip()
     finally:
+        skyline.close()
         if finder is not None:
             finder.close()
 

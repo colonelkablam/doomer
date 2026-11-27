@@ -185,12 +185,3 @@ def test_everything_the_menu_writes_is_in_the_font() -> None:
     texts.append("ARROWS AND ENTER, OR THE MOUSE - ESC GOES BACK")
     missing = {c for t in texts for c in t.upper()} - set(FONT_5X7)
     assert not missing, missing
-
-
-def test_the_backdrop_is_dimmed_in_its_own_colours() -> None:
-    from ok_doomer.client.menu import dim
-    from ok_doomer.client.palette import GREEN, colour_index
-
-    pixels = np.array([[colour_index(GREEN, 14), colour_index(GREEN, 1)]], dtype=np.uint8)
-    dim(pixels)
-    assert pixels.tolist() == [[colour_index(GREEN, 7), colour_index(GREEN, 0)]]

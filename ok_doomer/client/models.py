@@ -95,8 +95,9 @@ class Baked:
     reach: float  # how far the model extends from its centre, in cells
 
 
-def bake(model: VoxelModel) -> Baked:
-    """Render the model from VIEWS directions, each [view][u][v] like a sprite.
+def bake(model: VoxelModel, views: int = VIEWS) -> Baked:
+    """Render the model from `views` directions (VIEWS for sprites in the
+    world, which pick theirs with `view_for`), each [view][u][v] like a sprite.
     View k sees the model from k * 360 / VIEWS degrees round from its front, in the
     map's angle direction (view 0 = from the front; with y pointing down,
     view VIEWS / 4 = from the thing's right)."""
@@ -118,10 +119,10 @@ def bake(model: VoxelModel) -> Baked:
     sin_e, cos_e = math.sin(ELEVATION), math.cos(ELEVATION)
     sink = math.ceil(reach * sin_e)
 
-    index = np.zeros((VIEWS, ART_SIZE, ART_SIZE), dtype=np.uint8)
-    opaque = np.zeros((VIEWS, ART_SIZE, ART_SIZE), dtype=np.bool_)
-    for k in range(VIEWS):
-        phi = k * math.tau / VIEWS
+    index = np.zeros((views, ART_SIZE, ART_SIZE), dtype=np.uint8)
+    opaque = np.zeros((views, ART_SIZE, ART_SIZE), dtype=np.bool_)
+    for k in range(views):
+        phi = k * math.tau / views
         # The viewer stands at direction phi from the thing, looking back at
         # it; their right is (sin phi, -cos phi) (y points down).
         u = np.floor(_HALF + px * math.sin(phi) - py * math.cos(phi)).astype(np.intp)

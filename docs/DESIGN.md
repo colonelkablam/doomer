@@ -306,8 +306,16 @@ means adding a module and registering it, not editing a dozen files.
   PLAYER, HOST GAME (to come), JOIN GAME (the games found, live, and an
   address to type), NAME (remembered: `client/settings.py`,
   `~/.ok-doomer/settings.json`), QUIT; keys or the mouse, Esc back a
-  screen. Green 5x7 text over the lobby turning slowly, dimmed (each
-  pixel half as bright in its own ramp). A failed join says why on the
+  screen. Green 5x7 text over an 80s office block at night, turning
+  slowly, people working late (`client/skyline.py`): a voxel model from a
+  photo of one (brown brick slab, punched windows, window-less end
+  towers, louvred plant floor, a podium with ribbon glass), baked to 64
+  views (16 would step visibly at a turn every 50 s), drawn 2.3x on a
+  navy sky with stars (dithered lighter over the city: three navy shades
+  band). Windows on and off: a baked view is a picture, so a chain of 24
+  lightings, each a window from the last, bakes on a thread (~0.1 s each)
+  while the menu shows, stepped there and back every 1.2 s over those
+  ready. `models.bake` takes a number of views. A failed join says why on the
   menu; leaving a game (Esc twice) comes back to it, closing the window
   quits. `Menu` is the state and what keys and clicks do, apart from
   pygame's loop (`run_menu`) and the program (`start`), so it's tested
