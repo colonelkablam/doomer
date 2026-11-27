@@ -22,18 +22,24 @@ numbers must be finite, since a NaN angle would spread through the world.
 """
 
 import dataclasses
+import hashlib
 import json
 import math
 import typing
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
-from ok_doomer.shared.config import ConfigError, SimConfig, from_dict
+from ok_doomer.shared.config import ConfigError, MovementConfig, SimConfig, from_dict
 from ok_doomer.shared.events import Event
 from ok_doomer.shared.player import PlayerInput
 from ok_doomer.shared.snapshot import Row, Snapshot
 
-PROTOCOL_VERSION = 1
+# Bump whenever the wire format changes (a message, an event, a field):
+# then a client and server from different code refuse each other at once,
+# with the versions, rather than half-work (version 1 servers sent no join
+# events: newer clients joined them and never heard who came and went).
+# tests/test_protocol.py pins schema_fingerprint() to each version.
+PROTOCOL_VERSION = 2
 MAX_LINE = 1 << 20  # bytes: the longest line either side accepts (a map is ~20 KB)
 
 
@@ -356,3 +362,17 @@ def _str(v: Any) -> str:
     if not isinstance(v, str):
         raise ProtocolError(f"expected a string, got {v!r}")
     return v
+
+
+def schema_fingerprint() -> str:
+    """A hash of the wire format: every message and event, its fields and
+    their types, and the input, snapshot and config they carry. Changes
+    when the format does (so PROTOCOL_VERSION must too)."""
+    parts = []
+    shapes: list[type] = [*MESSAGES.values(), *EVENT_TYPES.values(), PlayerInput, Snapshot]
+    shapes += [SimConfig, MovementConfig]  # the config the welcome carries
+    for cls in sorted(shapes, key=lambda c: c.__name__):
+        hints = typing.get_type_hints(cls)
+        fields = [f"{f.name}:{hints[f.name]}" for f in dataclasses.fields(cls)]
+        parts.append(f"{cls.__name__}({','.join(fields)})")
+    return hashlib.sha256(";".join(parts).encode()).hexdigest()[:16]

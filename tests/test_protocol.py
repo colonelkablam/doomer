@@ -193,3 +193,27 @@ def test_the_encoder_makes_the_same_bytes_encoding_each_update_once() -> None:
     step(world, {})
     newer = Update(3, capture(world), ())
     assert encoder.encode(newer) == encode(newer)  # not the last tick's, cached
+
+
+# The wire format of each protocol version (schema_fingerprint). When this
+# test fails, the format changed: bump PROTOCOL_VERSION in
+# shared/protocol.py and add the new fingerprint here, so clients and
+# servers of different code refuse each other rather than half-work.
+SCHEMAS = {2: "6b6a0110ae9d06cc"}
+
+
+def test_the_wire_format_matches_its_version() -> None:
+    from ok_doomer.shared.protocol import schema_fingerprint
+
+    assert schema_fingerprint() == SCHEMAS.get(PROTOCOL_VERSION), (
+        f"the wire format changed (now {schema_fingerprint()}): "
+        f"bump PROTOCOL_VERSION from {PROTOCOL_VERSION} and record it in SCHEMAS"
+    )
+
+
+def test_a_client_of_other_code_hears_why_it_cant_join() -> None:
+    from ok_doomer.server.game import GameServer
+
+    answer = GameServer(map_text=OFFICE).join(Hello(PROTOCOL_VERSION - 1, "old"))
+    assert isinstance(answer, Reject)
+    assert answer.reason == f"version {PROTOCOL_VERSION - 1}; this server speaks {PROTOCOL_VERSION}"

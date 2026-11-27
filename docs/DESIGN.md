@@ -132,7 +132,12 @@ means adding a module and registering it, not editing a dozen files.
   server's alone), events (alongside, in the same message). Entities
   that appear in play (enemies, drops) will need ids, as players do.
   815 bytes of JSON for `office.map` with 4 players, before rounding.
-- **The protocol** (`shared/protocol.py`, version 1): `Hello(version,
+- **The protocol** (`shared/protocol.py`, version 2; bumped whenever the
+  wire format changes, so different code refuses at once with both
+  versions rather than half-working: a version 1 server, from before
+  join events, let newer clients in and they never heard who came and
+  went. `schema_fingerprint()` hashes every message, event and field,
+  and a test pins it to the version): `Hello(version,
   name)` -> `Welcome(player_id, mode, config, map_text)` or `Reject`;
   then `Input(seq, input)` from the client each tick and `Update(ack,
   snapshot, events)` from the server each tick; `NewFloor(map_text)` when
