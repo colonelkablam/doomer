@@ -24,6 +24,7 @@ numbers must be finite, since a NaN angle would spread through the world.
 import dataclasses
 import json
 import math
+import typing
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
@@ -303,6 +304,7 @@ def _all_event_types() -> dict[str, type[Event]]:
 
 
 EVENT_TYPES = _all_event_types()
+_EVENT_HINTS = {cls: typing.get_type_hints(cls) for cls in EVENT_TYPES.values()}
 
 
 def event_to_dict(event: Event) -> dict[str, Any]:
@@ -322,6 +324,8 @@ def event_from_dict(d: Any) -> Event:
     for name, value in d.items():
         if isinstance(value, float):
             _float(value)
+        elif isinstance(value, list) and _EVENT_HINTS[cls].get(name) == tuple[str, ...]:
+            d[name] = tuple(_str(v) for v in value)  # names (PlayersHere)
         elif not (value is None or isinstance(value, bool | int | str)):
             raise ProtocolError(f"{cls.__name__}.{name}: {value!r}")
     return cls(**d)

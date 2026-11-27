@@ -61,6 +61,8 @@ def _sample(hint: object) -> object:
         return 0.3
     if hint is str or typing.get_args(hint) == (str, type(None)):
         return "red"
+    if hint == tuple[str, ...]:
+        return ("Ann", "Bob")
     raise AssertionError(f"teach _sample about {hint!r}")
 
 
@@ -149,6 +151,9 @@ BAD_LINES = {
     # A real update, its snapshot fine, with an event that isn't.
     "bad event": encode(Update(0, capture(new_world(parse_map(OFFICE), "coop")))).replace(
         b'"events":[]', b'"events":[{"type":"Nope","tick":1}]'
+    ),
+    "names not strings": encode(Update(0, capture(new_world(parse_map(OFFICE), "coop")))).replace(
+        b'"events":[]', b'"events":[{"type":"PlayersHere","tick":1,"names":["ann",3]}]'
     ),
     "bad event field": encode(Update(0, capture(new_world(parse_map(OFFICE), "coop")))).replace(
         b'"events":[]', b'"events":[{"type":"PassPickedUp","tick":1,"player_id":1,"colour":[]}]'

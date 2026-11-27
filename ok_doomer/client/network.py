@@ -37,7 +37,7 @@ from ok_doomer.client.session import (
     static_sprites,
     world_boxes,
 )
-from ok_doomer.shared.events import Event, PlayerJoined
+from ok_doomer.shared.events import Event, PlayerJoined, PlayersHere
 from ok_doomer.shared.mapfile import GameMap
 from ok_doomer.shared.mirror import WorldMirror
 from ok_doomer.shared.modes import GAME_MODES
@@ -236,6 +236,8 @@ class NetworkSession:
         self._newest = (0.0, 0.0)  # (server time, local clock) of the newest update
         self._ended: str | None = None
         self._people: list[tuple[str, float, float]] = []
+        self._greeted = False  # told you who's here (on the first update)
+        self._news: list[Event] = []  # events of our own, for the next update()
         # For the stats (F3): when each input went, round trips, arrivals.
         self._sent_at: dict[int, float] = {}
         self._round_trips: deque[float] = deque(maxlen=60)
@@ -274,7 +276,7 @@ class NetworkSession:
             self._sent_at[sent.seq] = self._clock
             if self.predict:
                 self.predictor.input(self.mirror.world, sent.seq, player_input)
-        events: list[Event] = []
+        events, self._news = self._news, []
         for message in self.connection.received():
             events += self._take(message)
         self.predictor.fade(real_dt)
@@ -307,6 +309,14 @@ class NetworkSession:
             self.history.append((when, poses))
             self._newest = (when, self._clock)
             self._note_update(message.ack)
+            if not self._greeted:  # the first: who's already here
+                self._greeted = True
+                # Anyone joining in the same tick is in it: not news twice.
+                events = [e for e in events if not isinstance(e, PlayerJoined)]
+                own = self.mirror.player_id
+                names = tuple(p.name for p in self.mirror.world.players.values() if p.id != own)
+                if names:
+                    self._news.append(PlayersHere(message.snapshot.tick, names))
             me = self.mirror.player
             if self.predict and me is not None:
                 self.predictor.reconcile(self.mirror.world, me, message.ack)

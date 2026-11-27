@@ -249,7 +249,11 @@ means adding a module and registering it, not editing a dozen files.
 - **Who's here.** The server tells everyone when someone joins or leaves
   (`PlayerJoined`, `PlayerLeft` with why: quit, timed out, lost
   connection), as events: the HUD says "Bob joined", "Bob timed out"
-  (your own joining isn't news). Names over heads: the renderer records
+  (your own joining isn't news); on joining, "Here: Bob, Cath" (from the
+  first update; anyone joining in that same tick is in it, not news
+  twice). HUD messages stack, up to 4, each for its own 3 s, so bots
+  joining together all show (it was one line, the newest replacing the
+  last). Names over heads: the renderer records
   what it drew of each sprite, after walls and desks hid their share
   (`Renderer.seen`: pixels, top row, middle); a name goes just over the
   top of what's seen of someone, if at least a few pixels are and

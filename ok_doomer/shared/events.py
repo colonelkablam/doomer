@@ -135,3 +135,11 @@ class PlayerLeft(Event):
     player_id: int
     name: str
     reason: str = "left"
+
+
+@dataclass(frozen=True, slots=True)
+class PlayersHere(Event):
+    """Who was already in the game when you joined (the client says, from
+    the first update: for the HUD)."""
+
+    names: tuple[str, ...]

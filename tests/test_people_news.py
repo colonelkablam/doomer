@@ -174,3 +174,39 @@ def test_names_are_drawn_in_green_pixel_capitals() -> None:
     assert (pixels == NAME_BACK).sum() == 13 * 7 - len(green)  # a panel round it
     draw_name_tags(pixels, [NameTag("x" * 16, 2.0, 3.0)], scale=2)  # off the edge: clipped
     draw_name_tags(pixels, [NameTag("éé", 50.0, 50.0)])  # nothing it can draw: nothing
+
+
+def test_on_joining_you_hear_whos_already_here() -> None:
+    from ok_doomer.shared.events import PlayersHere
+
+    server = GameServer(ServerConfig(), map_text=ROOM)
+    server.join(Hello(PROTOCOL_VERSION, "Bob"))
+    server.join(Hello(PROTOCOL_VERSION, "Cath"))
+    link = LaggyLink(server, latency=0)  # ann joins third
+    session = NetworkSession(link)
+    news: list[Event] = []
+    for _ in range(3):
+        news += session.update(1 / 60, PlayerInput())
+        link.tick()
+    (here,) = [e for e in news if isinstance(e, PlayersHere)]
+    assert here.names == ("Bob", "Cath")
+    assert message_for(here) == "Here: Bob, Cath"
+    assert not [e for e in news if isinstance(e, PlayerJoined)]  # not old news as new
+
+
+def test_two_joining_at_once_both_show() -> None:
+    """Bots started together join within a tick: both messages stack."""
+    import pygame
+
+    from ok_doomer.client.hud import MAX_MESSAGES, MESSAGE_SECONDS, Hud
+
+    pygame.font.init()
+    hud = Hud(pygame.font.Font(None, 22))
+    hud.handle([PlayerJoined(5, 2, "bot 1"), PlayerJoined(5, 3, "bot 2")], now=10.0)
+    assert hud.messages(10.0) == ["bot 1 joined", "bot 2 joined"]
+    hud.handle([PlayerLeft(9, 2, "bot 1", "quit")], now=11.0)
+    assert hud.messages(11.0) == ["bot 1 joined", "bot 2 joined", "bot 1 left"]
+    assert hud.messages(10.0 + MESSAGE_SECONDS + 0.1) == ["bot 1 left"]  # each its own time
+    hud.handle([PlayerJoined(9, i, f"p{i}") for i in range(10)], now=12.0)
+    assert len(hud.messages(12.0)) == MAX_MESSAGES  # the latest few
+    hud.draw(pygame.Surface((960, 600)), set(), 12.0)  # and they draw

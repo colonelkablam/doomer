@@ -28,12 +28,14 @@ from ok_doomer.shared.events import (
     PassPickedUp,
     PlayerJoined,
     PlayerLeft,
+    PlayersHere,
     Refreshed,
     SwitchThrown,
 )
 from ok_doomer.shared.mapfile import GameMap
 
 MESSAGE_SECONDS = 3.0
+MAX_MESSAGES = 4  # shown at once, stacked
 TITLE_SECONDS = 3.0  # a floor's name, as you arrive on it
 PASS_COLOURS_RGB = {"blue": (90, 140, 240), "red": (230, 90, 70), "gold": (240, 210, 90)}
 TEXT = (255, 255, 255)
@@ -82,6 +84,8 @@ def message_for(event: Event) -> str | None:
         return "The lift's on its way"
     if isinstance(event, PlayerJoined):
         return f"{event.name} joined"
+    if isinstance(event, PlayersHere):
+        return "Here: " + ", ".join(event.names)
     if isinstance(event, PlayerLeft):
         return f"{event.name} {_LEFT.get(event.reason, 'left')}"
     return None
@@ -188,8 +192,7 @@ def _blit(
 class Hud:
     def __init__(self, font: pygame.font.Font) -> None:
         self.font = font
-        self._message: str | None = None
-        self._until = 0.0
+        self._messages: list[tuple[str, float]] = []  # (text, until), oldest first
         self.complete = False  # the top floor built is done: a banner until you quit
         self._storey = "G"
         self._title: tuple[str, str] | None = None  # a floor's name, on arrival
@@ -200,16 +203,22 @@ class Hud:
         self._storey = game_map.storey
         self._title = (floor_name(game_map.storey), game_map.name)
         self._title_until = now + TITLE_SECONDS
-        self._message = None
+        self._messages = []
 
     def handle(self, events: Iterable[Event], now: float) -> None:
-        """Take this frame's events; the latest message wins."""
+        """Take this frame's events: each message shows for MESSAGE_SECONDS,
+        the last MAX_MESSAGES stacked (two players joining at once: both)."""
         for event in events:
             if isinstance(event, LevelComplete) and event.next_floor is None:
                 self.complete = True  # the top of what's built
             text = message_for(event)
             if text is not None:
-                self._message, self._until = text, now + MESSAGE_SECONDS
+                self._messages.append((text, now + MESSAGE_SECONDS))
+        self._messages = [m for m in self._messages if m[1] > now][-MAX_MESSAGES:]
+
+    def messages(self, now: float) -> list[str]:
+        """What's showing, oldest first."""
+        return [text for text, until in self._messages if now < until]
 
     def draw(self, window: pygame.Surface, passes: Collection[str], now: float) -> None:
         width, height = window.get_size()
@@ -226,8 +235,9 @@ class Hud:
             storey, name = self._title
             self._text(window, storey, (width // 2, height // 3 - 14), centre=True)
             self._text(window, name, (width // 2, height // 3 + 12), centre=True)
-        if self._message is not None and now < self._until:
-            self._text(window, self._message, (width // 2, height // 6), centre=True)
+        line = self.font.get_linesize() + 4
+        for i, text in enumerate(self.messages(now)):
+            self._text(window, text, (width // 2, height // 6 + i * line), centre=True)
         # Passes held: a card in each colour, bottom left.
         for i, colour in enumerate(c for c in PASS_COLOURS_RGB if c in passes):
             card = _card_image(colour)
