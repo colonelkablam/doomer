@@ -71,12 +71,16 @@ async def _pipe(
         while data := await reader.read(CHUNK):
             last_due = max(last_due, loop.time() + impairment.delay(rng))  # TCP: in order
             await queue.put((last_due, data))
+        await queue.put((last_due, b""))  # then close, after what's queued
+        with contextlib.suppress(ConnectionError):
+            await delivering
     except ConnectionError:
         pass
-    await queue.put((last_due, b""))  # then close, after what's queued
-    with contextlib.suppress(ConnectionError):
-        await delivering
-    writer.close()
+    finally:
+        delivering.cancel()
+        with contextlib.suppress(asyncio.CancelledError, ConnectionError):
+            await delivering
+        writer.close()
 
 
 class LagProxy:
@@ -84,6 +88,7 @@ class LagProxy:
         self.target, self.impairment = target, impairment
         self.rng = random.Random(seed)
         self._server: asyncio.Server | None = None
+        self._connections: set[asyncio.Task[None]] = set()
 
     @property
     def port(self) -> int:
@@ -95,8 +100,13 @@ class LagProxy:
         self._server = await asyncio.start_server(self._connection, host, port)
 
     async def close(self) -> None:
+        """Stop listening, and end the connections going through."""
         if self._server is not None:
             self._server.close()
+        for task in list(self._connections):
+            task.cancel()
+        await asyncio.gather(*self._connections, return_exceptions=True)
+        if self._server is not None:
             await self._server.wait_closed()
 
     async def _connection(
@@ -112,10 +122,18 @@ class LagProxy:
             sock = w.get_extra_info("socket")
             if sock is not None:
                 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        await asyncio.gather(
-            _pipe(client_reader, server_writer, self.impairment, self.rng),
-            _pipe(server_reader, client_writer, self.impairment, self.rng),
-        )
+        task = asyncio.current_task()
+        assert task is not None
+        self._connections.add(task)
+        try:
+            await asyncio.gather(
+                _pipe(client_reader, server_writer, self.impairment, self.rng),
+                _pipe(server_reader, client_writer, self.impairment, self.rng),
+            )
+        finally:
+            self._connections.discard(task)
+            client_writer.close()
+            server_writer.close()
 
 
 def main(argv: list[str] | None = None) -> int:

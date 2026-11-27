@@ -32,6 +32,7 @@ class ProxyThread:
         asyncio.run_coroutine_threadsafe(self.proxy.close(), self.loop).result(5)
         self.loop.call_soon_threadsafe(self.loop.stop)
         self.thread.join(5)
+        self.loop.close()
 
 
 def _play(session: NetworkSession, seconds: float, player_input: PlayerInput) -> None:
