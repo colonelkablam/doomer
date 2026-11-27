@@ -185,3 +185,26 @@ def test_everything_the_menu_writes_is_in_the_font() -> None:
     texts.append("ARROWS AND ENTER, OR THE MOUSE - ESC GOES BACK")
     missing = {c for t in texts for c in t.upper()} - set(FONT_5X7)
     assert not missing, missing
+
+
+def test_the_items_line_up_down_the_left_the_mark_before_them() -> None:
+    from ok_doomer.client.menu import DIM, LEFT
+
+    menu = Menu("ann")
+    pixels = np.zeros((320, 200), dtype=np.uint8)
+    menu.draw(pixels)
+
+    def first_column(item: int, colour: int, after: int = 0) -> int:
+        top, bottom = menu.rows[item]
+        cols = np.nonzero((pixels[after:, top:bottom] == colour).any(axis=1))[0]
+        return after + int(cols[0])
+
+    mark = 2 * 6 * 2  # "> ": two characters of 5x7 with their gaps, at twice
+    assert LEFT <= first_column(0, NAME_COLOUR) < LEFT + mark  # the mark, at the left
+    words = first_column(0, NAME_COLOUR, after=LEFT + mark - 2)  # SINGLE PLAYER
+    assert words == LEFT + mark == first_column(2, DIM)  # JOIN GAME, level with it
+    from ok_doomer.client.hud import NAME_BACK
+
+    on_navy = np.full((320, 200), 7, dtype=np.uint8)
+    menu.draw(on_navy)
+    assert not (on_navy == NAME_BACK).any()  # bare words: no black panels or outlines

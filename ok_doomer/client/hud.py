@@ -191,12 +191,13 @@ def draw_text(
     panel: bool = True,
     centre: bool = True,
     colour: int = NAME_COLOUR,
+    outline: bool = True,
 ) -> int:
     """`text` into the frame in `font` (capitals; what it can't draw, a
-    space), phosphor green on a black panel (or outlined): centred on
+    space), phosphor green on a black panel (or outlined, or bare): centred on
     `column` (or starting at it), its last row at `bottom`. How tall it
     came out, panel and all (0: nothing)."""
-    text = "".join(c if c in font else " " for c in text.upper()).strip()
+    text = "".join(c if c in font else " " for c in text.upper()).rstrip()
     if not text:
         return 0
     w, h = pixels.shape
@@ -205,6 +206,9 @@ def draw_text(
     left, top = round(column - tw / 2) if centre else round(column), bottom + 1 - th
     border = 1
     back = np.ones((tw + 2 * border, th + 2 * border), dtype=bool)
+    if not panel and not outline:  # just the letters
+        _blit(pixels, glyphs, left, top, colour, w, h)
+        return int(th)
     if not panel:  # just round the letters: grow them by a pixel
         back = np.zeros_like(back)
         for du in (0, 1, 2):

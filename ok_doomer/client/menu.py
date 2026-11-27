@@ -1,7 +1,7 @@
 """The start screen: single player, host a game, join one, your name.
 
-Green terminal text over an 80s office block at night, turning slowly
-(client/skyline.py). Keys (arrows or W/S,
+Green terminal text on navy, down the left; on the right one of the
+game's own objects turning (client/showcase.py). Keys (arrows or W/S,
 Enter, Esc) or the mouse. JOIN GAME lists the games found on the LAN
 (client/discovery.py), live, and takes an address typed instead. Your name
 is remembered (client/settings.py). Leaving a game comes back here.
@@ -24,12 +24,12 @@ from ok_doomer.client.discovery import FoundGame, GameFinder
 from ok_doomer.client.hud import NAME_COLOUR, draw_text, wrap
 from ok_doomer.client.local import LocalSession
 from ok_doomer.client.network import JoinFailed, NetworkSession
-from ok_doomer.client.palette import GREEN, GREY, U8Array, colour_index
+from ok_doomer.client.palette import BLUE, GREEN, GREY, U8Array, colour_index
 from ok_doomer.client.pixelart import FONT_5X7
 from ok_doomer.client.render import make_frame_surface
 from ok_doomer.client.session import GameSession
 from ok_doomer.client.settings import MAX_NAME, load_name, save_name
-from ok_doomer.client.skyline import Skyline
+from ok_doomer.client.showcase import Showcase
 from ok_doomer.shared.building import floor_map_text
 from ok_doomer.shared.protocol import DISCOVERY_PORT
 
@@ -39,6 +39,9 @@ DEFAULT_PORT = 5029
 SEEK_EVERY = 1.0  # seconds between asks, on the join screen
 DIM = colour_index(GREEN, 9)  # items not selected
 OFF = colour_index(GREY, 7)  # items you can't choose
+BACKGROUND = colour_index(BLUE, 1)  # navy: green reads well on it
+LEFT = 14  # where the items start, frame pixels from the left
+OBJECT_AT = (250, 112)  # the turning object's middle
 NAME_CHARS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -'.")
 
 
@@ -101,7 +104,7 @@ class Menu:
         if self.screen == "main":
             return [
                 Item("SINGLE PLAYER", "single"),
-                Item("HOST GAME (SOON)", "host", enabled=False),
+                Item("HOST GAME", "host", enabled=False),  # (to come)
                 Item("JOIN GAME", "join"),
                 Item(f"NAME: {self.name}", "name"),
                 Item("QUIT", "quit"),
@@ -221,29 +224,55 @@ class Menu:
                 return i
         return None
 
+    def shows_object(self) -> bool:
+        """The turning object beside the menu (main and name screens; the
+        lists of games and the address box want the width)."""
+        return self.screen in ("main", "name")
+
     def draw(self, pixels: U8Array) -> None:
-        """The screen into the frame: the title, the items (the selected
-        bright and marked, the rest dim, the unchoosable grey), any message."""
+        """The screen into the frame: the title in the middle; the items down
+        the left (the selected bright and marked, the rest dim, the
+        unchoosable grey); any message under them. Bare green on the
+        navy, no panels."""
         w, h = pixels.shape
-        draw_text(pixels, "OK DOOMER", FONT_5X7, w / 2, 32, scale=3)
-        row = 46
+
+        def text(
+            words: str,
+            column: float,
+            bottom: int,
+            scale: int = 1,
+            centre: bool = True,
+            colour: int = NAME_COLOUR,
+        ) -> int:
+            return draw_text(
+                pixels,
+                words,
+                FONT_5X7,
+                column,
+                bottom,
+                scale,
+                panel=False,
+                centre=centre,
+                colour=colour,
+                outline=False,
+            )
+
+        text("OK DOOMER", w / 2, 32, 3)
+        row = 48
         if self.title():
-            row += draw_text(pixels, self.title(), FONT_5X7, w / 2, row + 7, colour=DIM) + 6
+            row += text(self.title(), w / 2, row + 6, colour=DIM) + 8
         scale = 2 if self.screen == "main" else 1
         self.rows = []
         for i, item in enumerate(self.items()):
             chosen = i == self.selected and item.enabled
-            label = f"> {item.label}" if chosen else item.label
+            label = f"> {item.label}" if chosen else f"  {item.label}"
             colour = NAME_COLOUR if chosen else DIM if item.enabled else OFF
-            height = draw_text(
-                pixels, label, FONT_5X7, w / 2, row + 7 * scale, scale, colour=colour
-            )
+            height = text(label, LEFT, row + 7 * scale - 1, scale, centre=False, colour=colour)
             self.rows.append((row, row + height))
-            row += height + (4 if scale > 1 else 2)
-        for line in wrap(self.message, FONT_5X7, w - 16):
-            row += draw_text(pixels, line, FONT_5X7, w / 2, row + 10) + 1
-        hint = "ARROWS AND ENTER, OR THE MOUSE - ESC GOES BACK"
-        draw_text(pixels, hint, FONT_5X7, w / 2, h - 4, colour=DIM)
+            row += height + (6 if scale > 1 else 4)
+        for line in wrap(self.message, FONT_5X7, w - 2 * LEFT):
+            row += text(line, LEFT, row + 6, centre=False) + 2
+        text("ARROWS AND ENTER, OR THE MOUSE - ESC GOES BACK", w / 2, h - 5, colour=DIM)
 
 
 def _typeable(screen: str, text: str) -> bool:
@@ -267,7 +296,7 @@ def run_menu(
     """Show the menu until something's chosen."""
     rc = config.render
     frame = make_frame_surface(rc)
-    skyline = Skyline(rc.width, rc.height)
+    showcase = Showcase()  # one of the game's objects, at random
     clock = pygame.time.Clock()
     finder: GameFinder | None = None
     next_seek = 0.0
@@ -305,13 +334,15 @@ def run_menu(
                 finder.close()
                 finder, next_seek = None, 0.0
             pixels = pygame.surfarray.pixels2d(frame)
-            skyline.draw(pixels, now)  # the office block at night, turning
+            pixels[:] = BACKGROUND
+            if menu.shows_object():
+                showcase.draw(pixels, now, OBJECT_AT)
             menu.draw(pixels)
             del pixels
             display.show(frame)
             pygame.display.flip()
     finally:
-        skyline.close()
+        showcase.close()
         if finder is not None:
             finder.close()
 
