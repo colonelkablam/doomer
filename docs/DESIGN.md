@@ -1181,6 +1181,12 @@ Noted at the end of a session, to pick up next:
      stands in until then), then a pull request of `claude/networking`
      into `main`; milestone 3b next (the crouch sprite's head above the
      body's height waits there: hit boxes).
+  Also: `play.bat` for Windows (Setup below: double-click to play; once
+  the start screen exists it needs no options). LAN discovery on
+  Windows: a broadcast to 255.255.255.255 can leave by a virtual adapter
+  (WSL, Hyper-V, a VPN), so send to each local network's own broadcast
+  address too (e.g. 192.168.1.255); keep typing an address as the
+  fallback (Wi-Fi with AP isolation blocks broadcasts altogether).
   Later: server admin (kick, change map); joining mid-ride (you'd arrive
   on the floor the others are leaving). Debug text (fps, F3 stats) may go
   back to the system font if the pixel font gets in the way: fine either
@@ -1193,8 +1199,13 @@ Noted at the end of a session, to pick up next:
   `maps/office.map`; or name a map, e.g. `maps/floor1.map`).
 - Client settings: copy `client.example.toml` to `client.toml` and pass
   `--config client.toml`.
-- Windows: native Python (not WSL), venv, launched from `play.bat` which cds to
-  its own folder, runs the client with `--host`/`--name` and ends with `pause`.
+- Windows: native Python 3.11+ (not WSL) and a venv: `py -m venv .venv;
+  .venv\Scripts\pip install -r requirements.txt`, then `.venv\Scripts\python
+  -m ok_doomer.client` (`--connect HOST:PORT` to join). Hosting: allow
+  Python through Windows Defender Firewall on Private networks when it
+  asks, and the Wi-Fi must be a Private network, not Public. [planned]
+  `play.bat`: cds to its own folder, runs the client, ends with `pause`
+  (so an error stays on screen).
 - Use the Pi's IP rather than `.local` names (Windows mDNS is unreliable).
 - Server on the Pi: standard library only, no install step:
   `python3 -m ok_doomer.server` from the checkout (port 5029). Bots:
