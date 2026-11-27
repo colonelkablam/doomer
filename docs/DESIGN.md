@@ -253,7 +253,12 @@ means adding a module and registering it, not editing a dozen files.
   first update; anyone joining in that same tick is in it, not news
   twice). HUD messages stack, up to 4, each for its own 3 s, so bots
   joining together all show (it was one line, the newest replacing the
-  last). Names over heads: the renderer records
+  last). Messages are drawn into the frame like the names: the 5x7 font
+  (`pixelart.FONT_5X7`, capitals, digits, the punctuation messages use;
+  completed from the lobby sign's letters, which are unchanged), green on
+  black panels, wrapped to the frame's width (`message_scale`). A test
+  checks every character any message can produce is in the font. The
+  floor titles and the "complete" banner are still the system font. Names over heads: the renderer records
   what it drew of each sprite, after walls and desks hid their share
   (`Renderer.seen`: pixels, top row, middle); a name goes just over the
   top of what's seen of someone, if at least a few pixels are and

@@ -210,3 +210,72 @@ def test_two_joining_at_once_both_show() -> None:
     hud.handle([PlayerJoined(9, i, f"p{i}") for i in range(10)], now=12.0)
     assert len(hud.messages(12.0)) == MAX_MESSAGES  # the latest few
     hud.draw(pygame.Surface((960, 600)), set(), 12.0)  # and they draw
+
+
+def test_messages_are_drawn_in_5x7_green_stacked_and_wrapped() -> None:
+    import numpy as np
+    import pygame
+
+    from ok_doomer.client.hud import NAME_COLOUR, Hud, wrap
+    from ok_doomer.client.pixelart import FONT_5X7
+
+    pygame.font.init()
+    hud = Hud(pygame.font.Font(None, 22))
+    hud.handle([PlayerJoined(1, 2, "Bob"), PlayerJoined(1, 3, "Cath")], now=0.0)
+    pixels = np.zeros((320, 200), dtype=np.uint8)
+    hud.draw_messages(pixels, now=1.0)
+    rows = np.nonzero((pixels == NAME_COLOUR).any(axis=0))[0]
+    lines = np.split(rows, np.nonzero(np.diff(rows) > 1)[0] + 1)
+    assert [len(line) for line in lines] == [7, 7]  # two lines of 5x7 text
+    assert lines[0][0] >= 200 // 6  # from a sixth of the way down
+    long = "Here: " + ", ".join(f"Player {i}" for i in range(12))
+    wrapped = wrap(long, FONT_5X7, 312)
+    assert len(wrapped) > 1 and " ".join(wrapped) == long
+    assert all(len(line) * 6 - 1 <= 312 for line in wrapped)
+
+
+def test_every_message_can_be_written_in_the_5x7_font() -> None:
+    """No HUD message loses letters to the font: every character any of
+    them can produce is in it."""
+    import itertools
+    import typing
+    from dataclasses import fields
+
+    from ok_doomer.client.pixelart import FONT_5X7
+    from ok_doomer.shared.dispensers import DISPENSERS
+    from ok_doomer.shared.protocol import EVENT_TYPES
+
+    samples: dict[object, list[object]] = {
+        int: [1],
+        float: [0.5],
+        bool: [True, False],
+        str: ["Bob"],
+        str | None: ["1", None],
+        tuple[str, ...]: [("Bob", "Cath")],
+    }
+    texts = set()
+    for cls in EVENT_TYPES.values():
+        hints = typing.get_type_hints(cls)
+        names = [f.name for f in fields(cls)]
+        options: list[list[typing.Any]] = []
+        for name in names:
+            if name == "dispenser":
+                options.append(list(DISPENSERS))
+            elif name in ("meter",):
+                options.append(["health", "coffee"])
+            elif name in ("reason",):
+                options.append(["", "full", "empty", "no power", "timed out", "quit"])
+            elif name in ("colour", "lock"):
+                options.append(["blue", "red", "gold"])
+            elif name == "flag":
+                options.append(["power"])
+            else:
+                options.append(samples[hints[name]])
+        for combo in itertools.product(*options):
+            values: dict[str, typing.Any] = dict(zip(names, combo, strict=True))
+            text = message_for(cls(**values))
+            if text:
+                texts.add(text)
+    assert len(texts) > 15
+    missing = {c for t in texts for c in t.upper()} - set(FONT_5X7)
+    assert not missing, missing

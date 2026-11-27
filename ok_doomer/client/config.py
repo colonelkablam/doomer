@@ -28,6 +28,9 @@ class RenderConfig:
     # panel (False: a black outline round the letters).
     name_scale: int = 1
     name_panel: bool = True
+    # HUD messages ("Bob joined", "Picked up the blue pass"): the 5x7 pixel
+    # font, green on black, this many frame pixels a font pixel.
+    message_scale: int = 1
 
 
 @dataclass(frozen=True, slots=True)

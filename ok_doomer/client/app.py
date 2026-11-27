@@ -105,6 +105,7 @@ def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
             draw_name_tags(pixels, tags, rc.name_scale, rc.name_panel)
             if show_map:
                 automap.draw(pixels, camera.x, camera.y, camera.angle)
+            hud.draw_messages(pixels, now, rc.message_scale)  # over the map too
             del pixels  # unlock the surface
             # 8-bit frame -> window format, then nearest-neighbour scale into
             # the picture's place in the window (it may have been resized).

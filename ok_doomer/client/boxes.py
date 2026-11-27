@@ -46,7 +46,7 @@ from ok_doomer.client.palette import (
     WOOD,
     U8Array,
 )
-from ok_doomer.client.pixelart import FONT_3X5, BoolArray, Canvas, noise
+from ok_doomer.client.pixelart import FONT_3X5, FONT_5X7, BoolArray, Canvas, noise
 from ok_doomer.shared.building import FLOOR_LABELS, floor_label
 from ok_doomer.shared.cubicles import OPEN_ANGLE, CubicleDoor
 from ok_doomer.shared.doors import (
@@ -2155,29 +2155,12 @@ def _reception_desk() -> tuple[Box, ...]:
 # stretched across a 6 m sign would be. A dark panel behind them. Model x
 # points out of the wall; the thing stands at the wall's face.
 
-_FONT_5X7: dict[str, tuple[str, ...]] = {
-    "B": ("####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."),
-    "C": (".####", "#....", "#....", "#....", "#....", "#....", ".####"),
-    "D": ("####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."),
-    "E": ("#####", "#....", "#....", "####.", "#....", "#....", "#####"),
-    "I": ("#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"),
-    "L": ("#....", "#....", "#....", "#....", "#....", "#....", "#####"),
-    "M": ("#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"),
-    "N": ("#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#", "#...#"),
-    "O": (".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."),
-    "R": ("####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"),
-    "S": (".####", "#....", "#....", ".###.", "....#", "....#", "####."),
-    "T": ("#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."),
-    "U": ("#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."),
-    "W": ("#...#", "#...#", "#...#", "#.#.#", "#.#.#", "##.##", "#...#"),
-}
-
 
 def brass_letter(ch: str) -> int:
     """One letter filling the texture, polished brass: lighter along the top
     of each stroke, darker along the bottom."""
     c = Canvas()
-    rows = _FONT_5X7[ch]
+    rows = FONT_5X7[ch]
     col = (c.u * 5) // 64
     row = (c.v * 7) // 64
     glyph = np.array([[bit == "#" for bit in line] for line in rows])

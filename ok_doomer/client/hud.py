@@ -13,7 +13,7 @@ import pygame
 
 from ok_doomer.client.boxes import pass_card_rgba
 from ok_doomer.client.palette import GREEN, GREY, U8Array, colour_index
-from ok_doomer.client.pixelart import FONT_3X5, BoolArray
+from ok_doomer.client.pixelart import FONT_3X5, FONT_5X7, BoolArray
 from ok_doomer.client.render import Renderer
 from ok_doomer.shared.building import floor_name
 from ok_doomer.shared.dispensers import DISPENSERS
@@ -135,45 +135,81 @@ NAME_COLOUR = colour_index(GREEN, 15)  # phosphor green, the brightest the palet
 NAME_BACK = colour_index(GREY, 0)  # black: an outline, or a panel behind
 
 
+Font = dict[str, tuple[str, ...]]  # glyph rows of "#" and "." (pixelart)
+
+
 def draw_name_tags(
     pixels: U8Array, tags: list[NameTag], scale: int = 1, panel: bool = True
 ) -> None:
     """Names into the frame (palette indices, [column][row]), before it's
-    scaled up, so they're chunky pixels like the rest: the 3x5 font
-    (pixelart.FONT_3X5, capitals: as old terminals were) in phosphor green,
-    unlit, outlined in black (or on a black panel), the bottom middle of
+    scaled up, so they're chunky pixels like the rest: the 3x5 font in
+    phosphor green, on a black panel (or outlined), the bottom middle of
     each at its tag's (column, row)."""
-    w, h = pixels.shape
     for tag in tags:
-        text = "".join(c if c in FONT_3X5 else " " for c in tag.name.upper()).strip()
-        if not text:
-            continue
-        glyphs = _text_mask(text, scale)
-        tw, th = glyphs.shape
-        left, top = round(tag.column - tw / 2), round(tag.row) - th
-        border = 1
-        back = np.ones((tw + 2 * border, th + 2 * border), dtype=bool)
-        if not panel:  # just round the letters: grow them by a pixel
-            back = np.zeros_like(back)
-            for du in (0, 1, 2):
-                for dv in (0, 1, 2):
-                    back[du : du + tw, dv : dv + th] |= glyphs
-        _blit(pixels, back, left - border, top - border, NAME_BACK, w, h)
-        _blit(pixels, glyphs, left, top, NAME_COLOUR, w, h)
+        draw_text(pixels, tag.name, FONT_3X5, tag.column, round(tag.row) - 1, scale, panel)
 
 
-def _text_mask(text: str, scale: int) -> BoolArray:
+def draw_text(
+    pixels: U8Array,
+    text: str,
+    font: Font,
+    column: float,
+    bottom: int,
+    scale: int = 1,
+    panel: bool = True,
+) -> int:
+    """`text` into the frame in `font` (capitals; what it can't draw, a
+    space), phosphor green on a black panel (or outlined): centred on
+    `column`, its last row at `bottom`. How tall it came out (0: nothing)."""
+    text = "".join(c if c in font else " " for c in text.upper()).strip()
+    if not text:
+        return 0
+    w, h = pixels.shape
+    glyphs = text_mask(text, font, scale)
+    tw, th = glyphs.shape
+    left, top = round(column - tw / 2), bottom + 1 - th
+    border = 1
+    back = np.ones((tw + 2 * border, th + 2 * border), dtype=bool)
+    if not panel:  # just round the letters: grow them by a pixel
+        back = np.zeros_like(back)
+        for du in (0, 1, 2):
+            for dv in (0, 1, 2):
+                back[du : du + tw, dv : dv + th] |= glyphs
+    _blit(pixels, back, left - border, top - border, NAME_BACK, w, h)
+    _blit(pixels, glyphs, left, top, NAME_COLOUR, w, h)
+    return int(th) + 2 * border
+
+
+def text_width(text: str, font: Font, scale: int = 1) -> int:
+    """Pixels across: each glyph and a column between."""
+    glyph = len(next(iter(font.values()))[0])
+    return (len(text) * (glyph + 1) - 1) * scale
+
+
+def text_mask(text: str, font: Font, scale: int = 1) -> BoolArray:
     """[column][row]: where the text's pixels are."""
-    rows = 5 * scale
-    cols = (len(text) * 4 - 1) * scale
-    mask = np.zeros((cols, rows), dtype=bool)
+    sample = next(iter(font.values()))
+    glyph, rows = len(sample[0]), len(sample)
+    mask = np.zeros((text_width(text, font, scale), rows * scale), dtype=bool)
     for i, ch in enumerate(text):
-        for gy, row in enumerate(FONT_3X5[ch]):
+        for gy, row in enumerate(font[ch]):
             for gx, bit in enumerate(row):
                 if bit == "#":
-                    u = (i * 4 + gx) * scale
+                    u = (i * (glyph + 1) + gx) * scale
                     mask[u : u + scale, gy * scale : gy * scale + scale] = True
     return mask
+
+
+def wrap(text: str, font: Font, width: int, scale: int = 1) -> list[str]:
+    """Lines of `text`, broken between words, each no wider than `width`
+    pixels (a word longer than that goes alone)."""
+    lines: list[str] = []
+    for word in text.split():
+        if lines and text_width(f"{lines[-1]} {word}", font, scale) <= width:
+            lines[-1] += f" {word}"
+        else:
+            lines.append(word)
+    return lines
 
 
 def _blit(
@@ -220,6 +256,16 @@ class Hud:
         """What's showing, oldest first."""
         return [text for text, until in self._messages if now < until]
 
+    def draw_messages(self, pixels: U8Array, now: float, scale: int = 1) -> None:
+        """The messages into the frame (before it's scaled up): the 5x7 font,
+        green on black panels like the names, stacked down from a sixth of
+        the way down the screen, each wrapped to fit."""
+        w, h = pixels.shape
+        row = h // 6
+        for text in self.messages(now):
+            for line in wrap(text, FONT_5X7, w - 8, scale):
+                row += draw_text(pixels, line, FONT_5X7, w / 2, row + 7 * scale, scale) + 1
+
     def draw(self, window: pygame.Surface, passes: Collection[str], now: float) -> None:
         width, height = window.get_size()
         if self.complete:
@@ -235,9 +281,6 @@ class Hud:
             storey, name = self._title
             self._text(window, storey, (width // 2, height // 3 - 14), centre=True)
             self._text(window, name, (width // 2, height // 3 + 12), centre=True)
-        line = self.font.get_linesize() + 4
-        for i, text in enumerate(self.messages(now)):
-            self._text(window, text, (width // 2, height // 6 + i * line), centre=True)
         # Passes held: a card in each colour, bottom left.
         for i, colour in enumerate(c for c in PASS_COLOURS_RGB if c in passes):
             card = _card_image(colour)
