@@ -254,7 +254,10 @@ means adding a module and registering it, not editing a dozen files.
   (`Renderer.seen`: pixels, top row, middle); a name goes just over the
   top of what's seen of someone, if at least a few pixels are and
   they're within 12 cells. Exact, with no depth guessing: a head over a
-  desk gets a name, someone behind a wall doesn't.
+  desk gets a name, someone behind a wall doesn't. Drawn into the frame
+  before it's scaled (chunky, like the rest): the 3x5 pixel font in
+  capitals, phosphor green on a black panel, a terminal readout
+  (`name_scale`, `name_panel` in the client's `[render]` config).
 - **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
   blocking (a lost packet holds up everything behind it until resent),
   matters on the internet, not here. Framing and encoding stay behind

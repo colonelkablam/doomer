@@ -156,3 +156,21 @@ def test_behind_the_counter_the_name_sits_on_what_shows() -> None:
     (tag,) = name_tags(renderer, [("dev", x, y)])
     seen = renderer.seen[(x, y)]
     assert tag.row == seen.top - NAME_GAP
+
+
+def test_names_are_drawn_in_green_pixel_capitals() -> None:
+    """Into the frame (before scaling): the 3x5 font in phosphor green on a
+    black panel, capitals, the bottom middle at the tag; clipped at the edge."""
+    import numpy as np
+
+    from ok_doomer.client.hud import NAME_BACK, NAME_COLOUR, NameTag, draw_name_tags
+
+    pixels = np.full((320, 200), 7, dtype=np.uint8)
+    draw_name_tags(pixels, [NameTag("bob", 100.0, 50.0)])
+    green = np.argwhere(pixels == NAME_COLOUR)
+    (u0, v0), (u1, v1) = green.min(axis=0), green.max(axis=0)
+    assert (u1 - u0 + 1, v1 - v0 + 1) == (11, 5)  # "BOB": 3 letters of 3, gaps of 1; 5 high
+    assert v1 == 49 and abs((u0 + u1) / 2 - 100) <= 1  # its bottom middle at the tag
+    assert (pixels == NAME_BACK).sum() == 13 * 7 - len(green)  # a panel round it
+    draw_name_tags(pixels, [NameTag("x" * 16, 2.0, 3.0)], scale=2)  # off the edge: clipped
+    draw_name_tags(pixels, [NameTag("éé", 50.0, 50.0)])  # nothing it can draw: nothing

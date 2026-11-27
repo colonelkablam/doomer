@@ -23,6 +23,11 @@ class RenderConfig:
     ceiling_colour: Colour | None = None
     floor_colour: Colour | None = None
     show_fps: bool = True
+    # Other players' names over their heads: the terminals' green pixel font,
+    # `name_scale` frame pixels a font pixel (1: 3x5 letters), on a black
+    # panel (False: a black outline round the letters).
+    name_scale: int = 1
+    name_panel: bool = True
 
 
 @dataclass(frozen=True, slots=True)

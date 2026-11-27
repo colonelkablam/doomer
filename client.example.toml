@@ -10,6 +10,8 @@ fov_degrees = 75.0
 max_fps = 144           # 0 = uncapped
 vsync = true
 show_fps = true
+name_scale = 1          # names over heads: 1 = 3x5 pixel letters, 2 = twice that
+name_panel = true       # on a black panel (false: a black outline)
 # Flat floors and ceilings instead of the textured ones (set both):
 # ceiling_colour = [205, 200, 180]
 # floor_colour = [120, 108, 96]

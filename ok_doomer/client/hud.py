@@ -8,9 +8,12 @@ without a display; Hud only keeps messages on screen for a while and draws.
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 
+import numpy as np
 import pygame
 
 from ok_doomer.client.boxes import pass_card_rgba
+from ok_doomer.client.palette import GREEN, GREY, U8Array, colour_index
+from ok_doomer.client.pixelart import FONT_3X5, BoolArray
 from ok_doomer.client.render import Renderer
 from ok_doomer.shared.building import floor_name
 from ok_doomer.shared.dispensers import DISPENSERS
@@ -122,6 +125,64 @@ def name_tags(renderer: Renderer, people: list[tuple[str, float, float]]) -> lis
             continue
         tags.append(NameTag(name, seen.column, seen.top - NAME_GAP))
     return tags
+
+
+NAME_COLOUR = colour_index(GREEN, 15)  # phosphor green, the brightest the palette has
+NAME_BACK = colour_index(GREY, 0)  # black: an outline, or a panel behind
+
+
+def draw_name_tags(
+    pixels: U8Array, tags: list[NameTag], scale: int = 1, panel: bool = True
+) -> None:
+    """Names into the frame (palette indices, [column][row]), before it's
+    scaled up, so they're chunky pixels like the rest: the 3x5 font
+    (pixelart.FONT_3X5, capitals: as old terminals were) in phosphor green,
+    unlit, outlined in black (or on a black panel), the bottom middle of
+    each at its tag's (column, row)."""
+    w, h = pixels.shape
+    for tag in tags:
+        text = "".join(c if c in FONT_3X5 else " " for c in tag.name.upper()).strip()
+        if not text:
+            continue
+        glyphs = _text_mask(text, scale)
+        tw, th = glyphs.shape
+        left, top = round(tag.column - tw / 2), round(tag.row) - th
+        border = 1
+        back = np.ones((tw + 2 * border, th + 2 * border), dtype=bool)
+        if not panel:  # just round the letters: grow them by a pixel
+            back = np.zeros_like(back)
+            for du in (0, 1, 2):
+                for dv in (0, 1, 2):
+                    back[du : du + tw, dv : dv + th] |= glyphs
+        _blit(pixels, back, left - border, top - border, NAME_BACK, w, h)
+        _blit(pixels, glyphs, left, top, NAME_COLOUR, w, h)
+
+
+def _text_mask(text: str, scale: int) -> BoolArray:
+    """[column][row]: where the text's pixels are."""
+    rows = 5 * scale
+    cols = (len(text) * 4 - 1) * scale
+    mask = np.zeros((cols, rows), dtype=bool)
+    for i, ch in enumerate(text):
+        for gy, row in enumerate(FONT_3X5[ch]):
+            for gx, bit in enumerate(row):
+                if bit == "#":
+                    u = (i * 4 + gx) * scale
+                    mask[u : u + scale, gy * scale : gy * scale + scale] = True
+    return mask
+
+
+def _blit(
+    pixels: U8Array, mask: BoolArray, left: int, top: int, index: int, w: int, h: int
+) -> None:
+    """Set `index` where `mask` is, placed at (left, top), clipped to the frame."""
+    mw, mh = mask.shape
+    u0, v0 = max(0, -left), max(0, -top)
+    u1, v1 = min(mw, w - left), min(mh, h - top)
+    if u0 >= u1 or v0 >= v1:
+        return
+    region = pixels[left + u0 : left + u1, top + v0 : top + v1]
+    region[mask[u0:u1, v0:v1]] = index
 
 
 class Hud:
