@@ -10,9 +10,11 @@ Drawing: each Update's snapshot goes onto a WorldMirror (shared/mirror.py),
 and the players' positions are also kept in a short history, on the
 server's timeline (its tick x dt; receipt times would bunch up when two
 updates arrive in one frame). The view is drawn a little behind the newest
-snapshot, interpolating between the two either side: OWN_DELAY_TICKS for
-you (no prediction yet: what you see is the server's word), and
-OTHERS_DELAY_TICKS for everyone else, leaving room for jitter.
+snapshot, interpolating between the two either side: OTHERS_DELAY_TICKS
+for everyone else, leaving room for jitter. You're predicted
+(shared/prediction.py): moved at once by your own input, corrected by the
+server's. Without prediction (--no-predict), you're drawn OWN_DELAY_TICKS
+behind, as the server last said.
 """
 
 import contextlib
@@ -23,6 +25,7 @@ import socket
 import threading
 from collections import deque
 from dataclasses import dataclass
+from typing import Protocol
 
 from ok_doomer.client.boxes import PlacedBox
 from ok_doomer.client.render import Camera, SpriteInstance
@@ -38,6 +41,7 @@ from ok_doomer.shared.mapfile import GameMap
 from ok_doomer.shared.mirror import WorldMirror
 from ok_doomer.shared.modes import GAME_MODES
 from ok_doomer.shared.player import PlayerInput
+from ok_doomer.shared.prediction import Predictor
 from ok_doomer.shared.protocol import (
     MAX_LINE,
     PROTOCOL_VERSION,
@@ -173,11 +177,29 @@ def pose_at(history: deque[tuple[float, dict[int, Pose]]], pid: int, when: float
     return times[-1][1]
 
 
-class NetworkSession:
-    """A GameSession on a server (client/session.py)."""
+class Link(Protocol):
+    """What a NetworkSession needs of its connection (a Connection; in
+    tests, a link straight to a GameServer with made-up latency)."""
 
-    def __init__(self, connection: Connection) -> None:
+    welcome: Welcome
+    inbox: "queue.Queue[Message | None]"
+
+    def send(self, message: Message) -> None: ...
+
+    def received(self) -> list[Message | None]: ...
+
+    def close(self, reason: str = "quit") -> None: ...
+
+
+class NetworkSession:
+    """A GameSession on a server (client/session.py). `predict`: move
+    yourself at once and let the server correct you (shared/prediction.py);
+    without, you're drawn where the server last said, a little behind."""
+
+    def __init__(self, connection: Link, predict: bool = True) -> None:
         self.connection = connection
+        self.predict = predict
+        self.predictor = Predictor()
         self.mirror = WorldMirror.from_welcome(connection.welcome)
         # At most MAX_SENDS inputs a frame: a long frame (loading, a stall)
         # mustn't become a burst the server would have to merge.
@@ -189,10 +211,10 @@ class NetworkSession:
         self._new_floor()
 
     @classmethod
-    def join(cls, host: str, port: int, name: str) -> "NetworkSession":
+    def join(cls, host: str, port: int, name: str, predict: bool = True) -> "NetworkSession":
         """Connect, join, and wait for the first update (so you're in the
         world before the first frame)."""
-        session = cls(Connection.join(host, port, name))
+        session = cls(Connection.join(host, port, name), predict)
         with contextlib.suppress(queue.Empty):
             session._take(session.connection.inbox.get(timeout=CONNECT_SECONDS))
         if session.mirror.player is None:
@@ -203,6 +225,7 @@ class NetworkSession:
 
     def _new_floor(self) -> None:
         self.history.clear()
+        self.predictor.reset(None)  # from the new floor's first update
         self._static = static_sprites(self.mirror.world)
         self._eye = self.mirror.config.movement.eye_height
 
@@ -213,11 +236,16 @@ class NetworkSession:
     def update(self, real_dt: float, player_input: PlayerInput) -> list[Event]:
         self._clock += real_dt
         for _ in range(self.timestep.advance(real_dt)):  # one input a tick
-            self.connection.send(self.mirror.next_input(player_input))
+            sent = self.mirror.next_input(player_input)
+            self.connection.send(sent)
+            if self.predict:
+                self.predictor.input(self.mirror.world, sent.seq, player_input)
         events: list[Event] = []
         for message in self.connection.received():
             events += self._take(message)
-        me = self.mirror.player
+        self.predictor.fade(real_dt)
+        me = self.predictor.player if self.predict else None
+        me = me or self.mirror.player
         if me is not None:
             self._eye = ease_eye(self._eye, me, self.mirror.world, real_dt)
         return events
@@ -238,6 +266,9 @@ class NetworkSession:
             poses = {p.id: Pose(p.x, p.y, p.z, p.angle) for p in self.mirror.world.players.values()}
             self.history.append((when, poses))
             self._newest = (when, self._clock)
+            me = self.mirror.player
+            if self.predict and me is not None:
+                self.predictor.reconcile(self.mirror.world, me, message.ack)
         elif isinstance(message, Bye):
             self._ended = message.reason or "the server said goodbye"
         return events
@@ -249,6 +280,10 @@ class NetworkSession:
         return when + min(self._clock - at, 2 * self.mirror.config.dt)
 
     def camera(self, view_angle: float, pitch: float = 0.0) -> Camera:
+        predicted = self.predictor.position(self.timestep.alpha) if self.predict else None
+        if predicted is not None:
+            x, y, z = predicted
+            return Camera(x, y, view_angle, z=z + self._eye, pitch=pitch)
         dt = self.mirror.config.dt
         pose = pose_at(
             self.history, self.mirror.player_id, self._server_now() - OWN_DELAY_TICKS * dt

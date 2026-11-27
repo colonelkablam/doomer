@@ -26,6 +26,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", type=Path, help="TOML file overriding client settings")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--connect", metavar="HOST:PORT", help="join a server instead")
+    parser.add_argument(
+        "--no-predict", action="store_true", help="on a server: wait for it to move you"
+    )
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -36,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
             host, _, port = args.connect.rpartition(":")
             if not host or not port.isdigit():
                 raise ConfigError("--connect wants HOST:PORT, e.g. 192.168.1.20:5029")
-            session = NetworkSession.join(host, int(port), args.name)
+            session = NetworkSession.join(host, int(port), args.name, not args.no_predict)
         else:
             game_map = load_map(args.map)
             modes = supported_modes(game_map)

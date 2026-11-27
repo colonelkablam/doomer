@@ -97,11 +97,28 @@ def _ride(world: World, positions: list[tuple[float, float]]) -> None:
 
 
 def apply_input(world: World, player: PlayerState, player_input: PlayerInput) -> None:
-    move = world.config.movement
-    dt = world.config.dt
+    """One tick of a player's input: look, use, walk and jump, pick up."""
+    _steer(world, player, player_input)
+    _use(world, player, player_input)
+    _walk(world, player, player_input)
+    _pick_up(world, player)
+
+
+def predict_move(world: World, player: PlayerState, player_input: PlayerInput) -> None:
+    """What the input does to the player's own movement alone: look, walk,
+    jump, fall. Nothing in the world changes (no use, no pickups): a client
+    predicting itself, which the server then confirms or corrects."""
+    _steer(world, player, player_input)
+    _walk(world, player, player_input)
+
+
+def _steer(world: World, player: PlayerState, player_input: PlayerInput) -> None:
     player.angle = player_input.angle % TAU
     player.pitch = player_input.pitch
-    _update_crouch(world.map, player, player_input.crouch, move)
+    _update_crouch(world.map, player, player_input.crouch, world.config.movement)
+
+
+def _use(world: World, player: PlayerState, player_input: PlayerInput) -> None:
     if player_input.use and not player.use_held:  # a press, not a hold
         thrown = try_switch(world.switches, player.x, player.y, player.angle)
         power = POWER in world.flags
@@ -151,6 +168,10 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
                 world.events.append(LiftNoPower(world.tick, door.id, player.id))
     player.use_held = player_input.use
 
+
+def _walk(world: World, player: PlayerState, player_input: PlayerInput) -> None:
+    move = world.config.movement
+    dt = world.config.dt
     forward = _clamp(player_input.forward)
     strafe = _clamp(player_input.strafe)
     length = math.hypot(forward, strafe)
@@ -170,6 +191,8 @@ def apply_input(world: World, player: PlayerState, player_input: PlayerInput) ->
         player.on_ground = False
     _apply_gravity(world.map, player, move, dt, all_obstacles(world))
 
+
+def _pick_up(world: World, player: PlayerState) -> None:
     def wants(pickup: Pickup) -> bool:
         return all(_meter(player, m) < METER_MAX[m] for m in pickup.effects)
 

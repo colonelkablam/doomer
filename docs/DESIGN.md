@@ -195,9 +195,9 @@ means adding a module and registering it, not editing a dozen files.
   It sends one input per tick (its own `FixedTimestep`), drains the queue
   once a frame onto a `WorldMirror`, and keeps players' poses in a short
   history on the server's timeline (tick x dt: receipt times bunch up
-  when two updates land in one frame). It draws you 1 tick behind the
-  newest snapshot (no prediction: the server's word) and others 3 ticks
-  behind (50 ms, room for jitter), interpolating between the snapshots
+  when two updates land in one frame). It predicts you (below; without prediction, you're
+  drawn 1 tick behind the newest snapshot, the server's word), and draws
+  others 3 ticks behind (50 ms, room for jitter), interpolating between the snapshots
   either side, angles the short way round, never extrapolating. Other
   players are drawn as `office_worker` (`client/sprites.py`): a voxel
   model baked into 16 views (white shirt, red tie, navy trousers, a dark
@@ -215,7 +215,21 @@ means adding a module and registering it, not editing a dozen files.
 - Client owns its view angle: turning is instant locally and the angle is sent
   with each input. Movement is server-authoritative.
 - Remote players are interpolated between the last two snapshots.
-- Client-side prediction of own movement only if it still feels laggy.
+- **Client-side prediction of your own movement** [built:
+  `shared/prediction.py`, on by default; `--no-predict` to compare].
+  Built after testing showed "a little pause before I move": measured, a
+  key press took 52-68 ms to show on one machine without it (a tick
+  waiting to send, a tick waiting at the server, drawn a tick behind, a
+  frame), 17 ms (one frame, as single-player) with it. Each tick the
+  input moves a private copy of your player at once (`sim.predict_move`:
+  look, walk, jump, fall, never use or pickups: those change the world
+  and are the server's); each `Update`, the inputs the server has applied
+  (`ack`) are dropped and the rest replayed from where the server has
+  you. The same `step` code both sides, so walking, sliding along walls,
+  jumping and crouching need no corrections at all (tested up to 200 ms
+  each way); a disagreement (a door that opened sooner there, a merged
+  input) goes into a drawn offset that fades over 0.1 s (a glide), more
+  than half a cell snaps.
 - Still to define: mid-game join, disconnect and timeout handling.
 - Later: UDP broadcast so clients find the Pi without typing an IP.
 - **Pickups, dispensers and meters are server state** (GAME.md, Pickups).
@@ -1057,7 +1071,8 @@ Noted at the end of a session, to pick up next:
   something moving round you once the client can join); (7) [done]
   `NetworkSession`: a reader thread into a queue, the world copy, remote
   players drawn 3 ticks behind, `--connect host:port`, a sprite for
-  other players; (8) measure the lag on a LAN, then decide on prediction.
+  other players; (8) [done] measured the lag (fixed a standing input queue; built
+  prediction); still to measure: the Pi over Wi-Fi.
 
 ## Setup
 
