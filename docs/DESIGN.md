@@ -1121,23 +1121,30 @@ Noted at the end of a session, to pick up next:
   with a perm, a tie with a collar already holds, variety across a row);
   the cast (`CAST`) stays hand-picked. Until then the templates are the
   bank: every new template multiplies the faces possible.
-- **Networking (milestone 3), in order**: (1) [done] prep: spawning and
-  the next floor in `shared/spawn.py`, players spread round a start,
-  `idle_input`; (2) [done] `shared/snapshot.py`: `capture(world)` and
-  `apply(world, snap)`, the changing state only, tested by round trip
-  onto a fresh world; (3) `shared/protocol.py`: the messages (hello,
-  welcome, reject, input, snapshot, map change, bye), the version, JSON
-  lines, events by a registry of their types [done]; (4) [done] the server core,
-  socket-free (`GameServer`: join, leave, input, tick -> messages out);
-  `LocalSession` moved onto it [done]; (5) [done] the asyncio TCP transport
-  (`python -m ok_doomer.server`, `TCP_NODELAY`, timeouts); (6) [done] a bot
-  client (standard library: the test player and a load test; pulled
-  ahead of the game client so there's something to join with, and
-  something moving round you once the client can join); (7) [done]
-  `NetworkSession`: a reader thread into a queue, the world copy, remote
-  players drawn 3 ticks behind, `--connect host:port`, a sprite for
-  other players; (8) [done] measured the lag (fixed a standing input queue; built
-  prediction); still to measure: the Pi over Wi-Fi.
+- **Networking (milestone 3)**: built (Networking above, in build
+  order: spawning in `shared`, snapshots, the protocol, the server core,
+  TCP, bots, the networked client, lag measured and prediction, then
+  single-player on the in-process server, the CPU cut, the lag proxy and
+  F3 stats, who's here and names). To do, in this order:
+  1. **Host from the game, find games on the LAN, a start screen.** Host
+     = `LocalSession`'s in-process server plus a TCP listener (no Pi or
+     server terminal needed). Servers announce themselves by UDP
+     broadcast about once a second; clients list what they hear (Fedora's
+     firewall needs that port opened too). A start screen in the green
+     terminal style: SINGLE PLAYER / HOST GAME / JOIN GAME (games found,
+     and an address to type as a fallback).
+  2. **Rejoin after a dropout**: back within ~30 s with the same name, you
+     get your player back (where you were, health, coffee), not a respawn.
+  3. **Text chat**: T, type, Enter; a message type of its own, shown in
+     the HUD's stacked messages.
+  4. **Close the milestone**: the Pi over Wi-Fi tested (the lag proxy
+     stands in until then), then a pull request of `claude/networking`
+     into `main`; milestone 3b next (the crouch sprite's head above the
+     body's height waits there: hit boxes).
+  Later: server admin (kick, change map); joining mid-ride (you'd arrive
+  on the floor the others are leaving). Debug text (fps, F3 stats) may go
+  back to the system font if the pixel font gets in the way: fine either
+  way.
 
 ## Setup
 
