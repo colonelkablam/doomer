@@ -102,7 +102,8 @@ def test_inputs_move_the_player() -> None:
     async def test() -> None:
         async with _serving() as server:
             (reader, writer), mirror = await _join(server)
-            # 8: as many as the server queues (a burst of more drops the oldest).
+            # A burst of 8 (as from a long frame): the server uses one and merges
+            # the excess over its slack of 2 into it, so it doesn't stand as lag.
             for _ in range(8):
                 writer.write(encode(mirror.next_input(PlayerInput(forward=1.0, angle=0.0))))
             await writer.drain()
@@ -112,7 +113,7 @@ def test_inputs_move_the_player() -> None:
                 mirror.handle(message)
             me = mirror.player
             assert me is not None
-            assert me.x == pytest.approx(2.5 + 8 * 3.5 / 60)  # 8 ticks at walking speed
+            assert me.x == pytest.approx(2.5 + 3 * 3.5 / 60)  # 3 ticks: 1 (+5 merged), then 2
             writer.close()
 
     _run(test)

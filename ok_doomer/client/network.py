@@ -62,6 +62,7 @@ CONNECT_SECONDS = 5.0
 OWN_DELAY_TICKS = 1.0
 OTHERS_DELAY_TICKS = 3.0
 HISTORY = 32  # snapshots of positions kept (~0.5 s)
+MAX_SENDS = 2  # inputs sent in one frame, at most
 LOST = "the connection to the server was lost"
 
 
@@ -178,7 +179,9 @@ class NetworkSession:
     def __init__(self, connection: Connection) -> None:
         self.connection = connection
         self.mirror = WorldMirror.from_welcome(connection.welcome)
-        self.timestep = FixedTimestep(self.mirror.config.dt)
+        # At most MAX_SENDS inputs a frame: a long frame (loading, a stall)
+        # mustn't become a burst the server would have to merge.
+        self.timestep = FixedTimestep(self.mirror.config.dt, max_steps=MAX_SENDS)
         self.history: deque[tuple[float, dict[int, Pose]]] = deque(maxlen=HISTORY)
         self._clock = 0.0  # local seconds, from the frame times given
         self._newest = (0.0, 0.0)  # (server time, local clock) of the newest update

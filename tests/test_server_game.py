@@ -110,6 +110,29 @@ def test_a_tap_shorter_than_a_tick_isnt_lost() -> None:
     assert POWER in server.world.flags
 
 
+def test_a_backlog_is_merged_not_left_standing() -> None:
+    """A burst of 6 (a long frame on the client): the excess is merged at
+    once, keeping the press, rather than standing as lag for good."""
+    server = _server(input_slack=2)
+    pid = _join(server)
+    server.world.players[pid].x, server.world.players[pid].y = AT_BREAKER
+    for seq in range(1, 7):  # use pressed in the 2nd only
+        server.receive(pid, Input(seq, PlayerInput(angle=SOUTH, use=seq == 2)))
+    (update,) = _updates(server.tick()[pid])
+    assert [m.seq for m in server.clients[pid].inputs] == [5, 6]
+    assert update.ack == 4  # 1-4 merged into one tick
+    assert any(isinstance(e, SwitchThrown) for e in update.events)
+
+
+def test_steady_inputs_are_never_merged() -> None:
+    server = _server(input_slack=2)
+    pid = _join(server)
+    server.receive(pid, Input(1, PlayerInput()))
+    for seq in range(2, 30):  # one arrives, one's used, a tick
+        server.receive(pid, Input(seq, PlayerInput()))
+        assert _updates(server.tick()[pid])[0].ack == seq - 1
+
+
 def test_stale_and_repeated_inputs_are_ignored() -> None:
     server = _server()
     pid = _join(server)

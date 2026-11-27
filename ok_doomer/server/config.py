@@ -15,6 +15,10 @@ class ServerConfig:
     # Inputs waiting per client. One is used per tick, so this caps the lag a
     # client sending too fast can build up (8 at 60 Hz: 133 ms).
     input_queue: int = 8
+    # Inputs left waiting after a tick's is taken: more are merged into it
+    # (presses kept), so a burst doesn't stand as lag. A little slack
+    # absorbs network jitter.
+    input_slack: int = 2
     # A client whose input is late: their last input is repeated for this
     # many ticks (smoothing over jitter), then they stand still.
     hold_ticks: int = 6

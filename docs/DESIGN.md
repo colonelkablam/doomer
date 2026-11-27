@@ -146,7 +146,12 @@ means adding a module and registering it, not editing a dozen files.
   wrong version, full), `receive(player_id, message)` and `leave`, and
   `tick()` at the tick rate, which returns what to send whom (each
   client's `Update`, same snapshot and events, its own `ack`). Inputs:
-  one queued input used per tick; repeats and stale ones (seq not newer)
+  one queued input used per tick; more than `input_slack` (2) left
+  waiting are merged into it (the later one's movement, a press of use
+  or jump from either), since one arrives and one's used each tick, so a
+  burst would otherwise stand as lag for good (measured: a 1.5 s first
+  frame left 6 queued, 152 ms from key to screen; merged, 52 ms); the
+  client also sends at most 2 inputs a frame; repeats and stale ones (seq not newer)
   ignored; the queue capped (`input_queue`, the oldest dropped, so a
   flooding client can't build up lag); a client with none queued has
   their last input repeated for `hold_ticks` (6: 100 ms, smoothing

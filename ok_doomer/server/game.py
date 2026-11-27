@@ -7,11 +7,14 @@ to whom. Timeouts are counted in ticks, so all of this is deterministic
 and tested without a network.
 
 Each tick, each client's oldest queued input is used (one per tick, so a
-tap of "use" shorter than a tick isn't lost). A client with nothing queued
+tap of "use" shorter than a tick isn't lost). More than `input_slack`
+left waiting are merged (presses kept): a backlog would otherwise stand,
+lag for good. A client with nothing queued
 has their last input repeated for `hold_ticks` (late packets don't make
 them stutter), then stands still (one who's dropped off doesn't walk on).
 """
 
+import dataclasses
 import logging
 from collections import deque
 from dataclasses import dataclass, field
@@ -55,6 +58,14 @@ class Client:
     ack: int = 0  # the last input applied
     newest: int = 0  # the newest input queued (older ones arriving are stale)
     last_heard: int = 0  # GameServer.ticks when a message last came from them
+
+
+def merge_inputs(earlier: Input, later: Input) -> Input:
+    """Two ticks' inputs as one: the later one's movement and view, and a
+    press of use or jump in either (so a tap isn't lost)."""
+    a, b = earlier.input, later.input
+    merged = dataclasses.replace(b, use=a.use or b.use, jump=a.jump or b.jump)
+    return Input(later.seq, merged)
 
 
 class GameServer:
@@ -145,6 +156,10 @@ class GameServer:
     def _next_input(self, client: Client) -> PlayerInput:
         if client.inputs:
             message = client.inputs.popleft()
+            # Don't let a backlog stand: it would be lag for good, since one
+            # input is used a tick and one arrives a tick. Merge the excess.
+            while len(client.inputs) > self.config.input_slack:
+                message = merge_inputs(message, client.inputs.popleft())
             client.ack = message.seq
             client.last_input, client.held_for = message.input, 0
             return message.input
