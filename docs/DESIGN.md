@@ -1181,6 +1181,28 @@ Noted at the end of a session, to pick up next:
      stands in until then), then a pull request of `claude/networking`
      into `main`; milestone 3b next (the crouch sprite's head above the
      body's height waits there: hit boxes).
+  5. **Playing over the internet, safely.** Recommended: no open port
+     at all, but a private encrypted network between the players
+     (Tailscale, or WireGuard / ZeroTier): install it on the Pi and each
+     player's machine, share the Pi, join its address (`--connect
+     100.x.y.z:5029`) as on the LAN. Nothing to scan or flood, only those
+     invited, encrypted, no router setup, and it works behind an ISP's
+     CGNAT (where forwarding a port is impossible). Where the server
+     stands today (reviewed): it never runs or loads anything a client
+     sends (messages only steer a player; maps are the server's own
+     files) and refuses malformed data, but anyone who finds the port
+     can join, traffic isn't encrypted, and floods aren't limited. If a
+     port is ever opened instead, build first: (a) a server password in
+     the hello; (b) TLS (`ssl`, asyncio has it), so the password isn't
+     sent in the clear; (c) flood limits: clients' lines capped at a few
+     KB (only the server sends big ones: maps), connections per address,
+     handshakes pending at once; (d) the server as a systemd service, an
+     unprivileged user, sandboxed (`NoNewPrivileges`, `ProtectSystem`);
+     (e) the router forwards TCP 5029 to the Pi and nothing else (never
+     SSH), the Pi kept updated. (a) and (c) are worth having on a LAN
+     too. Over the internet, prediction keeps your own movement prompt;
+     a lossy link stalls everything behind a lost packet (TCP): the lag
+     proxy's `--loss` shows what that's like.
   Also: `play.bat` for Windows (Setup below: double-click to play; once
   the start screen exists it needs no options). LAN discovery on
   Windows: a broadcast to 255.255.255.255 can leave by a virtual adapter
