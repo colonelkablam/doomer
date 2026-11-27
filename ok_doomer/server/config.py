@@ -9,6 +9,12 @@ from ok_doomer.shared.config import SimConfig
 class ServerConfig:
     host: str = "0.0.0.0"  # every interface: the LAN can reach it
     port: int = 5029
+    # What the game's called in others' lists of games found ("": this
+    # machine's name). Answer those looking for games on the LAN (UDP
+    # `discovery_port`), or not.
+    name: str = ""
+    discovery: bool = True
+    discovery_port: int = 5028
     storey: str = "G"  # the floor the game starts on (shared/building.py)
     mode: str = "coop"
     max_players: int = 8

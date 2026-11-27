@@ -39,7 +39,7 @@ from ok_doomer.shared.snapshot import Row, Snapshot
 # with the versions, rather than half-work (version 1 servers sent no join
 # events: newer clients joined them and never heard who came and went).
 # tests/test_protocol.py pins schema_fingerprint() to each version.
-PROTOCOL_VERSION = 2
+PROTOCOL_VERSION = 3
 MAX_LINE = 1 << 20  # bytes: the longest line either side accepts (a map is ~20 KB)
 
 
@@ -115,9 +115,39 @@ class Bye:
     reason: str = ""
 
 
-Message = Hello | Welcome | Reject | Input | Update | NewFloor | Bye
+@dataclass(frozen=True, slots=True)
+class Seek:
+    """Finding games (UDP, broadcast on DISCOVERY_PORT): "who's running a
+    game?" Servers answer with a GameInfo."""
+
+    TYPE: ClassVar[str] = "seek"
+    version: int
+
+
+@dataclass(frozen=True, slots=True)
+class GameInfo:
+    """A server's answer to a Seek: what's running, and how to join it (TCP
+    `port` at the address it answered from). `server_id`: random, so one
+    game heard two ways (the LAN and this machine) is listed once."""
+
+    TYPE: ClassVar[str] = "game"
+    version: int
+    server_id: str
+    name: str  # the server's (its machine's name, unless set)
+    floor: str  # what it's called: GROUND FLOOR
+    map_name: str
+    mode: str
+    players: int
+    max_players: int
+    port: int
+
+
+DISCOVERY_PORT = 5028  # UDP: Seek and GameInfo; the game itself is TCP (5029)
+MAX_DATAGRAM = 1024  # bytes: a Seek or a GameInfo is far smaller
+
+Message = Hello | Welcome | Reject | Input | Update | NewFloor | Bye | Seek | GameInfo
 MESSAGES: dict[str, type[Message]] = {
-    m.TYPE: m for m in (Hello, Welcome, Reject, Input, Update, NewFloor, Bye)
+    m.TYPE: m for m in (Hello, Welcome, Reject, Input, Update, NewFloor, Bye, Seek, GameInfo)
 }
 
 
@@ -227,6 +257,20 @@ def _message_from_dict(kind: type[Message], d: dict[str, Any]) -> Message:
         return NewFloor(_str(d["map_text"]))
     if kind is Bye:
         return Bye(_str(d.get("reason", "")))
+    if kind is Seek:
+        return Seek(_int(d["version"]))
+    if kind is GameInfo:
+        return GameInfo(
+            _int(d["version"]),
+            _str(d["server_id"]),
+            _str(d["name"]),
+            _str(d["floor"]),
+            _str(d["map_name"]),
+            _str(d["mode"]),
+            _int(d["players"]),
+            _int(d["max_players"]),
+            _int(d["port"]),
+        )
     raise ProtocolError(f"no decoder for {kind.TYPE}")  # pragma: no cover
 
 

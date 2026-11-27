@@ -49,7 +49,12 @@ Run a server, then join it from the game (and add bots to have company):
 .venv/bin/python -m ok_doomer.bot --connect 127.0.0.1:5029 --count 3
 ```
 
-From another machine, use the server's IP address instead of 127.0.0.1.
+From another machine, use the server's IP address instead of 127.0.0.1. To see
+the games running on your network (servers answer on UDP port 5028):
+
+```bash
+.venv/bin/python -m ok_doomer.client --find
+```
 
 To feel a slower network on one machine, put the lag proxy in between and
 join its port instead (here 30 ms each way, up to 10 ms of jitter, 1% of

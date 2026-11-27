@@ -54,7 +54,9 @@ def main(argv: list[str] | None = None) -> int:
 
     async def serve() -> None:
         server = TcpServer(game)
-        await server.start(config.host, config.port)
+        await server.start(
+            config.host, config.port, config.discovery_port if config.discovery else None
+        )
         serving = asyncio.ensure_future(server.serve_forever())
         if sys.platform != "win32":  # systemd stops a service with SIGTERM: stop cleanly
             asyncio.get_running_loop().add_signal_handler(signal.SIGTERM, serving.cancel)

@@ -19,12 +19,14 @@ from ok_doomer.shared.protocol import (
     MESSAGES,
     PROTOCOL_VERSION,
     Bye,
+    GameInfo,
     Hello,
     Input,
     Message,
     NewFloor,
     ProtocolError,
     Reject,
+    Seek,
     Update,
     Welcome,
     decode,
@@ -88,6 +90,18 @@ def _messages() -> list[Message]:
         ),
         NewFloor(floor_map_path("1").read_text()),
         Bye("quit"),
+        Seek(PROTOCOL_VERSION),
+        GameInfo(
+            PROTOCOL_VERSION,
+            "a1b2c3d4",
+            "fedora",
+            "GROUND FLOOR",
+            "Ground Floor",
+            "coop",
+            2,
+            8,
+            5029,
+        ),
     ]
 
 
@@ -199,7 +213,7 @@ def test_the_encoder_makes_the_same_bytes_encoding_each_update_once() -> None:
 # test fails, the format changed: bump PROTOCOL_VERSION in
 # shared/protocol.py and add the new fingerprint here, so clients and
 # servers of different code refuse each other rather than half-work.
-SCHEMAS = {2: "6b6a0110ae9d06cc"}
+SCHEMAS = {2: "6b6a0110ae9d06cc", 3: "f5e7075b9ab47b90"}
 
 
 def test_the_wire_format_matches_its_version() -> None:

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from ok_doomer.client.app import run
 from ok_doomer.client.config import ClientConfig
+from ok_doomer.client.discovery import find
 from ok_doomer.client.local import LocalSession
 from ok_doomer.client.network import JoinFailed, NetworkSession
 from ok_doomer.client.session import GameSession
@@ -27,11 +28,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", type=Path, help="TOML file overriding client settings")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--connect", metavar="HOST:PORT", help="join a server instead")
+    parser.add_argument("--find", action="store_true", help="list games on the LAN, and stop")
     parser.add_argument(
         "--no-predict", action="store_true", help="on a server: wait for it to move you"
     )
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+
+    if args.find:
+        games = find()
+        for game in games:
+            print(game.describe())
+        if not games:
+            print("No games found on this network. (Is a server running? Wi-Fi guest")
+            print("networks block this: join by address with --connect HOST:PORT.)")
+        return 0
 
     session: GameSession
     try:

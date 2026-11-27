@@ -16,11 +16,15 @@ import contextlib
 import logging
 import socket
 
+from ok_doomer.server.discovery import new_server_id, server_name, start_responder
 from ok_doomer.server.game import GameServer
+from ok_doomer.shared.building import floor_name
 from ok_doomer.shared.protocol import (
     MAX_LINE,
+    PROTOCOL_VERSION,
     Bye,
     Encoder,
+    GameInfo,
     Hello,
     Message,
     ProtocolError,
@@ -40,6 +44,8 @@ MAX_BEHIND = 8  # ticks: further behind than this (a stall), skip ahead
 class TcpServer:
     def __init__(self, game: GameServer) -> None:
         self.game = game
+        self.server_id = new_server_id()
+        self._discovery: asyncio.DatagramTransport | None = None
         self.writers: dict[int, asyncio.StreamWriter] = {}
         self._server: asyncio.Server | None = None
         self._ticker: asyncio.Task[None] | None = None
@@ -51,12 +57,40 @@ class TcpServer:
         port: int = self._server.sockets[0].getsockname()[1]
         return port
 
-    async def start(self, host: str, port: int) -> None:
+    async def start(self, host: str, port: int, discovery_port: int | None = None) -> None:
+        """Listen for players on TCP `port`; and, given `discovery_port`,
+        answer those looking for games on the LAN (server/discovery.py)."""
         self._server = await asyncio.start_server(self._connection, host, port, limit=MAX_LINE + 1)
         self._ticker = asyncio.create_task(self._tick_loop())
         log.info("listening on %s:%d", host, self.port)
+        if discovery_port is not None:
+            self._discovery, _ = await start_responder(self.describe, host, discovery_port)
+
+    @property
+    def discovery_port(self) -> int | None:
+        if self._discovery is None:
+            return None
+        port: int = self._discovery.get_extra_info("sockname")[1]
+        return port
+
+    def describe(self) -> GameInfo:
+        """The game as it is now, for those looking for one."""
+        world = self.game.world
+        return GameInfo(
+            PROTOCOL_VERSION,
+            self.server_id,
+            server_name(self.game.config.name),
+            floor_name(world.map.storey),
+            world.map.name,
+            world.mode,
+            len(self.game.clients),
+            self.game.config.max_players,
+            self.port,
+        )
 
     async def close(self, reason: str = "the server's shutting down") -> None:
+        if self._discovery is not None:
+            self._discovery.close()
         if self._ticker is not None:
             self._ticker.cancel()
             with contextlib.suppress(asyncio.CancelledError):

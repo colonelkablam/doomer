@@ -283,6 +283,24 @@ means adding a module and registering it, not editing a dozen files.
   before it's scaled (chunky, like the rest): the 3x5 pixel font in
   capitals, phosphor green on a black panel, a terminal readout
   (`name_scale`, `name_panel` in the client's `[render]` config).
+- **Finding games on the LAN** (protocol 3: `Seek`, `GameInfo`). A client
+  asks, by UDP broadcast on 5028 (`client/discovery.py`, `GameFinder`);
+  every server that hears answers the asker directly with its name
+  (`ServerConfig.name`, else the machine's), floor, map, mode, players
+  and TCP port (`server/discovery.py`, started by `TcpServer.start` given
+  a discovery port; `discovery = false` turns it off). Asking rather than
+  announcing: the list is there as soon as someone looks, and servers
+  say nothing while nobody does. Seeks go to 255.255.255.255, each local
+  network's own broadcast address (/24 assumed: the standard library
+  can't ask for a netmask; on Windows the first can leave by a virtual
+  adapter) and 127.0.0.1 (a game on this machine). A game heard two ways
+  is listed once (`server_id`), by its LAN address; one silent for 3 s is
+  forgotten; one from other code is listed as needing updating (its
+  version and name are read before the rest, which may not decode). The
+  responder can't be used to flood: datagrams over 1 KB ignored, small
+  replies, one address answered at most every 0.2 s. `python -m
+  ok_doomer.client --find` lists what it hears. Wi-Fi with AP isolation
+  passes no broadcasts: join by address there.
 - **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
   blocking (a lost packet holds up everything behind it until resent),
   matters on the internet, not here. Framing and encoding stay behind
@@ -1166,7 +1184,9 @@ Noted at the end of a session, to pick up next:
   TCP, bots, the networked client, lag measured and prediction, then
   single-player on the in-process server, the CPU cut, the lag proxy and
   F3 stats, who's here and names). To do, in this order:
-  1. **Host from the game, find games on the LAN, a start screen.** Host
+  1. **Host from the game, find games on the LAN, a start screen.**
+     [finding games: built (Networking above); the start screen and
+     hosting to do] Host
      = `LocalSession`'s in-process server plus a TCP listener (no Pi or
      server terminal needed). Servers announce themselves by UDP
      broadcast about once a second; clients list what they hear (Fedora's
