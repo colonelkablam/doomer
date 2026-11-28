@@ -442,9 +442,13 @@ milestone 3b. Choices still open are marked [open].
   run at the lobby of the floor the team's on (its arrival lift lobby,
   its `coop_start`: where a newcomer already appears today), with full
   health and your class's basic weapon. One world a run: the server keeps
-  a single floor's world, as now. [open] A newcomer mid-run has no class
-  yet (classes are chosen on the start floor, below): a default class, a
-  quick choice on joining, or the class from their last run.
+  a single floor's world, as now. A newcomer mid-run (no class yet:
+  classes are chosen on the start floor, below) plays the class from
+  their last run (decided; kept simple: a quick choice on joining may
+  come later). So the client remembers the last class played
+  (`client/settings.py`, as the name) and says it when joining (a field
+  in `Hello`: a protocol version bump); never having played, a default
+  class [open: which].
 - **The lift on generated floors.** Today it goes when *everyone* is in
   the car: one player far off or idle holds the team. Recommended: once
   most are aboard, a countdown (~10 s), then it goes, and anyone not
