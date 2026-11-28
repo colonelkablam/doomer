@@ -17,10 +17,18 @@ the game joining it, and bots.
 ## Play (Linux)
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+git clone https://github.com/colonelkablam/ok-doomer.git ~/ok-doomer && ~/ok-doomer/play.sh
 ```
 
+`play.sh` is the Linux twin of `play.bat`: the first run sets up Python's
+environment and adds *OK Doomer*, with its icon, to the applications menu
+(once: delete `.shortcut-made` to have it added again); every run updates
+the game first (from the branch the folder is on: keep a folder for playing
+on `main`), then starts it. From the menu, its output goes to
+`~/.ok-doomer/play.log`. By hand instead:
+
 ```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m ok_doomer.client
 ```
 
@@ -55,7 +63,7 @@ Then double-click `play.bat` in that folder. The first run sets itself up
 on the desktop (once: delete `.shortcut-made` to have it made again); every
 run updates the game first, so everyone's on the same version. The icon is
 made from the player sprite: `python -m ok_doomer.client.icon` remakes
-`ok-doomer.ico`. Hosting a game: when Windows Defender Firewall asks,
+`ok-doomer.ico` (and `ok-doomer.png`, Linux's). Hosting a game: when Windows Defender Firewall asks,
 allow Python on *Private* networks, and make sure your Wi-Fi is a Private
 network (Settings, Network & internet, its properties), not Public.
 

@@ -45,3 +45,14 @@ def test_the_committed_icon_is_the_generators() -> None:
         pygame.quit()
     committed = Path(DEFAULT_OUT).read_bytes()
     assert [s for s, _ in _entries(committed)] == [s for s, _ in _entries(made)]
+
+
+def test_the_committed_png_is_the_linux_menus_size() -> None:
+    from ok_doomer.client.icon import DEFAULT_PNG, PNG_SIZE
+
+    pygame.init()
+    try:
+        image = pygame.image.load(DEFAULT_PNG)
+        assert image.get_size() == (PNG_SIZE, PNG_SIZE)
+    finally:
+        pygame.quit()

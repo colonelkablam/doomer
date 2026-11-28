@@ -1,14 +1,16 @@
 """The game's icon: the office worker's head and shoulders (the player
-sprite, client/sprites.py) on the menu's navy, as a Windows .ico.
+sprite, client/sprites.py) on the menu's navy: a Windows .ico, and a PNG for Linux's
+menus (a .desktop file's Icon=).
 
-    python -m ok_doomer.client.icon [--out ok-doomer.ico]
+    python -m ok_doomer.client.icon [--out ok-doomer.ico] [--png ok-doomer.png]
 
 An .ico holds the picture at several sizes and Windows picks the one it
 needs (16 in lists, 32 and 48 on the desktop, 256 in big views). Each is
 stored as a PNG inside the .ico (Windows Vista on reads them). Sizes below
 the sprite's own are scaled down smoothly (nearest-neighbour would drop
 whole rows of a 26-pixel face); the rest up, nearest-neighbour, keeping the
-pixel art's edges. play.bat makes the desktop shortcut that shows it.
+pixel art's edges. play.bat (Windows) and play.sh (Linux) make the
+shortcut that shows it.
 """
 
 import argparse
@@ -27,6 +29,8 @@ SIZES = (16, 32, 48, 64, 128, 256)
 SHOULDERS = 18  # rows of the sprite, from the top of his hair down
 MARGIN = 2  # pixels of navy round him, at the sprite's own size
 DEFAULT_OUT = Path(__file__).resolve().parents[2] / "ok-doomer.ico"
+DEFAULT_PNG = DEFAULT_OUT.with_suffix(".png")
+PNG_SIZE = 256
 
 
 def portrait() -> pygame.Surface:
@@ -55,13 +59,15 @@ def sized(picture: pygame.Surface, size: int) -> pygame.Surface:
     return pygame.transform.scale(picture, (size, size))
 
 
+def png_bytes(picture: pygame.Surface, size: int) -> bytes:
+    buffer = io.BytesIO()
+    pygame.image.save(sized(picture, size), buffer, "icon.png")
+    return buffer.getvalue()
+
+
 def ico_bytes(picture: pygame.Surface, sizes: tuple[int, ...] = SIZES) -> bytes:
     """An .ico of `picture` at each of `sizes`, each a PNG."""
-    pngs = []
-    for size in sizes:
-        buffer = io.BytesIO()
-        pygame.image.save(sized(picture, size), buffer, "icon.png")
-        pngs.append(buffer.getvalue())
+    pngs = [png_bytes(picture, size) for size in sizes]
     header = struct.pack("<HHH", 0, 1, len(sizes))  # reserved, type 1 (icon), count
     offset = len(header) + 16 * len(sizes)
     entries = b""
@@ -75,13 +81,16 @@ def ico_bytes(picture: pygame.Surface, sizes: tuple[int, ...] = SIZES) -> bytes:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m ok_doomer.client.icon", description=__doc__)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument("--png", type=Path, default=DEFAULT_PNG)
     args = parser.parse_args(argv)
     pygame.init()
     try:
-        args.out.write_bytes(ico_bytes(portrait()))
+        picture = portrait()
+        args.out.write_bytes(ico_bytes(picture))
+        args.png.write_bytes(png_bytes(picture, PNG_SIZE))
     finally:
         pygame.quit()
-    print(f"wrote {args.out}")
+    print(f"wrote {args.out} and {args.png}")
     return 0
 
 
