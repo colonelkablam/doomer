@@ -421,9 +421,9 @@ milestone 3b. Choices still open are marked [open].
   with the next lift. A run going on with others in it: you join it, on
   their floor (policy below); you never restart it. A run going on with
   nobody left in it: it's abandoned, the server back in the lobby, so a
-  newcomer to an empty server always starts fresh; [open] after a short
-  grace (~30 s) so someone whose Wi-Fi dropped can get back in (the
-  rejoin to-do), or at once.
+  newcomer to an empty server always starts fresh, after a grace of 30 s
+  (someone whose Wi-Fi dropped can get back in: the rejoin to-do), the
+  server's log counting it down every 5 s while it's empty.
 - **The run's state, on the server** (beside `GameServer`; the current
   floor's `World` is one part of it): the run's seed, which floor of how
   many, and what each player carries from floor to floor (health and
@@ -436,23 +436,34 @@ milestone 3b. Choices still open are marked [open].
   So every client has the same floor, and a run is reproducible ("run
   41327, floor 3" replays exactly: bugs, and a seed of the week to
   compare). The boss floor can be hand-made, loaded the same way.
-- **Where you appear: one policy for joining mid-run and for coming back
-  after dying** (3b), decided once. Today a newcomer appears at the
+- **Dying: back to the lobby**, out of the run, for now (decided). Later,
+  maybe: you rejoin the team at the next floor if they clear theirs.
+- **Two worlds at once.** With the dead in the lobby while the team plays
+  on, the server runs the lobby's world and the run's floor side by side
+  (`GameServer` holds one world today: this changes it). Each client is
+  in one of them, and gets that one's map and snapshots; moving a player
+  between them is a floor change for that client alone (`NewFloor` to
+  them).
+- **Joining mid-run: where you appear.** Today a newcomer appears at the
   floor's start (its arrival lift), maybe far from the team, and the lift
-  waits for them. Recommended: beside a teammate (a clear spot near one,
-  as spawning already finds beside a start), with a few seconds' spawn
-  protection; arriving between floors or during the ride: in the lift,
-  as now. [open] After dying: back beside a teammate after a few seconds;
-  or revived by a teammate; or out until the next floor (harsher, more
-  tension).
+  waits for them. [open] Beside a teammate (a clear spot near one, as
+  spawning finds beside a start; a few seconds' spawn protection); or,
+  suggested since the lobby is where classes are chosen (below) and
+  where the dead go: newcomers start in the lobby too, choose a class,
+  and join the team at its next floor: the dead and the late handled the
+  same way.
 - **The lift on generated floors.** Today it goes when *everyone* is in
   the car: one player far off or idle holds the team. Recommended: once
   most are aboard, a countdown (~10 s), then it goes, and anyone not
-  aboard is carried along to the next floor anyway. [open] "Most": all
-  but one; or half; or all, with the countdown only as a last resort.
-- **What a newcomer carries.** [open] A starting kit (simple, fair; the
-  default until there are weapons), or a share of the team's (so a late
-  joiner on floor 5 isn't a burden).
+  aboard is carried along to the next floor anyway. "Most" is a majority:
+  more than half the players on the floor (decided).
+- **What you start a floor with, new to the run:** full health and your
+  class's basic starting weapon (decided; classes and weapons are 3b:
+  GAME.md, Player characters).
+- **Choosing a class on the first floor** [idea, more thought needed]:
+  the lobby floor as a staging area, where you choose your class by
+  going to different parts of the office and picking up its defining
+  weapon (GAME.md, Game loop).
 - **Order of building**, when it comes: the run state and the lobby (the
   lobby lift starting a run, back to the lobby at its end, a fixed list
   of hand-made floors standing in for generated ones); then the

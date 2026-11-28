@@ -116,12 +116,20 @@ floors to come).
 Planned, roughly in order [planned]:
 
 - **Lift music**, and a ding as the doors open (no sound yet).
-- **A start screen**: the title, start a game, (with networking) host or
-  join. Not needed while it's single-player from the command line.
+- **A start screen** [built]: the title, single player, host a game, join
+  one (found on the LAN, or an address), your name (DESIGN.md,
+  Networking).
 - **Later floors** reuse the loop with variations: a stairwell as an
   alternative exit, a different blocker (a jammed lift, a fire door).
 - **Enemies** on the route (see Enemies), so the passes and breaker are
   fought for, not just collected.
+- **Choosing your class on the first floor** [idea, more thought needed]:
+  the first floor as a staging area: go to different parts of the office
+  and pick up a class's defining weapon to become it (the IT Guy's
+  floppies in the server room, the Caretaker's mop in the plant room,
+  the Tea Trolley in the lounge, say). It changes the ground floor's role
+  (a puzzle today: passes, the breaker); runs start from it by lift and
+  the dead come back to it (DESIGN.md, Runs).
 - **Where you start** (open, revisit): the game starts in the ground-floor
   lobby for now. The basement mailroom (B1 in the floor order below) is
   undecided: maybe added later, e.g. reached by taking the lift down.
