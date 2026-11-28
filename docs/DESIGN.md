@@ -301,6 +301,14 @@ means adding a module and registering it, not editing a dozen files.
   replies, one address answered at most every 0.2 s. `python -m
   ok_doomer.client --find` lists what it hears. Wi-Fi with AP isolation
   passes no broadcasts: join by address there.
+- **Full screen, and freezes.** F11 (or Alt+Enter) switches the window's
+  mode in place (`pygame.display.toggle_fullscreen`); rebuilding it
+  (`set_mode` again, vsync requested again) froze on Windows, with no
+  message (kept only as a fallback where switching in place fails). A
+  freeze can't say where it is, so `client/watchdog.py` does: each frame
+  puts a deadline back; none for 10 s and Python's faulthandler writes
+  every thread's stack to `~/.ok-doomer/hang.log` (from a thread of its
+  own: it works while the game's is stuck inside SDL).
 - **The start screen** (`client/menu.py`; `python -m ok_doomer.client`
   with no map and no `--connect`, which still go straight in): SINGLE
   PLAYER, HOST GAME (to come), JOIN GAME (the games found, live, and an

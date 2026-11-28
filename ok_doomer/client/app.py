@@ -19,6 +19,7 @@ from ok_doomer.client.input import KeyboardMouseInput
 from ok_doomer.client.pixelart import FONT_5X7
 from ok_doomer.client.render import MAX_PITCH, Renderer, make_frame_surface
 from ok_doomer.client.session import GameSession
+from ok_doomer.client.watchdog import Watchdog
 
 log = logging.getLogger(__name__)
 
@@ -38,15 +39,29 @@ class Display:
         self.fullscreen = config.fullscreen
         self.window = _open_window(self.windowed_size, config.vsync, self.fullscreen)
         pygame.display.set_caption("OK Doomer")
+        self.watchdog = Watchdog()  # a freeze is logged: ~/.ok-doomer/hang.log
 
     def toggle_fullscreen(self) -> None:
+        """Full screen, or back to a window: the window's mode switched in
+        place. Rebuilding it (set_mode again, vsync and all) froze on
+        Windows; that's kept only for where switching in place isn't to be
+        had."""
         self.fullscreen = not self.fullscreen
-        self.window = _open_window(self.windowed_size, self.config.vsync, self.fullscreen)
+        try:
+            pygame.display.toggle_fullscreen()
+        except pygame.error as e:
+            log.info("switching in place failed (%s): making the window again", e)
+            self.window = _open_window(self.windowed_size, self.config.vsync, self.fullscreen)
+        self.window = pygame.display.get_surface() or self.window
+
+    def close(self) -> None:
+        self.watchdog.close()
 
     def show(self, frame: pygame.Surface) -> pygame.Surface:
         """The frame scaled into its place in the window (which may have been
         resized), black round it; that place, to draw more on before flip."""
         rc = self.config
+        self.watchdog.pet()  # frames are coming: not frozen
         self.window = pygame.display.get_surface() or self.window
         rect = view_rect(self.window.get_size(), (rc.width, rc.height), rc.integer_scaling)
         if rect.size != self.window.get_size():
@@ -65,9 +80,13 @@ class Display:
 def run(session: GameSession, config: ClientConfig, start_angle: float) -> None:
     """Play a session in a window of its own (no start screen), then close it."""
     pygame.init()
+    display: Display | None = None
     try:
-        play(Display(config.render), session, config, start_angle)
+        display = Display(config.render)
+        play(display, session, config, start_angle)
     finally:
+        if display is not None:
+            display.close()
         pygame.quit()
 
 

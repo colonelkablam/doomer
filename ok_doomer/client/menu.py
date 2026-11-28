@@ -369,6 +369,7 @@ def start(config: ClientConfig, name: str | None = None, predict: bool = True) -
     """The game: the start screen, a game, back to the start screen, until
     you quit."""
     pygame.init()
+    display: Display | None = None
     try:
         display = Display(config.render)
         menu = Menu(name or load_name())
@@ -405,4 +406,6 @@ def start(config: ClientConfig, name: str | None = None, predict: bool = True) -
                 return
             menu.go("main")
     finally:
+        if display is not None:
+            display.close()
         pygame.quit()
