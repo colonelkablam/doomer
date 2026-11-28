@@ -85,38 +85,41 @@ def test_a_server_that_wont_start_says_why(monkeypatch: pytest.MonkeyPatch) -> N
         HostedServer.start("ann's game")
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="checks the pid with POSIX signals")
-def test_it_never_outlives_the_game(tmp_path: Path) -> None:
-    """The game is killed outright (no chance to tidy up): the server it
-    hosted stops anyway, its pipe closing."""
-    script = tmp_path / "game.py"
-    script.write_text(
-        "import sys, time\n"
-        "from ok_doomer.client.hosting import HostedServer, free_port\n"
-        "host = HostedServer.start('ann', free_port(0))\n"
-        "print(host.process.pid, flush=True)\n"
-        "time.sleep(60)\n"
-    )
-    root = Path(hosting.__file__).resolve().parents[2]
-    env = {**os.environ, "PYTHONPATH": str(root), "HOME": str(tmp_path)}
-    game = subprocess.Popen([sys.executable, str(script)], stdout=subprocess.PIPE, env=env)
-    try:
-        assert game.stdout is not None
-        server_pid = int(game.stdout.readline())
-        os.kill(game.pid, signal.SIGKILL)  # the game dies
-        game.wait(5)
-        end = time.monotonic() + 10
-        while time.monotonic() < end:
-            try:
-                os.kill(server_pid, 0)  # still there?
-            except ProcessLookupError:
-                return  # gone: good
-            time.sleep(0.1)
-            with contextlib.suppress(ChildProcessError):
-                os.waitpid(server_pid, os.WNOHANG)  # (not our child: the game's)
-        pytest.fail("the hosted server outlived the game")
-    finally:
-        game.kill()
+# POSIX only (it kills by signal and checks the pid): defined only there,
+# so mypy, checking as Windows, doesn't look at it.
+if sys.platform != "win32":
+
+    def test_it_never_outlives_the_game(tmp_path: Path) -> None:
+        """The game is killed outright (no chance to tidy up): the server it
+        hosted stops anyway, its pipe closing."""
+        script = tmp_path / "game.py"
+        script.write_text(
+            "import sys, time\n"
+            "from ok_doomer.client.hosting import HostedServer, free_port\n"
+            "host = HostedServer.start('ann', free_port(0))\n"
+            "print(host.process.pid, flush=True)\n"
+            "time.sleep(60)\n"
+        )
+        root = Path(hosting.__file__).resolve().parents[2]
+        env = {**os.environ, "PYTHONPATH": str(root), "HOME": str(tmp_path)}
+        game = subprocess.Popen([sys.executable, str(script)], stdout=subprocess.PIPE, env=env)
+        try:
+            assert game.stdout is not None
+            server_pid = int(game.stdout.readline())
+            os.kill(game.pid, signal.SIGKILL)  # the game dies
+            game.wait(5)
+            end = time.monotonic() + 10
+            while time.monotonic() < end:
+                try:
+                    os.kill(server_pid, 0)  # still there?
+                except ProcessLookupError:
+                    return  # gone: good
+                time.sleep(0.1)
+                with contextlib.suppress(ChildProcessError):
+                    os.waitpid(server_pid, os.WNOHANG)  # (not our child: the game's)
+            pytest.fail("the hosted server outlived the game")
+        finally:
+            game.kill()
 
 
 def test_hosting_from_the_menu(monkeypatch: pytest.MonkeyPatch) -> None:

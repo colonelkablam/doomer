@@ -33,7 +33,15 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/mypy && .venv/bin/pytest -q
 ```
 
-All four checks must pass before committing. CI runs them on Linux and Windows.
+All four checks must pass before committing. CI runs them on Linux and Windows,
+so also type-check as Windows sees the code (code for one platform only must
+sit under `if sys.platform ...`, or mypy fails CI's Windows job):
+
+```bash
+.venv/bin/mypy --platform win32
+```
+
+After pushing, check CI's result (GitHub Actions) before building on it.
 
 ## Conventions
 
