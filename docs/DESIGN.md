@@ -1264,6 +1264,14 @@ Noted at the end of a session, to pick up next:
      too. Over the internet, prediction keeps your own movement prompt;
      a lossy link stalls everything behind a lost packet (TCP): the lag
      proxy's `--loss` shows what that's like.
+  Also, the host leaving (today: the game ends for everyone, as a "listen
+  server" does; fine for now): (a) a warning first, if others are in
+  ("LEAVING ENDS THE GAME FOR 2 OTHERS: LEAVE ANYWAY?"); (b) or keep
+  hosting when the host leaves: the server runs on for the others and
+  stops when the last has gone (still ends if the host's machine
+  crashes or loses power: a dedicated server, the Pi, is the answer for
+  games that mustn't depend on one player; host migration isn't worth
+  its complexity here).
   Also: `play.bat` for Windows (Setup below: double-click to play; once
   the start screen exists it needs no options). LAN discovery on
   Windows: a broadcast to 255.255.255.255 can leave by a virtual adapter
