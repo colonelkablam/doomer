@@ -399,6 +399,66 @@ means adding a module and registering it, not editing a dozen files.
   Build order: the data model now or with networking (so snapshots carry it
   from the start), damage and the HUD meters with weapons (3b).
 
+## Runs [planned]
+
+How a game goes, from the network's side. Nothing here is built yet
+beyond what Networking describes; it shapes the floor generator and
+milestone 3b. Choices still open are marked [open].
+
+- **A run** is one go at the game: the starting floor, then a number of
+  floors generated fresh for the run, then a boss floor; it ends with the
+  boss beaten or the whole team dead. The next go is a new run, new
+  floors (a roguelike's word for it, and its shape).
+- **The server's states.** *Lobby*: the starting floor (the ground floor,
+  hand-made), where an idle server sits and anyone joining arrives.
+  *In a run*: from the lobby's lift up to the end. Taking the lobby's lift
+  together *is* starting the game (no start button: the lift goes when
+  the team's aboard, as between floors now); floor 1 of a new run is
+  generated as it rises. The run over (won, lost, or everyone gone),
+  the server goes back to the lobby. A hosted game (HOST GAME) starts in
+  the lobby the same way; the dedicated server (the Pi) idles there.
+- **Joining.** The server in the lobby: you arrive in the lobby, and go
+  with the next lift. A run going on with others in it: you join it, on
+  their floor (policy below); you never restart it. A run going on with
+  nobody left in it: it's abandoned, the server back in the lobby, so a
+  newcomer to an empty server always starts fresh; [open] after a short
+  grace (~30 s) so someone whose Wi-Fi dropped can get back in (the
+  rejoin to-do), or at once.
+- **The run's state, on the server** (beside `GameServer`; the current
+  floor's `World` is one part of it): the run's seed, which floor of how
+  many, and what each player carries from floor to floor (health and
+  coffee now; weapons and ammo with 3b). It decides what the lift's next
+  floor is: generated, then the boss's.
+- **Floors generated on the server**, never the clients: from the run's
+  seed, by a generator in `shared` (standard library: the server runs it),
+  following LEVELS.md's rules, each map checked by `validate.py` before
+  it's played; sent as text in `NewFloor`, as hand-made floors are now.
+  So every client has the same floor, and a run is reproducible ("run
+  41327, floor 3" replays exactly: bugs, and a seed of the week to
+  compare). The boss floor can be hand-made, loaded the same way.
+- **Where you appear: one policy for joining mid-run and for coming back
+  after dying** (3b), decided once. Today a newcomer appears at the
+  floor's start (its arrival lift), maybe far from the team, and the lift
+  waits for them. Recommended: beside a teammate (a clear spot near one,
+  as spawning already finds beside a start), with a few seconds' spawn
+  protection; arriving between floors or during the ride: in the lift,
+  as now. [open] After dying: back beside a teammate after a few seconds;
+  or revived by a teammate; or out until the next floor (harsher, more
+  tension).
+- **The lift on generated floors.** Today it goes when *everyone* is in
+  the car: one player far off or idle holds the team. Recommended: once
+  most are aboard, a countdown (~10 s), then it goes, and anyone not
+  aboard is carried along to the next floor anyway. [open] "Most": all
+  but one; or half; or all, with the countdown only as a last resort.
+- **What a newcomer carries.** [open] A starting kit (simple, fair; the
+  default until there are weapons), or a share of the team's (so a late
+  joiner on floor 5 isn't a burden).
+- **Order of building**, when it comes: the run state and the lobby (the
+  lobby lift starting a run, back to the lobby at its end, a fixed list
+  of hand-made floors standing in for generated ones); then the
+  join/respawn policy and the lift countdown; then the generator (with
+  LEVELS.md); then the boss floor.
+
 ## Coordinates
 
 - Map units are cells. `x` increases to the right (east), `y` increases down
