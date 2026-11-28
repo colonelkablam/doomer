@@ -60,6 +60,11 @@ class GameSession(Protocol):
         """Your player id."""
         ...
 
+    def say(self, text: str) -> None:
+        """Chat to everyone in the game: it comes back, to everyone, as a
+        Chat event."""
+        ...
+
     def names(self) -> dict[int, str]:
         """Every player's name by id, including those who've left."""
         ...

@@ -30,4 +30,8 @@ class ServerConfig:
     hold_ticks: int = 6
     # A client not heard from for this long is dropped.
     timeout_seconds: float = 5.0
+    # Chat: at most this many messages from one player in this many
+    # seconds; more are dropped (a held key, a script, can't flood it).
+    chat_burst: int = 4
+    chat_window_seconds: float = 5.0
     sim: SimConfig = field(default_factory=SimConfig)

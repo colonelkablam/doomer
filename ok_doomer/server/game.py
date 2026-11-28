@@ -21,10 +21,11 @@ from dataclasses import dataclass, field
 
 from ok_doomer.server.config import ServerConfig
 from ok_doomer.shared.building import floor_map_text
-from ok_doomer.shared.events import Event, LevelComplete, PlayerJoined, PlayerLeft
+from ok_doomer.shared.events import Chat, Event, LevelComplete, PlayerJoined, PlayerLeft
 from ok_doomer.shared.mapfile import parse_map
 from ok_doomer.shared.player import PlayerInput
 from ok_doomer.shared.protocol import (
+    MAX_CHAT,
     PROTOCOL_VERSION,
     Bye,
     Hello,
@@ -32,6 +33,7 @@ from ok_doomer.shared.protocol import (
     Message,
     NewFloor,
     Reject,
+    Say,
     Update,
     Welcome,
 )
@@ -58,6 +60,15 @@ class Client:
     ack: int = 0  # the last input applied
     newest: int = 0  # the newest input queued (older ones arriving are stale)
     last_heard: int = 0  # GameServer.ticks when a message last came from them
+    said: deque[int] = field(default_factory=deque)  # GameServer.ticks of recent chat
+
+
+def tidy_chat(text: str) -> str:
+    """A chat message as everyone sees it: printable ASCII (anything else,
+    a control character, an escape sequence for a log's terminal, dropped),
+    spaces collapsed, MAX_CHAT long at most."""
+    kept = "".join(c if " " <= c <= "~" else " " if c.isspace() else "" for c in text)
+    return " ".join(kept.split())[:MAX_CHAT]
 
 
 def merge_inputs(earlier: Input, later: Input) -> Input:
@@ -123,10 +134,27 @@ class GameServer:
             client.inputs.append(message)
             while len(client.inputs) > self.config.input_queue:
                 client.inputs.popleft()  # sending too fast: drop the oldest
+        elif isinstance(message, Say):
+            self._say(client, message.text)
         elif isinstance(message, Bye):
             self.leave(player_id, message.reason or "left")
         else:
             log.warning("player %d sent a %s; ignored", player_id, message.TYPE)
+
+    def _say(self, client: Client, text: str) -> None:
+        """Chat, to everyone (as an event, in the next tick's Update)."""
+        text = tidy_chat(text)
+        if not text:
+            return
+        window = round(self.config.chat_window_seconds * self.config.sim.tick_rate)
+        while client.said and self.ticks - client.said[0] >= window:
+            client.said.popleft()
+        if len(client.said) >= self.config.chat_burst:
+            log.info("%s is chatting too fast: dropped %r", client.name, text)
+            return
+        client.said.append(self.ticks)
+        self.world.events.append(Chat(self.world.tick, client.player_id, client.name, text))
+        log.info("%s: %s", client.name, text)
 
     def leave(self, player_id: int, reason: str = "left") -> None:
         client = self.clients.pop(player_id, None)

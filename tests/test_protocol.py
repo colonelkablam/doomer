@@ -26,6 +26,7 @@ from ok_doomer.shared.protocol import (
     NewFloor,
     ProtocolError,
     Reject,
+    Say,
     Seek,
     Update,
     Welcome,
@@ -83,6 +84,7 @@ def _messages() -> list[Message]:
         ),
         Reject("server full"),
         Input(12, PlayerInput(0.5, -1.0, 1.25, -0.2, True, False, True)),
+        Say("anyone seen the red pass?"),
         Update(
             12,
             capture(world),
@@ -213,7 +215,7 @@ def test_the_encoder_makes_the_same_bytes_encoding_each_update_once() -> None:
 # test fails, the format changed: bump PROTOCOL_VERSION in
 # shared/protocol.py and add the new fingerprint here, so clients and
 # servers of different code refuse each other rather than half-work.
-SCHEMAS = {2: "6b6a0110ae9d06cc", 3: "f5e7075b9ab47b90"}
+SCHEMAS = {2: "6b6a0110ae9d06cc", 3: "f5e7075b9ab47b90", 4: "9cd0ecf69ddc54cd"}
 
 
 def test_the_wire_format_matches_its_version() -> None:

@@ -140,7 +140,10 @@ means adding a module and registering it, not editing a dozen files.
   and a test pins it to the version): `Hello(version,
   name)` -> `Welcome(player_id, mode, config, map_text)` or `Reject`;
   then `Input(seq, input)` from the client each tick and `Update(ack,
-  snapshot, events)` from the server each tick; `NewFloor(map_text)` when
+  snapshot, events)` from the server each tick; `Say(text)`, chat, from
+  the client whenever (version 4), which the server tidies (printable
+  ASCII, 80 characters), limits (4 in 5 s a player, more dropped) and
+  passes to everyone, the sender too, as a `Chat` event; `NewFloor(map_text)` when
   the lift arrives; `Bye(reason)` either way. One JSON object a line, a
   `type` key; `encode` and `decode` are the only way in or out. The
   config goes in the welcome so `step` runs the same on both sides.
@@ -1314,8 +1317,9 @@ Noted at the end of a session, to pick up next:
      and an address to type as a fallback).
   2. **Rejoin after a dropout**: back within ~30 s with the same name, you
      get your player back (where you were, health, coffee), not a respawn.
-  3. **Text chat**: T, type, Enter; a message type of its own, shown in
-     the HUD's stacked messages.
+  3. **Text chat** [built]: T, type, Enter (Esc drops it); `Say` to the
+     server, a `Chat` event to everyone, in the HUD's stacked messages
+     as "NAME: text" for 8 s. Keys typed aren't controls meanwhile.
   4. **Close the milestone**: the Pi over Wi-Fi tested (the lag proxy
      stands in until then), then a pull request of `claude/networking`
      into `main`; milestone 3b next (the crouch sprite's head above the
@@ -1344,7 +1348,9 @@ Noted at the end of a session, to pick up next:
      proxy's `--loss` shows what that's like.
   Also, the host leaving (today: the game ends for everyone, as a "listen
   server" does; fine for now): (a) a warning first, if others are in
-  ("LEAVING ENDS THE GAME FOR 2 OTHERS: LEAVE ANYWAY?"); (b) or keep
+  [built: with the mouse freed, the line that says Esc leaves says
+  instead "ESC ENDS THE GAME FOR 2 OTHERS - CLICK TO STAY"; closing the
+  window doesn't warn]; (b) or keep
   hosting when the host leaves: the server runs on for the others and
   stops when the last has gone (still ends if the host's machine
   crashes or loses power: a dedicated server, the Pi, is the answer for

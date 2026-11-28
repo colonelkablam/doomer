@@ -52,6 +52,7 @@ from ok_doomer.shared.protocol import (
     NewFloor,
     ProtocolError,
     Reject,
+    Say,
     Update,
     Welcome,
     decode,
@@ -392,6 +393,9 @@ class NetworkSession:
 
     def me(self) -> int:
         return self.mirror.player_id
+
+    def say(self, text: str) -> None:
+        self.connection.send(Say(text))
 
     def names(self) -> dict[int, str]:
         return dict(self._names)

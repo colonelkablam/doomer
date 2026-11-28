@@ -12,6 +12,7 @@ import math
 import pygame
 
 from ok_doomer.client.automap import RAY_STRIDE, Automap
+from ok_doomer.client.chat import ChatLine
 from ok_doomer.client.config import ClientConfig, RenderConfig
 from ok_doomer.client.console import Console
 from ok_doomer.client.hud import Hud, console_line, draw_name_tags, draw_text, name_tags
@@ -96,11 +97,13 @@ def play(
     config: ClientConfig,
     start_angle: float,
     greeting: str | None = None,
+    hosting: bool = False,
 ) -> bool:
     """Play a session in the display's window until it ends: True if the
     player closed the window (quit altogether), False if they left the game
     (Esc twice) or it ended (back to the start screen). `greeting`: a
-    message to start with (where others can join you, hosting)."""
+    message to start with (where others can join you, hosting). `hosting`:
+    leaving ends the game for everyone, so the second Esc's warning says so."""
     rc = config.render
     frame = make_frame_surface(rc)
     renderer = Renderer(rc, config.lighting if config.lighting.enabled else None)
@@ -114,6 +117,8 @@ def play(
     console = Console()  # backquote: every event, everyone's
     console_font = pygame.font.Font(None, 20)
     controls = KeyboardMouseInput(config.controls, start_angle, MAX_PITCH)
+    chat = ChatLine()  # T: type to everyone
+    chat_keys = {pygame.key.key_code(k) for k in config.controls.chat}
     controls.set_captured(True)
     clock = pygame.time.Clock()
     log.info(
@@ -130,6 +135,11 @@ def play(
             if event.type == pygame.KEYDOWN and _is_fullscreen_toggle(event):
                 display.toggle_fullscreen()
                 controls.set_captured(controls.captured)  # re-grab in the new window
+            elif event.type == pygame.KEYDOWN and chat.open:  # typing: keys are letters
+                if (said := chat.key(event.key, event.unicode)) is not None:
+                    session.say(said)
+            elif event.type == pygame.KEYDOWN and event.key in chat_keys:
+                chat.start()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if not controls.captured:
                     controls.set_captured(False)
@@ -150,7 +160,7 @@ def play(
             elif event.type == pygame.KEYDOWN and event.key in _ZOOM_KEYS:
                 automap.change_zoom(_ZOOM_KEYS[event.key])
 
-        player_input = controls.poll(real_dt)
+        player_input = controls.poll(real_dt, keyboard=not chat.open)
         now = pygame.time.get_ticks() / 1000.0
         floor = session.game_map
         events = session.update(real_dt, player_input)
@@ -185,6 +195,7 @@ def play(
         if show_map:
             automap.draw(pixels, camera.x, camera.y, camera.angle)
         hud.draw_frame(pixels, now, rc.message_scale)  # over the map too
+        chat.draw(pixels, rc.message_scale)
         corner = [f"{clock.get_fps():.0f} fps"] if rc.show_fps else []
         if show_net:
             corner += session.net_stats().lines()
@@ -192,7 +203,8 @@ def play(
             draw_text(pixels, text, FONT_5X7, 3, 9 + i * 10, centre=False)
         if not controls.captured:
             mid = rc.height // 2
-            draw_text(pixels, "Click to play - Esc to leave", FONT_5X7, rc.width / 2, mid + 3)
+            leaving = leave_warning(hosting, len(session.people()))
+            draw_text(pixels, leaving, FONT_5X7, rc.width / 2, mid + 3)
         del pixels  # unlock the surface
         # 8-bit frame -> window format, then nearest-neighbour scale into
         # the picture's place in the window (it may have been resized).
@@ -200,6 +212,14 @@ def play(
         hud.draw(view, session.passes())
         console.draw(view, console_font)
         pygame.display.flip()
+
+
+def leave_warning(hosting: bool, others: int) -> str:
+    """What's shown while the mouse is free: Esc again leaves. Hosting with
+    others in, it ends their game too: say so."""
+    if hosting and others:
+        return f"Esc ends the game for {others} other{'s' if others > 1 else ''} - click to stay"
+    return "Click to play - Esc to leave"
 
 
 # Zoom the automap in (+1) or out (-1).

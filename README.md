@@ -42,6 +42,7 @@ keys also work, Space to jump (you can get onto desks), Ctrl or C to crouch.
 Esc releases the mouse; Esc again quits. Click to recapture. F11 (or Alt+Enter)
 toggles full screen; the window can be resized too. Tab shows the map; F3 the
 network stats; the backquote key (`) a console of everything that happens.
+T to chat: type, Enter sends it to everyone (Esc drops it).
 
 Options: a map path as the first argument plays it straight away (no start
 screen), as does `--connect HOST:PORT`; `--mode coop|deathmatch`, `--name`,

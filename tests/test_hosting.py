@@ -134,9 +134,15 @@ def test_hosting_from_the_menu(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, Any] = {}
 
     def fake_play(
-        display: object, session: Any, config: object, angle: float, greeting: Any
+        display: object,
+        session: Any,
+        config: object,
+        angle: float,
+        greeting: Any,
+        hosting: bool = False,
     ) -> bool:
         seen["session"], seen["greeting"] = type(session).__name__, greeting
+        seen["hosting"] = hosting
         seen["players"] = len(session.mirror.world.players)
         return False
 
@@ -153,6 +159,6 @@ def test_hosting_from_the_menu(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(HostedServer, "start", classmethod(start))
     menu_mod.start(ClientConfig(render=RenderConfig(vsync=False)), "ann")
     (host,) = started
-    assert seen["session"] == "NetworkSession" and seen["players"] == 1
+    assert seen["session"] == "NetworkSession" and seen["players"] == 1 and seen["hosting"]
     assert seen["greeting"] == f"Hosting: others can join at {host.where()}"
     assert host.process.poll() is not None  # stopped on leaving

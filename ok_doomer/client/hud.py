@@ -19,6 +19,7 @@ from ok_doomer.client.render import Renderer
 from ok_doomer.shared.building import floor_name
 from ok_doomer.shared.dispensers import DISPENSERS
 from ok_doomer.shared.events import (
+    Chat,
     CubicleDoorUsed,
     Dispensed,
     DoorLocked,
@@ -36,6 +37,7 @@ from ok_doomer.shared.events import (
 from ok_doomer.shared.mapfile import GameMap
 
 MESSAGE_SECONDS = 3.0
+CHAT_SECONDS = 8.0  # chat stays longer: it's read, not glanced at
 MAX_MESSAGES = 6  # shown at once, stacked (the default: RenderConfig.max_messages)
 TITLE_SECONDS = 3.0  # a floor's name, as you arrive on it
 PASS_COLOURS_RGB = {"blue": (90, 140, 240), "red": (230, 90, 70), "gold": (240, 210, 90)}
@@ -84,7 +86,7 @@ def console_line(event: Event, names: Mapping[int, str]) -> str:
         fields.pop("player_id", None)
         text = type(event).__name__ + "".join(f" {k}={v}" for k, v in fields.items())
     who = getattr(event, "player_id", None)
-    if who is None or isinstance(event, PlayerJoined | PlayerLeft):
+    if who is None or isinstance(event, PlayerJoined | PlayerLeft | Chat):
         return f"[{event.tick}] {text}"
     return f"[{event.tick}] {names.get(who, f'player {who}')}: {text}"
 
@@ -114,6 +116,8 @@ def message_for(event: Event) -> str | None:
         return "The lift has no power"
     if isinstance(event, LiftCalled):
         return "The lift's on its way"
+    if isinstance(event, Chat):
+        return f"{event.name}: {event.text}"
     if isinstance(event, PlayerJoined):
         return f"{event.name} joined"
     if isinstance(event, PlayersHere):
@@ -296,7 +300,8 @@ class Hud:
                 self.complete = True  # the top of what's built
             text = message_for(event) if me is None else news_for(event, me, names or {})
             if text is not None:
-                self._messages.append((text, now + MESSAGE_SECONDS))
+                seconds = CHAT_SECONDS if isinstance(event, Chat) else MESSAGE_SECONDS
+                self._messages.append((text, now + seconds))
         self._messages = [m for m in self._messages if m[1] > now][-self.max_messages :]
 
     def say(self, text: str, now: float, seconds: float = MESSAGE_SECONDS) -> None:

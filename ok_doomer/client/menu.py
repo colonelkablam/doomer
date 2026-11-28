@@ -397,7 +397,8 @@ def start(config: ClientConfig, name: str | None = None, predict: bool = True) -
                 menu.message = str(e)
                 continue
             try:
-                quit_all = play(display, session, config, session.spawn_angle(), greeting)
+                angle = session.spawn_angle()
+                quit_all = play(display, session, config, angle, greeting, hosting=host is not None)
             finally:
                 session.close()
                 if host is not None:

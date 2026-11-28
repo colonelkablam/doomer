@@ -138,6 +138,16 @@ class PlayerLeft(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class Chat(Event):
+    """Someone said something (T, in the game), to everyone: the server
+    passes on a Say, tidied."""
+
+    player_id: int
+    name: str
+    text: str
+
+
+@dataclass(frozen=True, slots=True)
 class PlayersHere(Event):
     """Who was already in the game when you joined (the client says, from
     the first update: for the HUD)."""

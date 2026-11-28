@@ -147,8 +147,14 @@ def test_start_goes_menu_game_menu(monkeypatch: pytest.MonkeyPatch) -> None:
     played: list[str] = []
 
     def fake_play(
-        display: object, session: object, config: object, angle: float, greeting: object = None
+        display: object,
+        session: object,
+        config: object,
+        angle: float,
+        greeting: object = None,
+        hosting: bool = False,
     ) -> bool:
+        assert not hosting
         played.append(type(session).__name__)
         return False  # left the game: back to the menu
 
