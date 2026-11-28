@@ -1350,7 +1350,8 @@ Noted at the end of a session, to pick up next:
   crashes or loses power: a dedicated server, the Pi, is the answer for
   games that mustn't depend on one player; host migration isn't worth
   its complexity here).
-  Also: `play.bat` for Windows [built] (Setup below). LAN discovery on
+  Also: `play.bat` for Windows [built] (Setup below), and its Linux twin
+  `play.sh` [built] (adds an applications-menu entry, `.desktop`, once). LAN discovery on
   Windows: a broadcast to 255.255.255.255 can leave by a virtual adapter
   (WSL, Hyper-V, a VPN), so send to each local network's own broadcast
   address too (e.g. 192.168.1.255); keep typing an address as the
