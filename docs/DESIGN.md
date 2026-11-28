@@ -1315,8 +1315,19 @@ Noted at the end of a session, to pick up next:
      firewall needs that port opened too). A start screen in the green
      terminal style: SINGLE PLAYER / HOST GAME / JOIN GAME (games found,
      and an address to type as a fallback).
-  2. **Rejoin after a dropout**: back within ~30 s with the same name, you
-     get your player back (where you were, health, coffee), not a respawn.
+  2. **Rejoin after a dropout** [built]: back within 30 s
+     (`ServerConfig.rejoin_seconds`) with the same name (any case), you
+     get your player back (where you were, health, coffee; beside it if
+     someone's there now), under a new id (ids aren't reused, so a late
+     message from the old connection can't reach the new one); HUD: "ANN
+     REJOINED". The server keeps who left (`GameServer.departed`, by name)
+     until then, or a new floor. Back before the old connection's timed
+     out (a Wi-Fi blip: it's only gone quiet): a join with the name of
+     someone silent for 1 s replaces them (`PlayerLeft` "reconnected", not
+     news). The start screen offers REJOIN GAME for the 30 s after a game
+     joined (selected, and why, if you dropped; not after the server shut
+     down). The name is the key: fine on a LAN; over the internet, with
+     the password and TLS (5 below), a token from the server instead.
   3. **Text chat** [built]: T, type, Enter (Esc drops it); `Say` to the
      server, a `Chat` event to everyone, in the HUD's stacked messages
      as "NAME: text" for 8 s. Keys typed aren't controls meanwhile.

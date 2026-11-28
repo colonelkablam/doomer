@@ -4,7 +4,9 @@ Green terminal text on navy, down the left; on the right one of the
 game's own objects turning (client/showcase.py). Keys (arrows or W/S,
 Enter, Esc) or the mouse. JOIN GAME lists the games found on the LAN
 (client/discovery.py), live, and takes an address typed instead. Your name
-is remembered (client/settings.py). Leaving a game comes back here.
+is remembered (client/settings.py). Leaving a game comes back here; after
+a game joined, REJOIN GAME is offered for as long as the server keeps
+your player (ServerConfig.rejoin_seconds): back where you were.
 
 `Menu` is the state (which screen, what's selected, what's being typed)
 and what keys and clicks do to it, separate from pygame's loop, so it's
@@ -31,6 +33,8 @@ from ok_doomer.client.render import make_frame_surface
 from ok_doomer.client.session import GameSession
 from ok_doomer.client.settings import MAX_NAME, load_name, save_name
 from ok_doomer.client.showcase import Showcase
+from ok_doomer.server.config import ServerConfig
+from ok_doomer.server.net import SHUTTING_DOWN
 from ok_doomer.shared.building import floor_map_text
 from ok_doomer.shared.protocol import DISCOVERY_PORT
 
@@ -44,6 +48,7 @@ BACKGROUND = colour_index(BLUE, 1)  # navy: green reads well on it
 LEFT = 14  # where the items start, frame pixels from the left
 OBJECT_AT = (250, 112)  # the turning object's middle
 NAME_CHARS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -'.")
+REJOIN_SECONDS = ServerConfig().rejoin_seconds  # as long as a server keeps you
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,10 +110,39 @@ class Menu:
         self.message = ""  # a line under the items: why a join failed
         self.games: list[FoundGame] = []
         self.rows: list[tuple[int, int]] = []  # each item's rows, as last drawn (for the mouse)
+        self.rejoin: JoinGame | None = None  # the game just left, while it keeps your player
+        self.rejoin_until = 0.0
+        self._rejoin_message = ""
+
+    def offer_rejoin(self, game: JoinGame, dropped: str | None, now: float) -> None:
+        """You've just left `game`: REJOIN GAME, at the top, for a while.
+        `dropped`: why, if you didn't choose to (then it's selected, and
+        said)."""
+        self.rejoin, self.rejoin_until = game, now + REJOIN_SECONDS
+        self.go("main")
+        if dropped:
+            self.message = self._rejoin_message = (
+                f"{dropped} - rejoin within {REJOIN_SECONDS:.0f} seconds to carry on where you were"
+            )
+        else:
+            self.selected = 1  # you left: SINGLE PLAYER, as usual
+
+    def expire(self, now: float) -> None:
+        """The server's forgotten you by now: no more REJOIN."""
+        if self.rejoin is not None and now >= self.rejoin_until:
+            action = self.items()[self.selected].action
+            self.rejoin = None
+            if self.message == self._rejoin_message:
+                self.message = ""
+            if self.screen == "main":
+                actions = [i.action for i in self.items()]
+                self.selected = actions.index(action) if action in actions else 0
 
     def items(self) -> list[Item]:
         if self.screen == "main":
+            rejoin = [Item("REJOIN GAME", "rejoin")] if self.rejoin is not None else []
             return [
+                *rejoin,
                 Item("SINGLE PLAYER", "single"),
                 Item("HOST GAME", "host"),
                 Item("JOIN GAME", "join"),
@@ -169,6 +203,8 @@ class Menu:
             return HostGame()
         if action == "quit":
             return Quit()
+        if action == "rejoin":
+            return self.rejoin
         if action == "join":
             self.go("join")
         elif action == "name":
@@ -190,7 +226,7 @@ class Menu:
             self.name = " ".join(self.typing.split())[:MAX_NAME] or self.name
             save_name(self.name)
             self.go("main")
-            self.selected = 3
+            self.selected = [i.action for i in self.items()].index("name")
             return None
         address = parse_address(self.typing)
         if address is None:
@@ -313,6 +349,7 @@ def run_menu(
         while True:
             clock.tick(min(rc.max_fps or 60, 60))
             now = pygame.time.get_ticks() / 1000.0
+            menu.expire(now)
             for event in pygame.event.get():
                 choice: Choice | None = None
                 if event.type == pygame.QUIT:
@@ -399,13 +436,19 @@ def start(config: ClientConfig, name: str | None = None, predict: bool = True) -
             try:
                 angle = session.spawn_angle()
                 quit_all = play(display, session, config, angle, greeting, hosting=host is not None)
+                dropped = session.ended()
             finally:
                 session.close()
                 if host is not None:
                     host.stop()  # everyone's told the game's over
             if quit_all:
                 return
-            menu.go("main")
+            if isinstance(choice, JoinGame) and dropped != SHUTTING_DOWN:
+                menu.offer_rejoin(choice, dropped, pygame.time.get_ticks() / 1000.0)
+            else:
+                if isinstance(choice, JoinGame):
+                    menu.rejoin = None  # that game's over: nothing to rejoin
+                menu.go("main")
     finally:
         if display is not None:
             display.close()

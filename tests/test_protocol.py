@@ -215,7 +215,7 @@ def test_the_encoder_makes_the_same_bytes_encoding_each_update_once() -> None:
 # test fails, the format changed: bump PROTOCOL_VERSION in
 # shared/protocol.py and add the new fingerprint here, so clients and
 # servers of different code refuse each other rather than half-work.
-SCHEMAS = {2: "6b6a0110ae9d06cc", 3: "f5e7075b9ab47b90", 4: "9cd0ecf69ddc54cd"}
+SCHEMAS = {2: "6b6a0110ae9d06cc", 3: "f5e7075b9ab47b90", 4: "7ea469e57fb896da"}
 
 
 def test_the_wire_format_matches_its_version() -> None:

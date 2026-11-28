@@ -121,16 +121,19 @@ class PlayerSpawned(Event):
 
 @dataclass(frozen=True, slots=True)
 class PlayerJoined(Event):
-    """Someone joined the game (the server says; the HUD tells the rest)."""
+    """Someone joined the game (the server says; the HUD tells the rest).
+    `rejoined`: they'd left a moment ago and have their player back."""
 
     player_id: int
     name: str
+    rejoined: bool = False
 
 
 @dataclass(frozen=True, slots=True)
 class PlayerLeft(Event):
     """Someone left: `reason` "left" (they quit), "timed out", "disconnected",
-    "too far behind"."""
+    "too far behind", "reconnected" (back on a new connection: the old one's
+    dropped, and a PlayerJoined, rejoined, follows)."""
 
     player_id: int
     name: str

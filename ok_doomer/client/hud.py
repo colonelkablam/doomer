@@ -73,6 +73,8 @@ def news_for(event: Event, me: int, names: Mapping[int, str]) -> str | None:
         return f"{names.get(event.player_id, 'Someone')} picked up the {event.colour} pass"
     if isinstance(event, PERSONAL) and who != me:
         return None
+    if isinstance(event, PlayerLeft) and event.reason == "reconnected":
+        return None  # "rejoined" follows at once: that's the news
     return message_for(event)
 
 
@@ -119,7 +121,7 @@ def message_for(event: Event) -> str | None:
     if isinstance(event, Chat):
         return f"{event.name}: {event.text}"
     if isinstance(event, PlayerJoined):
-        return f"{event.name} joined"
+        return f"{event.name} {'rejoined' if event.rejoined else 'joined'}"
     if isinstance(event, PlayersHere):
         return "Here: " + ", ".join(event.names)
     if isinstance(event, PlayerLeft):
