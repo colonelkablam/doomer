@@ -303,8 +303,10 @@ means adding a module and registering it, not editing a dozen files.
   passes no broadcasts: join by address there.
 - **Full screen, and freezes.** F11 (or Alt+Enter) switches the window's
   mode in place (`pygame.display.toggle_fullscreen`); rebuilding it
-  (`set_mode` again, vsync requested again) froze on Windows, with no
-  message (kept only as a fallback where switching in place fails). A
+  (`set_mode` again, vsync requested again) froze on Windows going into
+  full screen, with no message; switching in place fixed it (confirmed on
+  Windows). Rebuilding is kept only as a fallback where switching in
+  place fails. A
   freeze can't say where it is, so `client/watchdog.py` does: each frame
   puts a deadline back; none for 10 s and Python's faulthandler writes
   every thread's stack to `~/.ok-doomer/hang.log` (from a thread of its
