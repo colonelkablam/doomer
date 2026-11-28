@@ -214,6 +214,7 @@ def play(
         if show_map:
             automap.draw(pixels, camera.x, camera.y, camera.angle)
         hud.draw_frame(pixels, now, rc.message_scale)  # over the map too
+        hud.draw_status(pixels, session.you(), session.respawn_in(), rc.message_scale)
         chat.draw(pixels, rc.message_scale)
         corner = [f"{clock.get_fps():.0f} fps"] if rc.show_fps else []
         if show_net:

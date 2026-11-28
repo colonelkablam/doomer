@@ -1133,6 +1133,32 @@ surface is still a single lookup.
 4. Dynamic: power events ✅ (emergency lighting until the breaker is
    thrown: see Power); flicker and muzzle flashes later.
 
+## Combat (milestone 3b)
+
+Built in steps on `claude/combat`:
+
+1. **Damage, death, respawn** [built] (`shared/combat.py`): `hurt(world,
+   victim, amount, by)`: coffee soaks a third of each hit while there's
+   any (`CombatConfig.coffee_soaks`), health takes the rest; `Hurt`. At
+   no health, `Died` (with both names: the killer may have left by the
+   time it's read): the killer's `frags` +1, a suicide -1, the world's
+   doing (`by` 0) nobody's. The dead (`PlayerState.respawn_at` >= 0)
+   don't act, in the server's step and the client's prediction alike
+   (no corpse drifting, then corrected), see from the floor, and aren't
+   drawn to others (no corpse sprite yet). The server's tick, after
+   `step`, brings back those whose `respawn_seconds` (3) are up
+   (`respawn_due`): full health, no coffee, at the campaign's start, or
+   in deathmatch the spawn farthest from the living (`place_player`).
+   The HUD: COFFEE and HEALTH bottom right; dead, "KILLED BY BOB" and
+   "BACK IN 3"; deaths are news ("BOB KILLED ANN", "YOU KILLED ANN").
+   Protocol 5 (`PlayerState` now in the fingerprint: snapshots carry
+   its fields as rows). Frag limit: `CombatConfig.frag_limit` (10), for
+   step 6.
+2. The weapon system (a registry), fire, cooldowns; a first weapon.
+3. Melee and cones. 4. Projectiles. 5. Classes. 6. Deathmatch playable
+   (scoreboard, the frag limit, a hand-made arena, bots that fight).
+   7. Specials.
+
 ## Gameplay defaults
 
 - Weapons: hitscan first (a server-side ray tested against players as circles;

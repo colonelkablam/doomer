@@ -16,6 +16,12 @@ class PlayerState:
     health: int = 100
     coffee: int = 0  # the armour meter, 0..MAX_COFFEE (GAME.md, Pickups)
     use_held: bool = False  # last tick's use button, so one press is one use
+    frags: int = 0  # deathmatch score: kills, less suicides
+    respawn_at: int = -1  # dead: the world tick they come back; -1 alive
+
+    @property
+    def dead(self) -> bool:
+        return self.respawn_at >= 0
 
 
 @dataclass(frozen=True, slots=True)

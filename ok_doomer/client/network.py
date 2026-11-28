@@ -41,7 +41,7 @@ from ok_doomer.shared.events import Event, PlayerJoined, PlayersHere
 from ok_doomer.shared.mapfile import GameMap
 from ok_doomer.shared.mirror import WorldMirror
 from ok_doomer.shared.modes import GAME_MODES
-from ok_doomer.shared.player import PlayerInput
+from ok_doomer.shared.player import PlayerInput, PlayerState
 from ok_doomer.shared.prediction import Predictor
 from ok_doomer.shared.protocol import (
     MAX_LINE,
@@ -377,8 +377,8 @@ class NetworkSession:
         when = self._server_now() - OTHERS_DELAY_TICKS * self.mirror.config.dt
         others = []
         self._people = []
-        for pid in self.mirror.world.players:
-            if pid == self.mirror.player_id:
+        for pid, player in self.mirror.world.players.items():
+            if pid == self.mirror.player_id or player.dead:  # (no corpse sprite yet)
                 continue
             pose = pose_at(self.history, pid, when)
             if pose is not None:
@@ -401,6 +401,15 @@ class NetworkSession:
 
     def solo(self) -> bool:
         return False
+
+    def you(self) -> PlayerState | None:
+        return self.mirror.player
+
+    def respawn_in(self) -> float | None:
+        me = self.mirror.player
+        if me is None or not me.dead:
+            return None
+        return max(0.0, (me.respawn_at - self.mirror.world.tick) * self.mirror.config.dt)
 
     def renamed(self) -> str | None:
         """Your name, if it isn't the one you joined with: someone in had

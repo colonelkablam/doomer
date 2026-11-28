@@ -65,6 +65,14 @@ class GameSession(Protocol):
         Chat event."""
         ...
 
+    def you(self) -> PlayerState | None:
+        """Your own state as last known (health, coffee, frags, dead)."""
+        ...
+
+    def respawn_in(self) -> float | None:
+        """Dead: seconds until you're back; alive: None."""
+        ...
+
     def solo(self) -> bool:
         """Is the game yours alone (single-player)? Then it can pause."""
         ...

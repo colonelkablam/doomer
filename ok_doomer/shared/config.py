@@ -40,9 +40,20 @@ class MovementConfig:
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
+class CombatConfig:
+    """Damage, death and scoring (shared/combat.py)."""
+
+    respawn_seconds: float = 3.0  # dead this long, then back in
+    frag_limit: int = 10  # deathmatch: first to this many wins
+    # The share of each hit coffee soaks up, while there's coffee (GAME.md).
+    coffee_soaks: float = 1 / 3
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
 class SimConfig:
     tick_rate: int = 60
     movement: MovementConfig = dataclasses.field(default_factory=MovementConfig)
+    combat: CombatConfig = dataclasses.field(default_factory=CombatConfig)
 
     @property
     def dt(self) -> float:

@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 
 from ok_doomer.server.config import ServerConfig
 from ok_doomer.shared.building import floor_map_text
+from ok_doomer.shared.combat import respawn_due
 from ok_doomer.shared.events import Chat, Event, LevelComplete, PlayerJoined, PlayerLeft
 from ok_doomer.shared.mapfile import parse_map
 from ok_doomer.shared.player import PlayerInput, PlayerState
@@ -251,6 +252,7 @@ class GameServer:
             self.leave(pid, "timed out")
         inputs = {pid: self._next_input(c) for pid, c in self.clients.items()}
         step(self.world, inputs)
+        respawn_due(self.world)  # the dead whose time's up: back in
         events = drain_events(self.world)
         arrived = next(
             (e.next_floor for e in events if isinstance(e, LevelComplete) and e.next_floor), None

@@ -6,6 +6,7 @@ without a display; Hud only keeps messages on screen for a while and draws.
 """
 
 import dataclasses
+import math
 from collections.abc import Collection, Iterable, Mapping
 from dataclasses import dataclass
 
@@ -21,6 +22,7 @@ from ok_doomer.shared.dispensers import DISPENSERS
 from ok_doomer.shared.events import (
     Chat,
     CubicleDoorUsed,
+    Died,
     Dispensed,
     DoorLocked,
     Event,
@@ -35,6 +37,7 @@ from ok_doomer.shared.events import (
     SwitchThrown,
 )
 from ok_doomer.shared.mapfile import GameMap
+from ok_doomer.shared.player import PlayerState
 
 MESSAGE_SECONDS = 3.0
 CHAT_SECONDS = 8.0  # chat stays longer: it's read, not glanced at
@@ -75,7 +78,22 @@ def news_for(event: Event, me: int, names: Mapping[int, str]) -> str | None:
         return None
     if isinstance(event, PlayerLeft) and event.reason == "reconnected":
         return None  # "rejoined" follows at once: that's the news
+    if isinstance(event, Died):
+        return death_news(event, me)
     return message_for(event)
+
+
+def death_news(event: Died, me: int) -> str:
+    """A death, as you hear it: yours, by you, or someone else's."""
+    if event.player_id == me:
+        if event.by == me:
+            return "You killed yourself"
+        return f"{event.by_name} killed you" if event.by_name else "You died"
+    if event.by == me:
+        return f"You killed {event.name}"
+    if event.by == event.player_id:
+        return f"{event.name} killed themselves"
+    return f"{event.by_name} killed {event.name}" if event.by_name else f"{event.name} died"
 
 
 def console_line(event: Event, names: Mapping[int, str]) -> str:
@@ -88,7 +106,7 @@ def console_line(event: Event, names: Mapping[int, str]) -> str:
         fields.pop("player_id", None)
         text = type(event).__name__ + "".join(f" {k}={v}" for k, v in fields.items())
     who = getattr(event, "player_id", None)
-    if who is None or isinstance(event, PlayerJoined | PlayerLeft | Chat):
+    if who is None or isinstance(event, PlayerJoined | PlayerLeft | Chat | Died):
         return f"[{event.tick}] {text}"
     return f"[{event.tick}] {names.get(who, f'player {who}')}: {text}"
 
@@ -120,6 +138,8 @@ def message_for(event: Event) -> str | None:
         return "The lift's on its way"
     if isinstance(event, Chat):
         return f"{event.name}: {event.text}"
+    if isinstance(event, Died):
+        return death_news(event, 0)  # nobody's point of view: names all round
     if isinstance(event, PlayerJoined):
         return f"{event.name} {'rejoined' if event.rejoined else 'joined'}"
     if isinstance(event, PlayersHere):
@@ -279,6 +299,7 @@ class Hud:
         self._storey = "G"
         self._title: tuple[str, str] | None = None  # a floor's name, on arrival
         self._title_until = 0.0
+        self.killed_by = ""  # your last death: who did it ("" nobody, or yourself)
 
     def arrive(self, game_map: GameMap, now: float) -> None:
         """A floor's begun: its name for a few seconds."""
@@ -301,6 +322,8 @@ class Hud:
         for event in events:
             if isinstance(event, LevelComplete) and event.next_floor is None:
                 self.complete = True  # the top of what's built
+            if isinstance(event, Died) and event.player_id == me:
+                self.killed_by = event.by_name if event.by != me else ""
             text = message_for(event) if me is None else news_for(event, me, names or {})
             if text is not None:
                 seconds = CHAT_SECONDS if isinstance(event, Chat) else MESSAGE_SECONDS
@@ -341,6 +364,30 @@ class Hud:
         for text in self.messages(now):
             for part in wrap(text, FONT_5X7, w - 8, scale):
                 row += draw_text(pixels, part, FONT_5X7, w / 2, row + line, scale) + 1
+
+    def draw_status(
+        self,
+        pixels: U8Array,
+        you: PlayerState | None,
+        respawn_in: float | None,
+        scale: int = 1,
+    ) -> None:
+        """Your meters, bottom right (coffee over health); dead, who killed
+        you and the countdown to coming back, across the middle."""
+        if you is None:
+            return
+        w, h = pixels.shape
+        line = 7 * scale
+        for i, text in enumerate((f"HEALTH {you.health}", f"COFFEE {you.coffee}")):
+            width = text_width(text, FONT_5X7, scale)
+            draw_text(pixels, text, FONT_5X7, w - 4 - width, h - 4 - i * (line + 4), scale,
+                      centre=False)  # fmt: skip
+        if respawn_in is not None:
+            mid = h // 2
+            title = f"KILLED BY {self.killed_by}" if self.killed_by else "YOU DIED"
+            draw_text(pixels, title, FONT_5X7, w / 2, mid, 2 * scale)
+            back = f"BACK IN {max(1, math.ceil(respawn_in))}"
+            draw_text(pixels, back, FONT_5X7, w / 2, mid + line + 6, scale)
 
     def draw(self, window: pygame.Surface, passes: Collection[str]) -> None:
         """What goes on the window once it's scaled: the passes held, a card

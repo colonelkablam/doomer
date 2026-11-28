@@ -30,9 +30,15 @@ import typing
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
-from ok_doomer.shared.config import ConfigError, MovementConfig, SimConfig, from_dict
+from ok_doomer.shared.config import (
+    CombatConfig,
+    ConfigError,
+    MovementConfig,
+    SimConfig,
+    from_dict,
+)
 from ok_doomer.shared.events import Event
-from ok_doomer.shared.player import PlayerInput
+from ok_doomer.shared.player import PlayerInput, PlayerState
 from ok_doomer.shared.snapshot import Row, Snapshot
 
 # Bump whenever the wire format changes (a message, an event, a field):
@@ -40,7 +46,7 @@ from ok_doomer.shared.snapshot import Row, Snapshot
 # with the versions, rather than half-work (version 1 servers sent no join
 # events: newer clients joined them and never heard who came and went).
 # tests/test_protocol.py pins schema_fingerprint() to each version.
-PROTOCOL_VERSION = 4
+PROTOCOL_VERSION = 5
 MAX_LINE = 1 << 20  # bytes: the longest line either side accepts (a map is ~20 KB)
 MAX_CHAT = 80  # characters in a chat message (the server cuts longer ones)
 
@@ -428,7 +434,8 @@ def schema_fingerprint() -> str:
     when the format does (so PROTOCOL_VERSION must too)."""
     parts = []
     shapes: list[type] = [*MESSAGES.values(), *EVENT_TYPES.values(), PlayerInput, Snapshot]
-    shapes += [SimConfig, MovementConfig]  # the config the welcome carries
+    shapes += [PlayerState]  # snapshots carry players as rows of its fields
+    shapes += [SimConfig, MovementConfig, CombatConfig]  # the config the welcome carries
     for cls in sorted(shapes, key=lambda c: c.__name__):
         hints = typing.get_type_hints(cls)
         fields = [f"{f.name}:{hints[f.name]}" for f in dataclasses.fields(cls)]

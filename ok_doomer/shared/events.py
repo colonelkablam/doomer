@@ -120,6 +120,29 @@ class PlayerSpawned(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class Hurt(Event):
+    """A player took a hit: `amount` before coffee soaked some (`soaked`);
+    `by` who did it (0: nobody, the world); `health` what's left."""
+
+    player_id: int
+    amount: int
+    soaked: int
+    by: int
+    health: int
+
+
+@dataclass(frozen=True, slots=True)
+class Died(Event):
+    """A player died. `by` killed them (0: the world; themselves: a
+    suicide); `by_name` too, as they may have left by the time it's read."""
+
+    player_id: int
+    name: str
+    by: int
+    by_name: str
+
+
+@dataclass(frozen=True, slots=True)
 class PlayerJoined(Event):
     """Someone joined the game (the server says; the HUD tells the rest).
     `rejoined`: they'd left a moment ago and have their player back."""

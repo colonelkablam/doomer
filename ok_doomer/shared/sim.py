@@ -57,6 +57,9 @@ RIDE_SECONDS = 2.5  # the lift ride up a floor, doors shut
 _EPS = 1e-9
 
 
+DEAD_EYE_HEIGHT = 0.08  # walls: the view from the floor
+
+
 def step(world: World, inputs: Mapping[int, PlayerInput]) -> None:
     """Advance the world by one fixed tick. Players without input stand still
     (but still fall)."""
@@ -98,7 +101,10 @@ def _ride(world: World, positions: list[tuple[float, float]]) -> None:
 
 
 def apply_input(world: World, player: PlayerState, player_input: PlayerInput) -> None:
-    """One tick of a player's input: look, use, walk and jump, pick up."""
+    """One tick of a player's input: look, use, walk and jump, pick up.
+    The dead do nothing (shared/combat.py)."""
+    if player.dead:
+        return
     _steer(world, player, player_input)
     _use(world, player, player_input)
     _walk(world, player, player_input)
@@ -109,6 +115,8 @@ def predict_move(world: World, player: PlayerState, player_input: PlayerInput) -
     """What the input does to the player's own movement alone: look, walk,
     jump, fall. Nothing in the world changes (no use, no pickups): a client
     predicting itself, which the server then confirms or corrects."""
+    if player.dead:
+        return
     _steer(world, player, player_input)
     _walk(world, player, player_input)
 
@@ -296,7 +304,10 @@ def body_height(player: PlayerState, move: MovementConfig) -> float:
 
 
 def eye_height(player: PlayerState, move: MovementConfig) -> float:
-    """Eye height above the feet, for the camera (and later, for aiming)."""
+    """Eye height above the feet, for the camera (and later, for aiming):
+    on the floor, dead."""
+    if player.dead:
+        return DEAD_EYE_HEIGHT
     return move.crouch_eye_height if player.crouching else move.eye_height
 
 

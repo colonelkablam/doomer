@@ -8,7 +8,7 @@ rather than in either of them.
 import math
 
 from ok_doomer.shared.events import PlayerSpawned
-from ok_doomer.shared.mapfile import parse_map
+from ok_doomer.shared.mapfile import Thing, parse_map
 from ok_doomer.shared.modes import GAME_MODES
 from ok_doomer.shared.player import PlayerState
 from ok_doomer.shared.sim import all_obstacles, move_player, standing_height
@@ -21,18 +21,35 @@ _AROUND = ((0, 1), (0, -1), (-1, 0), (-1, 1), (-1, -1), (1, 0), (1, 1), (1, -1))
 
 
 def spawn_player(world: World, player_id: int, name: str) -> PlayerState:
-    """Place a player at a spawn point for the world's mode. If another
-    player's in the way there, beside it (as far as walls and furniture
-    allow); if there's no room anywhere near, on it anyway."""
-    spawns = world.map.things_of_type(GAME_MODES[world.mode].spawn_thing)
-    # TODO(milestone 3b): deathmatch should pick the spawn farthest from other players.
-    spot = spawns[0] if world.mode == "coop" else world.rng.choice(spawns)
-    floor = world.map.floor_height(math.floor(spot.x), math.floor(spot.y))
-    player = PlayerState(player_id, name, spot.x, spot.y, spot.angle, z=floor)
-    _make_room(world, player)
+    """A new player, placed by `place_player`."""
+    player = PlayerState(player_id, name, 0.0, 0.0, 0.0)
+    place_player(world, player)
     world.players[player_id] = player
-    world.events.append(PlayerSpawned(world.tick, player_id, player.x, player.y))
     return player
+
+
+def place_player(world: World, player: PlayerState) -> None:
+    """Put a player (new, or back from the dead) at a spawn point for the
+    world's mode: the campaign's start; in deathmatch the spawn farthest
+    from everyone living (ties: the world's rng). If another player's in
+    the way there, beside it (as far as walls and furniture allow); if
+    there's no room anywhere near, on it anyway."""
+    spawns = world.map.things_of_type(GAME_MODES[world.mode].spawn_thing)
+    if world.mode == "coop":
+        spot = spawns[0]
+    else:
+        others = [p for p in world.players.values() if p is not player and not p.dead]
+
+        def room(t: Thing) -> float:
+            return min((math.hypot(p.x - t.x, p.y - t.y) for p in others), default=0.0)
+
+        best = max(room(t) for t in spawns)
+        spot = world.rng.choice([t for t in spawns if room(t) == best])
+    player.x, player.y, player.angle = spot.x, spot.y, spot.angle
+    player.z = world.map.floor_height(math.floor(spot.x), math.floor(spot.y))
+    player.z_velocity, player.on_ground, player.crouching = 0.0, True, False
+    _make_room(world, player)
+    world.events.append(PlayerSpawned(world.tick, player.id, player.x, player.y))
 
 
 def return_player(world: World, player_id: int, before: PlayerState) -> PlayerState:
@@ -68,7 +85,7 @@ def return_player(world: World, player_id: int, before: PlayerState) -> PlayerSt
 def _make_room(world: World, player: PlayerState) -> None:
     """Step the player off the spawn point to the first place beside it
     where they don't overlap anyone, moving as they would walk there."""
-    if not _crowded(world, player.x, player.y):
+    if not _crowded(world, player.x, player.y, player):
         return
     move = world.config.movement
     sx, sy, sz = player.x, player.y, player.z
@@ -80,7 +97,7 @@ def _make_room(world: World, player: PlayerState) -> None:
         dx = (forward * cos_a - right * sin_a) * width
         dy = (forward * sin_a + right * cos_a) * width
         move_player(world, player, dx, dy)
-        if not _crowded(world, player.x, player.y):
+        if not _crowded(world, player.x, player.y, player):
             player.z = standing_height(
                 world.map, all_obstacles(world), player.x, player.y, move.radius, sz,
                 move.step_height,
@@ -89,10 +106,14 @@ def _make_room(world: World, player: PlayerState) -> None:
     player.x, player.y = sx, sy  # nowhere: share the spot
 
 
-def _crowded(world: World, x: float, y: float) -> bool:
-    """Would a player's box at (x, y) overlap another player's?"""
+def _crowded(world: World, x: float, y: float, player: PlayerState | None = None) -> bool:
+    """Would a player's box at (x, y) overlap another (living) player's?"""
     width = 2 * world.config.movement.radius - 1e-9
-    return any(abs(p.x - x) < width and abs(p.y - y) < width for p in world.players.values())
+    return any(
+        abs(p.x - x) < width and abs(p.y - y) < width
+        for p in world.players.values()
+        if p is not player and not p.dead
+    )
 
 
 def arrive_on_floor(world: World, map_text: str) -> World:
