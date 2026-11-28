@@ -55,12 +55,12 @@ INDENT = 12  # REJOIN, under its heading
 
 @dataclass(frozen=True, slots=True)
 class SinglePlayer:
-    pass
+    mode: str = "coop"  # the campaign (shared/modes.py names it co-op)
 
 
 @dataclass(frozen=True, slots=True)
 class HostGame:
-    pass
+    mode: str = "coop"
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,17 +94,25 @@ def parse_address(text: str) -> tuple[str, int] | None:
     return host, int(port)
 
 
+# What the player calls each mode (the code's names: shared/modes.py).
+MODE_NAMES = {"coop": "CAMPAIGN", "deathmatch": "DEATHMATCH"}
+# Modes that can be chosen yet; the rest are shown, greyed: coming.
+PLAYABLE = {"coop"}
+
+
 def game_line(game: FoundGame) -> str:
-    """A found game, short enough for the screen."""
+    """A found game, short enough for the screen: a campaign by its floor,
+    deathmatch by name (one floor, so the floor says nothing)."""
     if game.info is None or not game.joinable:
         return f"{game.name}  (needs updating)"
     i = game.info
-    return f"{i.name}  {i.floor}  {i.players}/{i.max_players}  {game.ping_ms:.0f} MS"
+    where = i.floor if i.mode == "coop" else MODE_NAMES.get(i.mode, i.mode.upper())
+    return f"{i.name}  {where}  {i.players}/{i.max_players}  {game.ping_ms:.0f} MS"
 
 
 class Menu:
     def __init__(self, name: str) -> None:
-        self.screen = "main"  # main, join, address, name
+        self.screen = "main"  # main, single, host (which mode), join, address, name
         self.selected = 0
         self.name = name
         self.typing = ""  # the address or name being typed
@@ -151,6 +159,18 @@ class Menu:
                 Item(f"NAME: {self.name}", "name"),
                 Item("QUIT", "quit"),
             ]
+        if self.screen in ("single", "host"):
+            return [
+                *(
+                    Item(
+                        name if mode in PLAYABLE else f"{name} - COMING",
+                        f"mode {mode}",
+                        mode in PLAYABLE,
+                    )  # fmt: skip
+                    for mode, name in MODE_NAMES.items()
+                ),
+                Item("BACK", "back"),
+            ]
         if self.screen == "join":
             found = [Item(game_line(g), f"game {i}", g.joinable) for i, g in enumerate(self.games)]
             if not found:
@@ -168,6 +188,8 @@ class Menu:
     def title(self) -> str:
         return {
             "main": "",
+            "single": "SINGLE PLAYER",
+            "host": "HOST A GAME",
             "join": "GAMES ON THIS NETWORK",
             "address": "JOIN BY ADDRESS (HOST:PORT)",
             "name": "YOUR NAME",
@@ -205,10 +227,12 @@ class Menu:
             return None
         self.selected = index
         action = items[index].action
-        if action == "single":
-            return SinglePlayer()
-        if action == "host":
-            return HostGame()
+        if action in ("single", "host"):
+            self.go(action)  # which mode
+            return None
+        if action.startswith("mode "):
+            mode = action.split()[1]
+            return SinglePlayer(mode) if self.screen == "single" else HostGame(mode)
         if action == "quit":
             return Quit()
         if action == "rejoin":
@@ -246,7 +270,12 @@ class Menu:
     def back(self) -> Choice | None:
         if self.screen == "main":
             return Quit()
+        came_from = self.screen
         self.go("join" if self.screen == "address" else "main")
+        if self.screen == "main":  # back on what you'd chosen
+            actions = [i.action for i in self.items()]
+            if came_from in actions:
+                self.selected = actions.index(came_from)
         return None
 
     def key(self, key: int, text: str = "") -> Choice | None:
@@ -279,7 +308,7 @@ class Menu:
     def shows_object(self) -> bool:
         """The turning object beside the menu (main and name screens; the
         lists of games and the address box want the width)."""
-        return self.screen in ("main", "name")
+        return self.screen in ("main", "name", "single", "host")
 
     def draw(self, pixels: U8Array) -> None:
         """The screen into the frame: the title in the middle; the items down
@@ -313,7 +342,7 @@ class Menu:
         row = 48
         if self.title():
             row += text(self.title(), w / 2, row + 6, colour=DIM) + 8
-        scale = 2 if self.screen == "main" else 1
+        scale = 2 if self.screen in ("main", "single", "host") else 1  # short lists: big
         self.rows = []
         for i, item in enumerate(self.items()):
             chosen = i == self.selected and item.enabled

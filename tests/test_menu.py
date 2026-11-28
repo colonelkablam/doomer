@@ -1,6 +1,7 @@
 """The start screen: what keys and clicks do, joining a game found or one
 typed, your name remembered, and the whole loop (menu, game, menu)."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -43,7 +44,7 @@ def _keys(menu: Menu, *keys: int | str) -> object:
 
 
 def test_single_player_and_quit() -> None:
-    assert _keys(Menu("ann"), pygame.K_RETURN) == SinglePlayer()
+    assert _keys(Menu("ann"), pygame.K_RETURN, pygame.K_RETURN) == SinglePlayer("coop")
     assert _keys(Menu("ann"), pygame.K_UP, pygame.K_RETURN) == Quit()  # round the top
     assert _keys(Menu("ann"), pygame.K_ESCAPE) == Quit()
 
@@ -51,7 +52,32 @@ def test_single_player_and_quit() -> None:
 def test_host_game_is_chosen() -> None:
     from ok_doomer.client.menu import HostGame
 
-    assert _keys(Menu("ann"), pygame.K_DOWN, pygame.K_RETURN) == HostGame()
+    assert _keys(Menu("ann"), pygame.K_DOWN, pygame.K_RETURN, pygame.K_RETURN) == HostGame("coop")
+
+
+def test_campaign_or_deathmatch_coming() -> None:
+    """Single player and host each ask which: the campaign, or deathmatch,
+    greyed out until it's built; back goes back to what you'd chosen."""
+    menu = Menu("ann")
+    _keys(menu, pygame.K_DOWN, pygame.K_RETURN)  # HOST GAME
+    assert menu.screen == "host" and menu.title() == "HOST A GAME"
+    items = menu.items()
+    assert [i.label for i in items] == ["CAMPAIGN", "DEATHMATCH - COMING", "BACK"]
+    assert items[0].enabled and not items[1].enabled
+    menu.move(1)  # past deathmatch: it can't be chosen
+    assert menu.items()[menu.selected].label == "BACK"
+    assert menu.activate(1) is None  # not even by the mouse
+    _keys(menu, pygame.K_ESCAPE)
+    assert menu.screen == "main" and menu.items()[menu.selected].label == "HOST GAME"
+
+
+def test_games_found_say_their_mode() -> None:
+    from ok_doomer.client.menu import game_line
+
+    campaign, dm = _game("desk", "192.168.1.20"), _game("pi", "192.168.1.30")
+    assert dm.info is not None
+    dm = FoundGame(dm.address, dm.version, dm.name, replace(dm.info, mode="deathmatch"), 4.0, 0.0)
+    assert "GROUND FLOOR" in game_line(campaign) and "DEATHMATCH" in game_line(dm)
 
 
 def test_joining_a_game_found() -> None:
@@ -135,7 +161,7 @@ def test_the_menu_runs_in_a_window() -> None:
         display = Display(RenderConfig(vsync=False))
         menu = Menu("ann")
         _post_keys(pygame.K_DOWN, pygame.K_DOWN, pygame.K_RETURN)  # JOIN GAME: looks for games
-        _post_keys(pygame.K_ESCAPE, pygame.K_UP, pygame.K_RETURN)  # back; QUIT
+        _post_keys(pygame.K_ESCAPE, pygame.K_ESCAPE)  # back (onto JOIN GAME); quit
         assert menu_mod.run_menu(display, ClientConfig(), menu, port=0) == Quit()
     finally:
         pygame.quit()
@@ -184,7 +210,7 @@ def test_everything_the_menu_writes_is_in_the_font() -> None:
     from ok_doomer.client.pixelart import FONT_5X7
 
     texts = []
-    for screen in ("main", "join", "address", "name"):
+    for screen in ("main", "single", "host", "join", "address", "name"):
         menu = Menu("ann")
         menu.go(screen, "192.168.1.20:5029")
         menu.set_games([_game("desk", "192.168.1.20"), _game("old", "1.2.3.4", 2)])
