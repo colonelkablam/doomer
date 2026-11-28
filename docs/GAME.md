@@ -162,6 +162,12 @@ Healing in co-op: the Tea Trolley can also hand a cuppa directly to a team
 mate (a short-range heal on a cooldown), so the healer is useful even when
 the team is spread out.
 
+The default, **the Newb** [planned]: no characteristics of its own, the
+base of everything (what that means exactly: to be filled in). It's who
+you are before choosing a class on the start floor, and who a first-time
+player joining a run mid-way plays (otherwise you play your last run's
+class: DESIGN.md, Runs).
+
 On the bench, if a fourth slot is ever wanted: **The Temp** (rogue): fast and
 sneaky, staple gun and letter opener (double damage from behind), and
 "Nobody Notices the Temp" (enemies take longer to spot you).

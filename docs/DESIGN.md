@@ -447,8 +447,8 @@ milestone 3b. Choices still open are marked [open].
   their last run (decided; kept simple: a quick choice on joining may
   come later). So the client remembers the last class played
   (`client/settings.py`, as the name) and says it when joining (a field
-  in `Hello`: a protocol version bump); never having played, a default
-  class [open: which].
+  in `Hello`: a protocol version bump); never having played: the Newb,
+  the default class (GAME.md, Player characters).
 - **The lift on generated floors.** Today it goes when *everyone* is in
   the car: one player far off or idle holds the team. Recommended: once
   most are aboard, a countdown (~10 s), then it goes, and anyone not
