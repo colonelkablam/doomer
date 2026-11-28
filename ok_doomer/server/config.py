@@ -30,4 +30,16 @@ class ServerConfig:
     hold_ticks: int = 6
     # A client not heard from for this long is dropped.
     timeout_seconds: float = 5.0
+    # Chat: at most this many messages from one player in this many
+    # seconds; more are dropped (a held key, a script, can't flood it).
+    chat_burst: int = 4
+    chat_window_seconds: float = 5.0
+    # A player who leaves (or drops) and joins again with the same name
+    # within this long gets their player back, where they were, health and
+    # all. (The name is the key: fine on a LAN; over the internet, a token.)
+    rejoin_seconds: float = 30.0
+    # Joining with the name of someone still in the game who's been silent
+    # this long: it's them, back on a new connection before the old one
+    # timed out (a Wi-Fi blip). The old one's dropped and they rejoin.
+    reconnect_silent_seconds: float = 1.0
     sim: SimConfig = field(default_factory=SimConfig)

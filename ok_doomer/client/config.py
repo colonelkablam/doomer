@@ -78,6 +78,7 @@ class ControlsConfig:
     jump: tuple[str, ...] = ("space",)
     crouch: tuple[str, ...] = ("left ctrl", "c")
     use: tuple[str, ...] = ("e",)  # open and close doors
+    chat: tuple[str, ...] = ("t",)  # type a message to everyone; Enter sends it
 
 
 @dataclass(frozen=True, slots=True)

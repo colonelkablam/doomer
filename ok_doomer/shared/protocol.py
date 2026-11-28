@@ -12,6 +12,7 @@ A conversation:
                            <-       Welcome(player_id, mode, config, map_text)
                                     (or Reject(reason), and the server hangs up)
     Input(seq, ...)        ->       one per client tick, numbered
+    Say(text)              ->       chat: everyone gets it as a Chat event
                            <-       Update(ack, snapshot, events), each server tick
                            <-       NewFloor(map_text): the lift's arrived
     Bye(reason)            <->      either side, before hanging up
@@ -39,8 +40,9 @@ from ok_doomer.shared.snapshot import Row, Snapshot
 # with the versions, rather than half-work (version 1 servers sent no join
 # events: newer clients joined them and never heard who came and went).
 # tests/test_protocol.py pins schema_fingerprint() to each version.
-PROTOCOL_VERSION = 3
+PROTOCOL_VERSION = 4
 MAX_LINE = 1 << 20  # bytes: the longest line either side accepts (a map is ~20 KB)
+MAX_CHAT = 80  # characters in a chat message (the server cuts longer ones)
 
 
 class ProtocolError(ValueError):
@@ -85,6 +87,16 @@ class Input:
     TYPE: ClassVar[str] = "input"
     seq: int
     input: PlayerInput
+
+
+@dataclass(frozen=True, slots=True)
+class Say:
+    """Client -> server: a chat message, to everyone. The server tidies it
+    (printable ASCII, MAX_CHAT long), limits how often, and sends it on as
+    a Chat event, to the sender too."""
+
+    TYPE: ClassVar[str] = "say"
+    text: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,9 +157,9 @@ class GameInfo:
 DISCOVERY_PORT = 5028  # UDP: Seek and GameInfo; the game itself is TCP (5029)
 MAX_DATAGRAM = 1024  # bytes: a Seek or a GameInfo is far smaller
 
-Message = Hello | Welcome | Reject | Input | Update | NewFloor | Bye | Seek | GameInfo
+Message = Hello | Welcome | Reject | Input | Say | Update | NewFloor | Bye | Seek | GameInfo
 MESSAGES: dict[str, type[Message]] = {
-    m.TYPE: m for m in (Hello, Welcome, Reject, Input, Update, NewFloor, Bye, Seek, GameInfo)
+    m.TYPE: m for m in (Hello, Welcome, Reject, Input, Say, Update, NewFloor, Bye, Seek, GameInfo)
 }
 
 
@@ -253,6 +265,8 @@ def _message_from_dict(kind: type[Message], d: dict[str, Any]) -> Message:
             snapshot_from_dict(d["snapshot"]),
             tuple(event_from_dict(e) for e in evs),
         )
+    if kind is Say:
+        return Say(_str(d["text"]))
     if kind is NewFloor:
         return NewFloor(_str(d["map_text"]))
     if kind is Bye:

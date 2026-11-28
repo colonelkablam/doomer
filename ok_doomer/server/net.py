@@ -35,6 +35,7 @@ from ok_doomer.shared.protocol import (
 )
 
 log = logging.getLogger(__name__)
+SHUTTING_DOWN = "the server's shutting down"  # the Bye everyone gets as it stops
 
 HELLO_SECONDS = 5.0
 MAX_BUFFERED = 1 << 20  # bytes waiting to go to one client
@@ -91,7 +92,7 @@ class TcpServer:
             self.port,
         )
 
-    async def close(self, reason: str = "the server's shutting down") -> None:
+    async def close(self, reason: str = SHUTTING_DOWN) -> None:
         if self._discovery is not None:
             self._discovery.close()
         if self._ticker is not None:
@@ -179,6 +180,8 @@ class TcpServer:
                 self._send(pid, messages, encoder)
                 if any(isinstance(m, Bye) for m in messages):  # timed out
                     self._drop(pid, "timed out")
+            for pid in [p for p in self.writers if p not in self.game.clients]:
+                self._drop(pid, "reconnected")  # back on a new connection: close the old
             due += dt
             behind = loop.time() - due
             if behind > MAX_BEHIND * dt:

@@ -140,7 +140,10 @@ means adding a module and registering it, not editing a dozen files.
   and a test pins it to the version): `Hello(version,
   name)` -> `Welcome(player_id, mode, config, map_text)` or `Reject`;
   then `Input(seq, input)` from the client each tick and `Update(ack,
-  snapshot, events)` from the server each tick; `NewFloor(map_text)` when
+  snapshot, events)` from the server each tick; `Say(text)`, chat, from
+  the client whenever (version 4), which the server tidies (printable
+  ASCII, 80 characters), limits (4 in 5 s a player, more dropped) and
+  passes to everyone, the sender too, as a `Chat` event; `NewFloor(map_text)` when
   the lift arrives; `Bye(reason)` either way. One JSON object a line, a
   `type` key; `encode` and `decode` are the only way in or out. The
   config goes in the welcome so `step` runs the same on both sides.
@@ -1312,10 +1315,31 @@ Noted at the end of a session, to pick up next:
      firewall needs that port opened too). A start screen in the green
      terminal style: SINGLE PLAYER / HOST GAME / JOIN GAME (games found,
      and an address to type as a fallback).
-  2. **Rejoin after a dropout**: back within ~30 s with the same name, you
-     get your player back (where you were, health, coffee), not a respawn.
-  3. **Text chat**: T, type, Enter; a message type of its own, shown in
-     the HUD's stacked messages.
+  2. **Rejoin after a dropout** [built]: back within 30 s
+     (`ServerConfig.rejoin_seconds`) with the same name (any case), you
+     get your player back (where you were, health, coffee; beside it if
+     someone's there now), under a new id (ids aren't reused, so a late
+     message from the old connection can't reach the new one); HUD: "ANN
+     REJOINED". The server keeps who left (`GameServer.departed`, by name)
+     until then, or a new floor. Back before the old connection's timed
+     out (a Wi-Fi blip: it's only gone quiet): a join with the name of
+     someone silent for 1 s replaces them (`PlayerLeft` "reconnected", not
+     news). The start screen offers REJOIN for the 30 s after a game
+     joined, in a block of its own at the top ("LAST GAME: address - 26
+     S", counting down; selected, with why, if you dropped; not after the
+     server shut down). The name is the key: fine on a LAN; over the internet, with
+     the password and TLS (5 below), a token from the server instead.
+  - **The pause menu** [built] (`client/pause.py`): Esc in a game, or
+    the window losing focus. Over the game, darkened: RESUME first (Esc
+    twice, or Esc then Enter, and you're back), then leaving, worded for
+    what it does: QUIT TO MENU (single-player), LEAVE GAME (joined: can be
+    rejoined), END GAME / END GAME FOR 2 OTHERS (hosting). Single-player
+    truly pauses (no inputs sent, so its lockstep server doesn't tick); on
+    a server it can't, so it says "THE GAME GOES ON - YOU STAND STILL".
+    The start screen is for what's out of a game: REJOIN, not resume.
+  3. **Text chat** [built]: T, type, Enter (Esc drops it); `Say` to the
+     server, a `Chat` event to everyone, in the HUD's stacked messages
+     as "NAME: text" for 8 s. Keys typed aren't controls meanwhile.
   4. **Close the milestone**: the Pi over Wi-Fi tested (the lag proxy
      stands in until then), then a pull request of `claude/networking`
      into `main`; milestone 3b next (the crouch sprite's head above the
@@ -1344,7 +1368,8 @@ Noted at the end of a session, to pick up next:
      proxy's `--loss` shows what that's like.
   Also, the host leaving (today: the game ends for everyone, as a "listen
   server" does; fine for now): (a) a warning first, if others are in
-  ("LEAVING ENDS THE GAME FOR 2 OTHERS: LEAVE ANYWAY?"); (b) or keep
+  [built: the pause menu's leaving item says "END GAME FOR 2 OTHERS";
+  closing the window doesn't warn]; (b) or keep
   hosting when the host leaves: the server runs on for the others and
   stops when the last has gone (still ends if the host's machine
   crashes or loses power: a dedicated server, the Pi, is the answer for

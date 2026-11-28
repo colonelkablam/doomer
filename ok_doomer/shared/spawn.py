@@ -35,6 +35,36 @@ def spawn_player(world: World, player_id: int, name: str) -> PlayerState:
     return player
 
 
+def return_player(world: World, player_id: int, before: PlayerState) -> PlayerState:
+    """A player who left a moment ago, back where they were (as `before`,
+    their state when they left), under a new id: health, coffee and all;
+    only motion (a jump, a crouch, a button held) starts afresh. If someone's
+    now standing there, beside it."""
+    player = PlayerState(
+        player_id,
+        before.name,
+        before.x,
+        before.y,
+        before.angle,
+        z=standing_height(
+            world.map,
+            all_obstacles(world),
+            before.x,
+            before.y,
+            world.config.movement.radius,
+            before.z,
+            world.config.movement.step_height,
+        ),  # fmt: skip
+        pitch=before.pitch,
+        health=before.health,
+        coffee=before.coffee,
+    )
+    _make_room(world, player)
+    world.players[player_id] = player
+    world.events.append(PlayerSpawned(world.tick, player_id, player.x, player.y))
+    return player
+
+
 def _make_room(world: World, player: PlayerState) -> None:
     """Step the player off the spawn point to the first place beside it
     where they don't overlap anyone, moving as they would walk there."""

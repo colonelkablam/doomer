@@ -118,7 +118,20 @@ Planned, roughly in order [planned]:
 - **Lift music**, and a ding as the doors open (no sound yet).
 - **A start screen** [built]: the title, single player, host a game, join
   one (found on the LAN, or an address), your name (DESIGN.md,
-  Networking).
+  Networking). Single player and host each ask which mode: **campaign**
+  [built] or **deathmatch** [planned, shown greyed: "DEATHMATCH -
+  COMING"]. Joining takes the mode of the game joined: the games found
+  are listed under a heading for each mode (CAMPAIGN, each game with the
+  floor it's on; DEATHMATCH, with its map; OTHER VERSIONS, those that
+  can't be joined until one side updates).
+- **Two modes**:
+  - **Campaign** (the code's `coop`) [built, growing]: the building, floor
+    by floor, as designed here (Game loop above; DESIGN.md, Runs).
+  - **Deathmatch** [planned]: one floor, a random map (from the generator,
+    LEVELS.md), every player for themselves; pickups come back (Pickups).
+    Single-player deathmatch is against bots (the bot client grown into
+    opponents that aim and fight: with milestone 3b's weapons). The mode
+    itself is registered already (`shared/modes.py`: spawns, no enemies).
 - **Later floors** reuse the loop with variations: a stairwell as an
   alternative exit, a different blocker (a jammed lift, a fire door).
 - **Enemies** on the route (see Enemies), so the passes and breaker are

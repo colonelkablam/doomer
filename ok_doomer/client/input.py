@@ -97,9 +97,11 @@ class KeyboardMouseInput:
             self._recentre()
         pygame.mouse.get_rel()  # discard motion accumulated while not captured
 
-    def poll(self, real_dt: float) -> PlayerInput:
+    def poll(self, real_dt: float, keyboard: bool = True) -> PlayerInput:
+        """`keyboard` False: keys held aren't controls (they're typing a
+        chat message); the mouse still looks."""
         pressed = pygame.key.get_pressed()
-        actions = {action for code, action in self._bindings if pressed[code]}
+        actions = {action for code, action in self._bindings if keyboard and pressed[code]}
         mouse_dx, mouse_dy = pygame.mouse.get_rel() if self.captured else (0, 0)
         if self.captured and self._warp_fallback:
             self._recentre()

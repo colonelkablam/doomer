@@ -1,6 +1,7 @@
 """The start screen: what keys and clicks do, joining a game found or one
 typed, your name remembered, and the whole loop (menu, game, menu)."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -43,7 +44,7 @@ def _keys(menu: Menu, *keys: int | str) -> object:
 
 
 def test_single_player_and_quit() -> None:
-    assert _keys(Menu("ann"), pygame.K_RETURN) == SinglePlayer()
+    assert _keys(Menu("ann"), pygame.K_RETURN, pygame.K_RETURN) == SinglePlayer("coop")
     assert _keys(Menu("ann"), pygame.K_UP, pygame.K_RETURN) == Quit()  # round the top
     assert _keys(Menu("ann"), pygame.K_ESCAPE) == Quit()
 
@@ -51,7 +52,45 @@ def test_single_player_and_quit() -> None:
 def test_host_game_is_chosen() -> None:
     from ok_doomer.client.menu import HostGame
 
-    assert _keys(Menu("ann"), pygame.K_DOWN, pygame.K_RETURN) == HostGame()
+    assert _keys(Menu("ann"), pygame.K_DOWN, pygame.K_RETURN, pygame.K_RETURN) == HostGame("coop")
+
+
+def test_campaign_or_deathmatch_coming() -> None:
+    """Single player and host each ask which: the campaign, or deathmatch,
+    greyed out until it's built; back goes back to what you'd chosen."""
+    menu = Menu("ann")
+    _keys(menu, pygame.K_DOWN, pygame.K_RETURN)  # HOST GAME
+    assert menu.screen == "host" and menu.title() == "HOST A GAME"
+    items = menu.items()
+    assert [i.label for i in items] == ["CAMPAIGN", "DEATHMATCH - COMING", "BACK"]
+    assert items[0].enabled and not items[1].enabled
+    menu.move(1)  # past deathmatch: it can't be chosen
+    assert menu.items()[menu.selected].label == "BACK"
+    assert menu.activate(1) is None  # not even by the mouse
+    _keys(menu, pygame.K_ESCAPE)
+    assert menu.screen == "main" and menu.items()[menu.selected].label == "HOST GAME"
+
+
+def test_games_found_are_listed_under_their_mode() -> None:
+    menu = Menu("ann")
+    menu.go("join")
+    pi = _game("pi", "192.168.1.30")
+    assert pi.info is not None
+    pi = FoundGame(pi.address, pi.version, pi.name, replace(pi.info, mode="deathmatch"), 4.0, 0.0)
+    old = _game("old", "192.168.1.40", 2)
+    menu.set_games([pi, _game("desk", "192.168.1.20"), old, _game("lap", "192.168.1.50")])
+    labels = [i.label.split("  ")[0] for i in menu.items()]
+    assert labels == [
+        "CAMPAIGN", "desk", "lap",
+        "DEATHMATCH", "pi",
+        "OTHER VERSIONS", "old",
+        "ENTER AN ADDRESS...", "BACK",
+    ]  # fmt: skip
+    assert not menu.items()[0].enabled  # headings can't be chosen
+    assert menu.items()[menu.selected].label.startswith("desk")  # the first game, not its heading
+    assert "GROUND FLOOR" in menu.items()[1].label
+    menu.selected = 4
+    assert _keys(menu, pygame.K_RETURN) == JoinGame("192.168.1.30", 5029)  # pi, by its place
 
 
 def test_joining_a_game_found() -> None:
@@ -61,9 +100,10 @@ def test_joining_a_game_found() -> None:
     assert menu.items()[0].label == "LOOKING FOR GAMES..." and not menu.items()[0].enabled
     assert menu.items()[menu.selected].label == "ENTER AN ADDRESS..."
     menu.set_games([_game("old-laptop", "192.168.1.40", 2), _game("desk", "192.168.1.20")])
-    assert "needs updating" in menu.items()[0].label and not menu.items()[0].enabled
-    menu.selected = 0
-    menu.move(1)  # onto the one that can be joined
+    old = menu.items()[3]  # under OTHER VERSIONS, after the campaigns
+    assert "needs updating" in old.label and not old.enabled
+    menu.selected = 0  # CAMPAIGN, a heading
+    menu.move(1)  # onto the game under it
     assert _keys(menu, pygame.K_RETURN) == JoinGame("192.168.1.20", 5029)
 
 
@@ -135,7 +175,7 @@ def test_the_menu_runs_in_a_window() -> None:
         display = Display(RenderConfig(vsync=False))
         menu = Menu("ann")
         _post_keys(pygame.K_DOWN, pygame.K_DOWN, pygame.K_RETURN)  # JOIN GAME: looks for games
-        _post_keys(pygame.K_ESCAPE, pygame.K_UP, pygame.K_RETURN)  # back; QUIT
+        _post_keys(pygame.K_ESCAPE, pygame.K_ESCAPE)  # back (onto JOIN GAME); quit
         assert menu_mod.run_menu(display, ClientConfig(), menu, port=0) == Quit()
     finally:
         pygame.quit()
@@ -147,8 +187,14 @@ def test_start_goes_menu_game_menu(monkeypatch: pytest.MonkeyPatch) -> None:
     played: list[str] = []
 
     def fake_play(
-        display: object, session: object, config: object, angle: float, greeting: object = None
+        display: object,
+        session: object,
+        config: object,
+        angle: float,
+        greeting: object = None,
+        hosting: bool = False,
     ) -> bool:
+        assert not hosting
         played.append(type(session).__name__)
         return False  # left the game: back to the menu
 
@@ -178,7 +224,7 @@ def test_everything_the_menu_writes_is_in_the_font() -> None:
     from ok_doomer.client.pixelart import FONT_5X7
 
     texts = []
-    for screen in ("main", "join", "address", "name"):
+    for screen in ("main", "single", "host", "join", "address", "name"):
         menu = Menu("ann")
         menu.go(screen, "192.168.1.20:5029")
         menu.set_games([_game("desk", "192.168.1.20"), _game("old", "1.2.3.4", 2)])

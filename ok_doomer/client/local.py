@@ -16,7 +16,7 @@ from ok_doomer.server.config import ServerConfig
 from ok_doomer.server.game import GameServer
 from ok_doomer.shared.config import SimConfig
 from ok_doomer.shared.player import PlayerState
-from ok_doomer.shared.protocol import PROTOCOL_VERSION, Bye, Hello, Input, Message, Reject
+from ok_doomer.shared.protocol import PROTOCOL_VERSION, Bye, Hello, Input, Message, Reject, Say
 from ok_doomer.shared.world import World
 
 # Ticks run in one frame at most, catching up after a stall (as the game
@@ -41,6 +41,8 @@ class LocalLink:
         if isinstance(message, Input):
             self.server.receive(pid, message)
             self._out += self.server.tick().get(pid, [])  # lockstep: a tick an input
+        elif isinstance(message, Say):
+            self.server.receive(pid, message)  # said in the next tick
         elif isinstance(message, Bye):
             self.server.leave(pid, message.reason)
 
@@ -67,6 +69,9 @@ class LocalSession(NetworkSession):
         super().__init__(LocalLink(self.server, player_name), max_sends=MAX_CATCH_UP)
         for message in self.connection.received():  # the first update: you're in the world
             self._take(message)
+
+    def solo(self) -> bool:
+        return True  # nobody else: Esc pauses it (no inputs sent, no ticks)
 
     @property
     def world(self) -> World:
