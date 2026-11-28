@@ -120,8 +120,10 @@ Planned, roughly in order [planned]:
   one (found on the LAN, or an address), your name (DESIGN.md,
   Networking). Single player and host each ask which mode: **campaign**
   [built] or **deathmatch** [planned, shown greyed: "DEATHMATCH -
-  COMING"]. Joining takes the mode of the game joined (the list of games
-  found says it: a campaign's floor, or DEATHMATCH).
+  COMING"]. Joining takes the mode of the game joined: the games found
+  are listed under a heading for each mode (CAMPAIGN, each game with the
+  floor it's on; DEATHMATCH, with its map; OTHER VERSIONS, those that
+  can't be joined until one side updates).
 - **Two modes**:
   - **Campaign** (the code's `coop`) [built, growing]: the building, floor
     by floor, as designed here (Game loop above; DESIGN.md, Runs).

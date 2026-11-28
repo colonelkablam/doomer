@@ -71,13 +71,26 @@ def test_campaign_or_deathmatch_coming() -> None:
     assert menu.screen == "main" and menu.items()[menu.selected].label == "HOST GAME"
 
 
-def test_games_found_say_their_mode() -> None:
-    from ok_doomer.client.menu import game_line
-
-    campaign, dm = _game("desk", "192.168.1.20"), _game("pi", "192.168.1.30")
-    assert dm.info is not None
-    dm = FoundGame(dm.address, dm.version, dm.name, replace(dm.info, mode="deathmatch"), 4.0, 0.0)
-    assert "GROUND FLOOR" in game_line(campaign) and "DEATHMATCH" in game_line(dm)
+def test_games_found_are_listed_under_their_mode() -> None:
+    menu = Menu("ann")
+    menu.go("join")
+    pi = _game("pi", "192.168.1.30")
+    assert pi.info is not None
+    pi = FoundGame(pi.address, pi.version, pi.name, replace(pi.info, mode="deathmatch"), 4.0, 0.0)
+    old = _game("old", "192.168.1.40", 2)
+    menu.set_games([pi, _game("desk", "192.168.1.20"), old, _game("lap", "192.168.1.50")])
+    labels = [i.label.split("  ")[0] for i in menu.items()]
+    assert labels == [
+        "CAMPAIGN", "desk", "lap",
+        "DEATHMATCH", "pi",
+        "OTHER VERSIONS", "old",
+        "ENTER AN ADDRESS...", "BACK",
+    ]  # fmt: skip
+    assert not menu.items()[0].enabled  # headings can't be chosen
+    assert menu.items()[menu.selected].label.startswith("desk")  # the first game, not its heading
+    assert "GROUND FLOOR" in menu.items()[1].label
+    menu.selected = 4
+    assert _keys(menu, pygame.K_RETURN) == JoinGame("192.168.1.30", 5029)  # pi, by its place
 
 
 def test_joining_a_game_found() -> None:
@@ -87,9 +100,10 @@ def test_joining_a_game_found() -> None:
     assert menu.items()[0].label == "LOOKING FOR GAMES..." and not menu.items()[0].enabled
     assert menu.items()[menu.selected].label == "ENTER AN ADDRESS..."
     menu.set_games([_game("old-laptop", "192.168.1.40", 2), _game("desk", "192.168.1.20")])
-    assert "needs updating" in menu.items()[0].label and not menu.items()[0].enabled
-    menu.selected = 0
-    menu.move(1)  # onto the one that can be joined
+    old = menu.items()[3]  # under OTHER VERSIONS, after the campaigns
+    assert "needs updating" in old.label and not old.enabled
+    menu.selected = 0  # CAMPAIGN, a heading
+    menu.move(1)  # onto the game under it
     assert _keys(menu, pygame.K_RETURN) == JoinGame("192.168.1.20", 5029)
 
 

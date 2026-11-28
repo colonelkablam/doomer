@@ -101,13 +101,39 @@ PLAYABLE = {"coop"}
 
 
 def game_line(game: FoundGame) -> str:
-    """A found game, short enough for the screen: a campaign by its floor,
-    deathmatch by name (one floor, so the floor says nothing)."""
+    """A found game, short enough for the screen (its mode is the heading
+    it's under): a campaign by the floor it's on, deathmatch by its map."""
     if game.info is None or not game.joinable:
         return f"{game.name}  (needs updating)"
     i = game.info
-    where = i.floor if i.mode == "coop" else MODE_NAMES.get(i.mode, i.mode.upper())
+    where = i.floor if i.mode == "coop" else i.map_name
     return f"{i.name}  {where}  {i.players}/{i.max_players}  {game.ping_ms:.0f} MS"
+
+
+def game_heading(game: FoundGame) -> str:
+    """The heading a found game's listed under: its mode."""
+    if game.info is None or not game.joinable:
+        return "OTHER VERSIONS"  # can't be joined: the mode doesn't matter
+    return MODE_NAMES.get(game.info.mode, game.info.mode.upper())
+
+
+def game_items(games: list[FoundGame]) -> list["Item"]:
+    """The games found, under a heading for each mode there are games of
+    (campaign, deathmatch, then any others), in the order found within."""
+    order = [*MODE_NAMES.values()]
+    headings = sorted(
+        {game_heading(g) for g in games},
+        key=lambda h: (order.index(h) if h in order else len(order), h),
+    )
+    items = []
+    for heading in headings:
+        items.append(Item(heading, "heading", enabled=False))
+        items += [
+            Item(game_line(g), f"game {i}", g.joinable)
+            for i, g in enumerate(games)
+            if game_heading(g) == heading
+        ]
+    return items
 
 
 class Menu:
@@ -172,7 +198,7 @@ class Menu:
                 Item("BACK", "back"),
             ]
         if self.screen == "join":
-            found = [Item(game_line(g), f"game {i}", g.joinable) for i, g in enumerate(self.games)]
+            found = game_items(self.games)
             if not found:
                 found = [Item("LOOKING FOR GAMES...", "none", enabled=False)]
             return [*found, Item("ENTER AN ADDRESS...", "address"), Item("BACK", "back")]
@@ -348,6 +374,11 @@ class Menu:
             chosen = i == self.selected and item.enabled
             label = f"> {item.label}" if chosen else f"  {item.label}"
             colour = NAME_COLOUR if chosen else DIM if item.enabled else OFF
+            if item.action == "heading":  # the games under it are indented by the mark
+                label, colour = item.label, DIM
+                row += 3 if i else 0
+            elif item.action == "address" and self.games:
+                row += 8  # apart from the list of games: not one of them
             left = LEFT
             if item.action == "rejoin":  # a block of its own: the game you were in
                 row += text(self.last_game(), LEFT, row + 6, centre=False, colour=DIM) + 3
