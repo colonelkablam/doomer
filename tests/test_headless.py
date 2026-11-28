@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pygame
 
-from doomer.client.headless import save_png
+from ok_doomer.client.headless import save_png
 
 
 def test_render_frame_to_png(tmp_path: Path) -> None:

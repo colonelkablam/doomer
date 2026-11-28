@@ -1,6 +1,6 @@
 import numpy as np
 
-from doomer.client.palette import (
+from ok_doomer.client.palette import (
     BRICK,
     COLORMAP,
     LIGHT_LEVELS,

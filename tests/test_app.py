@@ -3,14 +3,12 @@
 import pygame
 import pytest
 
-from doomer.client.app import run
-from doomer.client.config import ClientConfig, ControlsConfig, RenderConfig
-from doomer.client.input import KeyboardMouseInput
-from doomer.client.session import LocalSession
-from doomer.shared.events import Event
-from doomer.shared.mapfile import load_map
-from doomer.shared.player import PlayerInput
-from doomer.shared.world import new_world
+from ok_doomer.client.app import run
+from ok_doomer.client.config import ClientConfig, ControlsConfig, RenderConfig
+from ok_doomer.client.input import KeyboardMouseInput
+from ok_doomer.client.local import LocalSession
+from ok_doomer.shared.events import Event
+from ok_doomer.shared.player import PlayerInput
 from tests.test_mapfile import MAPS
 
 
@@ -27,7 +25,7 @@ class QuitAfter(LocalSession):
 
 
 def test_game_loop_runs_and_quits() -> None:
-    session = QuitAfter(5, new_world(load_map(MAPS / "test.map"), "coop"), "smoke")
+    session = QuitAfter(5, (MAPS / "test.map").read_text(), "smoke")
     run(session, ClientConfig(render=RenderConfig(vsync=False)), session.player.angle)
     assert session.frames_left <= 0
 
@@ -66,7 +64,7 @@ def test_mouse_capture_falls_back_when_relative_mode_unavailable(
 def test_the_picture_fills_the_window_keeping_its_shape(
     window: tuple[int, int], integer: bool, expected: tuple[int, int, int, int]
 ) -> None:
-    from doomer.client.app import view_rect
+    from ok_doomer.client.app import view_rect
 
     assert tuple(view_rect(window, (320, 200), integer)) == expected
 
@@ -80,7 +78,33 @@ class ToggleThenQuit(QuitAfter):
 
 @pytest.mark.parametrize("start_fullscreen", [False, True])
 def test_full_screen_starts_and_toggles(start_fullscreen: bool) -> None:
-    session = ToggleThenQuit(5, new_world(load_map(MAPS / "test.map"), "coop"), "smoke")
+    session = ToggleThenQuit(5, (MAPS / "test.map").read_text(), "smoke")
     config = ClientConfig(render=RenderConfig(vsync=False, fullscreen=start_fullscreen))
     run(session, config, session.player.angle)
+    assert session.frames_left <= 0
+
+
+class NetStatsThenQuit(QuitAfter):
+    def update(self, real_dt: float, player_input: PlayerInput) -> list[Event]:
+        if self.frames_left == 4:  # F3: the network stats in the corner
+            pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_F3, mod=0))
+        return super().update(real_dt, player_input)
+
+
+def test_network_stats_show_with_f3() -> None:
+    session = NetStatsThenQuit(6, (MAPS / "test.map").read_text(), "smoke")
+    run(session, ClientConfig(render=RenderConfig(vsync=False)), session.player.angle)
+    assert session.frames_left <= 0
+
+
+class ConsoleThenQuit(QuitAfter):
+    def update(self, real_dt: float, player_input: PlayerInput) -> list[Event]:
+        if self.frames_left == 4:  # the backquote key: the console
+            pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_BACKQUOTE, mod=0))
+        return super().update(real_dt, player_input)
+
+
+def test_the_console_shows_with_backquote() -> None:
+    session = ConsoleThenQuit(6, (MAPS / "test.map").read_text(), "smoke")
+    run(session, ClientConfig(render=RenderConfig(vsync=False)), session.player.angle)
     assert session.frames_left <= 0

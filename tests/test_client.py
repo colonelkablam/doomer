@@ -3,19 +3,17 @@ import math
 import pygame
 import pytest
 
-from doomer.client.config import ClientConfig, ControlsConfig, RenderConfig
-from doomer.client.input import Action, compose_input, look, turn
-from doomer.client.palette import GREEN, MAGENTA, PINK, WOOD
-from doomer.client.render import Camera, Renderer
-from doomer.client.screenshot import render_frame
-from doomer.client.session import LocalSession
-from doomer.shared.config import from_dict
-from doomer.shared.mapfile import parse_map
-from doomer.shared.player import PlayerInput
-from doomer.shared.world import new_world
+from ok_doomer.client.config import ClientConfig, ControlsConfig, RenderConfig
+from ok_doomer.client.input import Action, compose_input, look, turn
+from ok_doomer.client.local import LocalSession
+from ok_doomer.client.palette import GREEN, MAGENTA, PINK, WOOD
+from ok_doomer.client.render import Camera, Renderer
+from ok_doomer.client.screenshot import render_frame
+from ok_doomer.shared.config import from_dict
+from ok_doomer.shared.mapfile import parse_map
+from ok_doomer.shared.player import PlayerInput
 
-ROOM = parse_map(
-    """\
+ROOM_TEXT = """\
 [walls]
 #########
 #.......2
@@ -27,7 +25,7 @@ ROOM = parse_map(
 coop_start 1.5 2.5 0
 exit 7.5 2.5 0
 """
-)
+ROOM = parse_map(ROOM_TEXT)
 # Ceiling and floor from ramps the wood panelling (wall type 2) never uses, so
 # any pixel in another ramp is wall.
 CFG = RenderConfig(ceiling_colour=(250, 130, 190), floor_colour=(110, 200, 90))
@@ -100,7 +98,7 @@ def test_turn_mouse_right_is_clockwise_and_wraps() -> None:
 
 
 def test_local_session_steps_at_fixed_rate_and_interpolates() -> None:
-    session = LocalSession(new_world(ROOM, "coop"), "test")
+    session = LocalSession(ROOM_TEXT, "test")
     dt = session.world.config.dt
     start_x = session.player.x
     session.update(dt * 2.5, PlayerInput(forward=1.0, angle=0.0))
@@ -137,7 +135,7 @@ def test_mouse_look_up_down_inverts_and_clamps() -> None:
 
 
 def test_session_camera_follows_feet_and_eases_eye_height() -> None:
-    session = LocalSession(new_world(ROOM, "coop"), "test")
+    session = LocalSession(ROOM_TEXT, "test")
     move = session.world.config.movement
     dt = session.world.config.dt
     assert session.camera(0.0).z == pytest.approx(move.eye_height)

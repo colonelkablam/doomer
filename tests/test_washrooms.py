@@ -5,15 +5,16 @@ import math
 
 import pytest
 
-from doomer.client.areas import AREA_LOOKS
-from doomer.client.boxes import BOX_MODELS, Box, cubicle_door_boxes
-from doomer.client.hud import message_for
-from doomer.shared.cubicles import DOOR_SECONDS, CubicleDoor, cubicle_doors_from_map
-from doomer.shared.events import CubicleDoorUsed, Event
-from doomer.shared.mapfile import WASHROOM, format_map, load_map, parse_map
-from doomer.shared.player import PlayerInput, PlayerState
-from doomer.shared.sim import step
-from doomer.shared.things import (
+from ok_doomer.client.areas import AREA_LOOKS
+from ok_doomer.client.boxes import BOX_MODELS, Box, cubicle_door_boxes
+from ok_doomer.client.hud import message_for
+from ok_doomer.shared.cubicles import DOOR_SECONDS, CubicleDoor, cubicle_doors_from_map
+from ok_doomer.shared.events import CubicleDoorUsed, Event
+from ok_doomer.shared.mapfile import WASHROOM, format_map, load_map, parse_map
+from ok_doomer.shared.player import PlayerInput, PlayerState
+from ok_doomer.shared.sim import step
+from ok_doomer.shared.spawn import spawn_player
+from ok_doomer.shared.things import (
     CUBICLE_DEPTH,
     CUBICLE_WIDTH,
     PAN_TOP,
@@ -21,7 +22,7 @@ from doomer.shared.things import (
     RETURN_WIDTH,
     THING_TYPES,
 )
-from doomer.shared.world import World, drain_events, new_world, spawn_player
+from ok_doomer.shared.world import World, drain_events, new_world
 
 FITTINGS = [
     f"{fitting}_{n}"

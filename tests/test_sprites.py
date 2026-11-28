@@ -3,12 +3,12 @@ import math
 import numpy as np
 import numpy.typing as npt
 
-from doomer.client.config import RenderConfig
-from doomer.client.models import VIEWS
-from doomer.client.palette import GREEN, WOOD
-from doomer.client.render import EYE_HEIGHT, Camera, Renderer, SpriteInstance
-from doomer.client.sprites import SPRITES
-from doomer.shared.mapfile import GameMap, parse_map
+from ok_doomer.client.config import RenderConfig
+from ok_doomer.client.models import VIEWS
+from ok_doomer.client.palette import GREEN, WOOD
+from ok_doomer.client.render import EYE_HEIGHT, Camera, Renderer, SpriteInstance
+from ok_doomer.client.sprites import SPRITES
+from ok_doomer.shared.mapfile import GameMap, parse_map
 
 OPEN = parse_map("[walls]\n###########\n#.........#\n#.........#\n#.........#\n###########\n")
 PILLAR = parse_map("[walls]\n###########\n#.........#\n#..#......#\n#.........#\n###########\n")
@@ -103,7 +103,7 @@ def _green(index: npt.NDArray[np.uint8]) -> int:
 
 
 def test_terminal_has_views_all_round_screen_in_front_only() -> None:
-    from doomer.client.models import VIEWS
+    from ok_doomer.client.models import VIEWS
 
     sprite = SPRITES["terminal"]
     assert len(sprite.index) == VIEWS
@@ -113,7 +113,7 @@ def test_terminal_has_views_all_round_screen_in_front_only() -> None:
 
 
 def test_view_is_picked_from_where_you_see_the_thing() -> None:
-    from doomer.client.models import VIEWS, view_for
+    from ok_doomer.client.models import VIEWS, view_for
 
     step = 360 / VIEWS
     assert view_for(0.0) == 0  # from the front

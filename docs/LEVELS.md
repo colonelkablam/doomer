@@ -4,7 +4,7 @@ What a map can contain, where things can go, and what the engine can't do.
 Written for hand-built maps now, and as the rule set for a procedural map
 generator later: every rule here should become an automatic check.
 
-All numbers come from the code (`doomer/shared/config.py`, `mapfile.py`,
+All numbers come from the code (`ok_doomer/shared/config.py`, `mapfile.py`,
 `things.py`, `modes.py`); if this file and the code disagree, the code wins
 and this file needs fixing. File format details: `DESIGN.md`, "Map format".
 
@@ -58,7 +58,7 @@ units at most). Anything higher with no stairs is unreachable.
 
 | Thing | Purpose | Rules |
 |---|---|---|
-| `coop_start` | Where co-op players arrive | Exactly 1 for co-op. On open floor or a raised floor, never in a full wall |
+| `coop_start` | Where co-op players arrive | Exactly 1 for co-op. On open floor or a raised floor, never in a full wall. The first player stands on it, the others beside it as walls allow (`shared/spawn.py`), so leave a body width (half a cell) clear round it. In a lift car there's no room beside: arriving players share the spot (harmless while players don't collide; a wider car if that changes) |
 | `exit` | Co-op level exit (drawn as a hanging EXIT sign) | Exactly 1 for co-op. Must be reachable on foot from `coop_start` |
 | `dm_spawn` | Deathmatch spawn | At least 4 for deathmatch. Reachable; spread out (see checks) |
 | `desk`, `water_cooler`, `filing_cabinet`, `ficus` | Blocking furniture | Square footprints, half-widths 0.32 / 0.12 / 0.16 / 0.16. Cabinets, coolers and ficuses are box models: against a wall use `at=` (it turns them to face into the room); a ficus in a corner `at=nw` etc.; the ficus's crown spreads wider than its footprint |
@@ -214,7 +214,7 @@ What costs:
 2. **Modes**: co-op ready (1 `coop_start`, 1 `exit`) and/or deathmatch ready
    (>= 4 `dm_spawn`).
 3. **Can be finished** [built: `shared/validate.py`; run
-   `python -m doomer.shared.validate maps/<name>.map`]: from `coop_start`,
+   `python -m ok_doomer.shared.validate maps/<name>.map`]: from `coop_start`,
    walking by the game's own movement rules (steps up to 1 unit, stairs
    from the low end, a jump onto a desk but not a counter, railings,
    furniture and screens in the way), every locked door's pass is reachable
@@ -238,7 +238,7 @@ What costs:
 9. **Performance**: estimate changes-of-space per ray over a sample of
    viewpoints; reject layouts that exceed the budget.
 
-These are worth implementing as `doomer/shared/validate.py` (standard library
+These are worth implementing as `ok_doomer/shared/validate.py` (standard library
 only, so the server can check a generated map too) before the generator.
 
 ## Level structure (later)

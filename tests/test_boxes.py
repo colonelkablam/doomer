@@ -6,11 +6,11 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from doomer.client.boxes import BOX_MODELS, PlacedBox
-from doomer.client.config import RenderConfig
-from doomer.client.render import EYE_HEIGHT, Camera, Renderer, SpriteInstance
-from doomer.shared.mapfile import parse_map
-from doomer.shared.things import THING_TYPES
+from ok_doomer.client.boxes import BOX_MODELS, PlacedBox
+from ok_doomer.client.config import RenderConfig
+from ok_doomer.client.render import EYE_HEIGHT, Camera, Renderer, SpriteInstance
+from ok_doomer.shared.mapfile import parse_map
+from ok_doomer.shared.things import THING_TYPES
 
 OPEN = parse_map("[walls]\n###########\n#.........#\n#.........#\n#.........#\n###########\n")
 PILLAR = parse_map("[walls]\n###########\n#.........#\n#..#......#\n#.........#\n###########\n")
@@ -68,8 +68,8 @@ def test_nothing_drawn_when_the_camera_is_inside_one() -> None:
 
 
 def test_screened_desk_pairs_get_a_middle_screen_and_one_per_cell_edge() -> None:
-    from doomer.client.boxes import desk_screens
-    from doomer.shared.screens import SCREEN_HEIGHT
+    from ok_doomer.client.boxes import desk_screens
+    from ok_doomer.shared.screens import SCREEN_HEIGHT
 
     # Three screened pairs (j) facing north at x 2..4, and one facing east.
     pods = parse_map(
@@ -90,14 +90,14 @@ def test_screened_desk_pairs_get_a_middle_screen_and_one_per_cell_edge() -> None
 
 
 def test_plain_desk_pairs_have_no_screens() -> None:
-    from doomer.client.boxes import desk_screens
+    from ok_doomer.client.boxes import desk_screens
 
     plain = parse_map("[walls]\n#####\n#.d.#\n#####\n\n[floor]\n00000\n00200\n")
     assert desk_screens(plain) == []
 
 
 def test_furniture_is_box_models_not_sprites() -> None:
-    from doomer.client.sprites import SPRITES
+    from ok_doomer.client.sprites import SPRITES
 
     for name in ("filing_cabinet", "water_cooler", "ficus", "mac"):
         assert name in BOX_MODELS and name not in SPRITES
@@ -126,7 +126,7 @@ def test_water_cooler_bottle_is_an_octagon() -> None:
 
 
 def test_ficus_leaves_are_see_through_between_the_clusters() -> None:
-    from doomer.client.boxes import BOX_OPAQUE
+    from ok_doomer.client.boxes import BOX_OPAQUE
 
     plain = R.render_indices(OPEN, CAM).copy()
     frame = R.render_indices(OPEN, CAM, [SpriteInstance("ficus", 3.5, 2.5)])
@@ -143,8 +143,8 @@ def test_ficus_leaves_are_see_through_between_the_clusters() -> None:
 def test_testing_only_each_boxs_columns_draws_the_same_as_testing_all(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from doomer.client.render import sprites_from_things
-    from doomer.shared.mapfile import load_map
+    from ok_doomer.client.render import sprites_from_things
+    from ok_doomer.shared.mapfile import load_map
 
     office = load_map("maps/office.map")
     things = sprites_from_things(office)
@@ -168,7 +168,7 @@ def test_testing_only_each_boxs_columns_draws_the_same_as_testing_all(
 
 
 def test_ficus_leaf_cards_show_leaves_only_on_their_broad_faces() -> None:
-    from doomer.client.boxes import BOX_OPAQUE, FRONT, TOP
+    from ok_doomer.client.boxes import BOX_OPAQUE, FRONT, TOP
 
     for box in BOX_MODELS["ficus"]:
         sizes = (box.x[1] - box.x[0], box.y[1] - box.y[0], box.z[1] - box.z[0])
@@ -182,8 +182,8 @@ def test_ficus_leaf_cards_show_leaves_only_on_their_broad_faces() -> None:
 
 
 def test_glowing_boxes_ignore_lighting_and_others_dont() -> None:
-    from doomer.client.config import LightingConfig
-    from doomer.client.render import Renderer as _Renderer
+    from ok_doomer.client.config import LightingConfig
+    from ok_doomer.client.render import Renderer as _Renderer
 
     room = parse_map(  # two storeys high: the sign hangs above one
         "[walls]\n###########\n#.........#\n#.........#\n#.........#\n###########\n"
@@ -205,9 +205,9 @@ def test_glowing_boxes_ignore_lighting_and_others_dont() -> None:
 
 
 def test_posters_hang_on_wall_faces_and_the_fire_plan_marks_where_it_hangs() -> None:
-    from doomer.client.boxes import BOX_TEXTURES, box_textures, plan_texture
-    from doomer.client.palette import BRICK
-    from doomer.shared.mapfile import load_map
+    from ok_doomer.client.boxes import BOX_TEXTURES, box_textures, plan_texture
+    from ok_doomer.client.palette import BRICK
+    from ok_doomer.shared.mapfile import load_map
 
     office = load_map("maps/office.map")
     posters = office.things_of_type("poster")

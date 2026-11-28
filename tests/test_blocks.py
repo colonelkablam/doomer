@@ -6,11 +6,17 @@ import math
 import numpy as np
 import pytest
 
-from doomer.client.config import RenderConfig
-from doomer.client.palette import GREY, SAND, STEEL
-from doomer.client.render import EYE_HEIGHT, Camera, Renderer, SpriteInstance, sprites_from_things
-from doomer.client.sprites import SPRITES
-from doomer.shared.mapfile import GameMap, parse_map
+from ok_doomer.client.config import RenderConfig
+from ok_doomer.client.palette import GREY, SAND, STEEL
+from ok_doomer.client.render import (
+    EYE_HEIGHT,
+    Camera,
+    Renderer,
+    SpriteInstance,
+    sprites_from_things,
+)
+from ok_doomer.client.sprites import SPRITES
+from ok_doomer.shared.mapfile import GameMap, parse_map
 
 # A desk pod (wall type 3: partition-fronted, laminate top) two cells deep, at
 # height 2/8 = 0.25, in front of a beige wall.
@@ -239,7 +245,7 @@ def test_desk_pair_ends_are_half_pedestal_half_open_from_either_end() -> None:
 def test_desk_pairs_show_seams_where_the_desks_meet(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import doomer.client.render as render
+    import ok_doomer.client.render as render
 
     # A row of three desk pairs (d) facing north, x 2..5: each pair's two desks
     # meet along y = 2.5, and neighbouring pairs at x = 3 and x = 4 (not at the

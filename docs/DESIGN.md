@@ -5,7 +5,8 @@ Raspberry Pi 5 server), with co-op, deathmatch and a level editor. Set in a
 1980s office block. This file is the engine and code design; the setting,
 characters, enemies and furniture are in [GAME.md](GAME.md); level design
 rules and limits in [LEVELS.md](LEVELS.md). The Python
-package keeps the short name `doomer`.
+package is `ok_doomer` (the project name, `ok-doomer`, with the hyphen a
+module name can't hold).
 
 ## Architecture
 
@@ -15,14 +16,25 @@ package keeps the short name `doomer`.
 - **Clients**: render locally with pygame-ce (numpy for per-pixel maths,
   numba to compile the ray casting).
   They send inputs and receive state snapshots. Never pixels.
-- **Model/view/input separation**: `doomer/shared` holds the map, player state
+- **Model/view/input separation**: `ok_doomer/shared` holds the map, player state
   and collision. It is standard library only (no pygame, no numpy), so the
   server runs it unchanged. `tests/test_architecture.py` enforces this.
 - **One code path for input**: `PlayerInput` -> `step(world, inputs)`
-  (`shared/sim.py`) -> new world state. Single-player calls it in a
-  `LocalSession`; networked play calls it on the server (and later on the
-  client for prediction). The client game loop talks to a `GameSession`
-  Protocol, so swapping `LocalSession` for a `NetworkSession` doesn't change it.
+  (`shared/sim.py`) -> new world state. Networked play calls it on the
+  server (and later on the client for prediction). The client game loop
+  talks to a `GameSession` Protocol, so swapping `LocalSession` for a
+  `NetworkSession` doesn't change it.
+- **Single-player runs the server in-process** (decided for milestone 3, as
+  Quake III and Minecraft since 1.3 do): `LocalSession` becomes a thin
+  wrapper round the same `GameServer` core the Pi runs, joined by a direct
+  in-memory link instead of a socket (no JSON). One code path for spawning,
+  floor changes and pickups, so single-player exercises the multiplayer
+  code. Hosting from the game is the same plus a TCP listener; the
+  dedicated Pi server is the same core with no client in it. [built:
+  `client/local.py`: `LocalSession` is a `NetworkSession` on a
+  `LocalLink`, the server ticking in lockstep, one tick per input sent;
+  it plays to the same numbers as calling `step` directly (tested), and
+  costs ~0.2 ms a tick more (a snapshot each way, the predictor).]
 - **Fixed timestep**: the model advances in fixed steps (`shared/timestep.py`).
   Rendering runs as fast as it can and interpolates the camera between the last
   two simulation states, so a 60 Hz simulation looks smooth on a 144 Hz screen.
@@ -36,7 +48,9 @@ The aim is that adding a feature (a weapon, a pickup, a door, a game mode)
 means adding a module and registering it, not editing a dozen files.
 
 1. **Dependencies point one way**: `client`, `server` and `editor` import
-   `shared`; `shared` imports nothing of theirs. Enforced by
+   `shared`; `shared` imports nothing of theirs. The client also imports
+   the server's core (`server/game.py`, for single-player in-process);
+   the server never imports the client. Enforced by
    `tests/test_architecture.py` (extend it as packages are added).
 2. **Data and logic are separate.** State is plain typed `@dataclass(slots=True)`
    objects. Behaviour lives in functions that take state and return or mutate
@@ -83,13 +97,287 @@ means adding a module and registering it, not editing a dozen files.
 
 ## Networking
 
+- **Who does what.** The server owns the one real `World`: each tick it
+  takes every client's queued input, runs `step`, and sends each client a
+  snapshot and the tick's events; it decides anything two players could
+  disagree about (who got the cup, hits, when the lift goes, the next
+  floor), and handles joins, ids and timeouts. The client reads input and
+  sends one input per tick, keeps a copy of the world (built from the map
+  the server sent, its changing state overwritten from each snapshot),
+  renders from it, and turns events into the HUD and sound; it decides
+  nothing. Keeping a whole `World` on the client means every renderer
+  helper works unchanged, and prediction is `step` run on that copy.
+- **Inputs are per tick, numbered, and queued** on the server, one used per
+  tick. "Use" is a press (this tick held, last tick not: `use_held`), so a
+  server that kept only each client's latest input could lose a tap
+  shorter than a tick. A player whose input hasn't arrived gets
+  `sim.idle_input` (stands still, keeps their view and crouch); the server
+  may repeat their last input instead.
+- **Snapshots, measured**: the whole changing state of `office.map` with 4
+  players is ~1.2 KB of JSON (12 doors, 10 cubicle doors, 12 pickups); at
+  60 Hz to 4 clients ~2.3 Mbit/s, fine on a LAN. So full snapshots first,
+  deltas only if a measurement says so. A tick with 4 players took 0.58 ms
+  on the cloud VM (budget 16.7 ms); a Pi 5 is perhaps 2-3x slower.
+- **Snapshots** (`shared/snapshot.py`): only what changes in play. The
+  client builds its own `World` from the map the server sent, so a
+  snapshot's doors, pickups, switches and dispensers go positionally (each
+  a row of its changing fields, in map order); players go whole, with ids,
+  as they join and leave. `capture(world)` and `apply(world, snap)`
+  (players updated in place, so a session holding one sees it move).
+  Each entity type's fields are listed as `STATE` (sent) or `FIXED` (by
+  the map: a lift's `here`, a cubicle's `locked`); the tests check every
+  field is listed, that every field play changes is sent (a run that uses
+  every switch, dispenser and door, the lift arriving), and that a fresh
+  world given a snapshot then plays on identically. Not sent: `rng` (the
+  server's alone), events (alongside, in the same message). Entities
+  that appear in play (enemies, drops) will need ids, as players do.
+  815 bytes of JSON for `office.map` with 4 players, before rounding.
+- **The protocol** (`shared/protocol.py`, version 2; bumped whenever the
+  wire format changes, so different code refuses at once with both
+  versions rather than half-working: a version 1 server, from before
+  join events, let newer clients in and they never heard who came and
+  went. `schema_fingerprint()` hashes every message, event and field,
+  and a test pins it to the version): `Hello(version,
+  name)` -> `Welcome(player_id, mode, config, map_text)` or `Reject`;
+  then `Input(seq, input)` from the client each tick and `Update(ack,
+  snapshot, events)` from the server each tick; `NewFloor(map_text)` when
+  the lift arrives; `Bye(reason)` either way. One JSON object a line, a
+  `type` key; `encode` and `decode` are the only way in or out. The
+  config goes in the welcome so `step` runs the same on both sides.
+  Events convert by walking the `Event` subclasses: a new event needs no
+  protocol change. Everything decoded is checked (a client's data is
+  untrusted): malformed is a `ProtocolError`, never a crash; numbers in
+  inputs must be finite (NaN, `Infinity` and `1e999` refused: a NaN angle
+  would spread through the world); lines over 1 MB are refused. An
+  `Update` of the ground floor with 4 players, moving, is ~1.2 KB.
+- **The server core** (`server/game.py`, `GameServer`): no sockets, no
+  clock. The transport calls `join(hello)` (a `Welcome`, or a `Reject`:
+  wrong version, full), `receive(player_id, message)` and `leave`, and
+  `tick()` at the tick rate, which returns what to send whom (each
+  client's `Update`, same snapshot and events, its own `ack`). Inputs:
+  one queued input used per tick; more than `input_slack` (2) left
+  waiting are merged into it (the later one's movement, a press of use
+  or jump from either), since one arrives and one's used each tick, so a
+  burst would otherwise stand as lag for good (measured: a 1.5 s first
+  frame left 6 queued, 152 ms from key to screen; merged, 52 ms); the
+  client also sends at most 2 inputs a frame; repeats and stale ones (seq not newer)
+  ignored; the queue capped (`input_queue`, the oldest dropped, so a
+  flooding client can't build up lag); a client with none queued has
+  their last input repeated for `hold_ticks` (6: 100 ms, smoothing
+  jitter), then stands still (one who dropped off doesn't walk on).
+  Timeouts count the server's own ticks (`GameServer.ticks`: the world's
+  start again on each floor), `timeout_seconds` of silence. The lift
+  arriving: `NewFloor` to everyone, then the new floor's first `Update`;
+  inputs queued for the old floor are dropped (and acked). Player ids are
+  never reused. Names tidied (spaces collapsed, 16 characters, never
+  empty). Settings in `server/config.py` (`ServerConfig`).
+- **The transport** (`server/net.py`, `TcpServer`; run with `python -m
+  ok_doomer.server`): asyncio, one thread, so the `GameServer` is never
+  touched by two things at once. `TCP_NODELAY` on every socket (Nagle's
+  algorithm would hold small packets back to batch them); a `Hello`
+  within 5 s; anything that won't decode ends the connection with a
+  `Bye` saying why; a client whose unsent data passes 1 MB is dropped
+  (it can't keep up). The tick loop ticks by the loop's monotonic clock,
+  each tick due `dt` after the last (no drift), skipping ahead after a
+  stall of more than 8 ticks. SIGTERM (systemd stopping it) and Ctrl+C
+  stop it cleanly, a `Bye` to everyone.
+- **Bots** (`ok_doomer/bot`, `python -m ok_doomer.bot --connect HOST:PORT
+  --count N`): standard library and `shared` only, asyncio, many to a
+  process. A `WorldMirror` (`shared/mirror.py`: the client's copy of the
+  world, built from the `Welcome`, kept in step by `Update` and
+  `NewFloor`, numbering inputs and noting the `ack`) and a brain
+  (`bot/brain.py`, `Wanderer`: walk ahead; stuck for 10 ticks, press use
+  and turn a random way). The game client's `NetworkSession` uses the
+  same mirror.
+- **Load, measured** (the cloud VM, bots in the same process as the
+  server): 60 ticks/s held at 4, 8 and 16 bots; tick median 0.96 / 1.32 /
+  2.37 ms, p99 1.28 / 2.38 / 7.33 ms; sent 2.1 / 5.5 / 16.4 Mbit/s.
+  Bandwidth grows with the square of the players (each update carries
+  every player, to every client): fine on a LAN at 8.
+- **Server CPU, cut ~3x** (profiled, then measured; a tick's work, 8 / 16
+  players: 2.02 / 4.56 ms before, 0.69 / 1.46 ms after). Two-thirds of
+  the simulation was collision checking every player against every desk
+  and door on the floor: `sim.move_player` now keeps only obstacles,
+  doors and cubicle doors within reach of the move (conservative; tested
+  bit-identical to unfiltered over 3,000 moves aimed at all three, and
+  each too-tight filter fails it). Encoding was a third of the rest, the
+  same snapshot once per client: `protocol.Encoder` encodes a tick's
+  shared snapshot and events once and splices on each client's `ack`
+  (byte-identical to `encode`). Not done: rounding floats (would make the
+  client's world differ from the server's by rounding, so prediction would
+  correct every update) or deltas (not needed at these sizes).
+- **The game client on a server** (`client/network.py`; `python -m
+  ok_doomer.client --connect HOST:PORT --name NAME`): a `Connection` (a
+  plain socket, `TCP_NODELAY`; a reader thread blocks on it and queues
+  each message, since the game loop is pygame's, not asyncio's) and a
+  `NetworkSession`, the same `GameSession` interface as `LocalSession`.
+  It sends one input per tick (its own `FixedTimestep`), drains the queue
+  once a frame onto a `WorldMirror`, and keeps players' poses in a short
+  history on the server's timeline (tick x dt: receipt times bunch up
+  when two updates land in one frame). It predicts you (below; without prediction, you're
+  drawn 1 tick behind the newest snapshot, the server's word), and draws
+  others 3 ticks behind (50 ms, room for jitter), interpolating between the snapshots
+  either side, angles the short way round, never extrapolating. Other
+  players are drawn as `office_worker` (`client/sprites.py`): a voxel
+  model baked into 16 views (white shirt, red tie, navy trousers, a dark
+  quiff; ~1.8 m), turned by the player's angle, so you see their back as
+  they walk away. One look for everyone until the characters (GAME.md)
+  are drawn. Posed (`client/people.py`): standing, a 4-pose walk (left
+  foot forward, passing, right forward, passing; arms against the legs),
+  crouching and jumping, each a model baked to its own 16 views and
+  sprite name. Legs and arms are straight segments swung from hip and
+  shoulder; the crouch leans the upper body 30 degrees about the hip (a
+  resampled rotation: a shear would keep its height); smoothed normals
+  (`VoxelModel.smooth`) stop staircase slopes shading in stripes. The pose
+  is picked by `client/animation.py` (`Stride`): the walk advances by
+  distance (`STRIDE_CELLS`, a cycle per cell, set by eye: the game moves
+  at ~7x a real walk), so feet keep pace, a blocked player stops
+  mid-stride, backwards runs it backwards; standing after 4 still frames.
+  From the interpolated positions: nothing new on the wire. The crouch is
+  33 voxels against the game's crouch height of 27 (a big head; a lean
+  steep enough looks like falling): decide hit boxes with 3b. It shows:
+  the reception counter's ledge (0.425) hides a crouched player's body
+  (0.42) but not the sprite's head (0.52), which gets a name over it. The server
+  going away or saying `Bye` ends the game (`GameSession.ended`).
+- **A bad network on one machine** (`server/lagproxy.py`, `python -m
+  ok_doomer.server.lagproxy --to HOST:PORT --listen 5030 --lag 30
+  --jitter 10 --loss 1`): a TCP proxy delaying each direction by `lag`
+  plus up to `jitter` ms. By TCP's rules: nothing lost or reordered; loss
+  is a stall of 200 ms (about TCP's shortest resend delay) holding up
+  everything behind it, as head-of-line blocking does. A separate
+  process, so the server keeps no test-only paths.
+- **Network stats** (F3 in the game; `NetworkSession.net_stats`): round
+  trip (an input sent to the update confirming it, median of 60: wire,
+  plus the waits for a tick at each end), jitter (spread of the gaps
+  between updates), updates a second, inputs unconfirmed, prediction
+  corrections. All measured by the client: nothing extra on the wire.
+- **Who's here.** The server tells everyone when someone joins or leaves
+  (`PlayerJoined`, `PlayerLeft` with why: quit, timed out, lost
+  connection), as events: the HUD says "Bob joined", "Bob timed out"
+  (your own joining isn't news); on joining, "Here: Bob, Cath" (from the
+  first update; anyone joining in that same tick is in it, not news
+  twice). HUD messages stack, up to 6 (`max_messages`), each for its own 3 s, so bots
+  joining together all show (it was one line, the newest replacing the
+  last). Messages are drawn into the frame like the names: the 5x7 font
+  (`pixelart.FONT_5X7`, capitals, digits, the punctuation messages use;
+  completed from the lobby sign's letters, which are unchanged), green on
+  black panels, wrapped to the frame's width (`message_scale`). A test
+  checks every character any message can produce is in the font. All
+  the game's words are drawn this way now (no system font): a floor's
+  name on arrival (5x7 at twice; the map's name under it unless it says
+  the same), the "complete" banner across a black band, the fps and F3
+  stats top left, "Click to play" (`Hud.draw_frame`, `hud.draw_text`).
+- **Whose news.** Every event goes to every client, but your HUD tells you
+  only yours and the team's (`hud.news_for`): someone else at a locked
+  door, the cooler or a lift button isn't news to you (a stuck bot
+  pressing use was filling everyone's screen); a pass anyone finds is
+  ("BOB PICKED UP THE BLUE PASS": the team holds it); joins, leaves and
+  the power are everyone's. Everything, everyone's, with who and the
+  tick, goes to the console (backquote; `client/console.py`, the system
+  font: a debugging tool), and to the log at debug level. Names over heads: the renderer records
+  what it drew of each sprite, after walls and desks hid their share
+  (`Renderer.seen`: pixels, top row, middle); a name goes just over the
+  top of what's seen of someone, if at least a few pixels are and
+  they're within 12 cells. Exact, with no depth guessing: a head over a
+  desk gets a name, someone behind a wall doesn't. Drawn into the frame
+  before it's scaled (chunky, like the rest): the 3x5 pixel font in
+  capitals, phosphor green on a black panel, a terminal readout
+  (`name_scale`, `name_panel` in the client's `[render]` config).
+- **Finding games on the LAN** (protocol 3: `Seek`, `GameInfo`). A client
+  asks, by UDP broadcast on 5028 (`client/discovery.py`, `GameFinder`);
+  every server that hears answers the asker directly with its name
+  (`ServerConfig.name`, else the machine's), floor, map, mode, players
+  and TCP port (`server/discovery.py`, started by `TcpServer.start` given
+  a discovery port; `discovery = false` turns it off). Asking rather than
+  announcing: the list is there as soon as someone looks, and servers
+  say nothing while nobody does. Seeks go to 255.255.255.255, each local
+  network's own broadcast address (/24 assumed: the standard library
+  can't ask for a netmask; on Windows the first can leave by a virtual
+  adapter) and 127.0.0.1 (a game on this machine). A game heard two ways
+  is listed once (`server_id`), by its LAN address; one silent for 3 s is
+  forgotten; one from other code is listed as needing updating (its
+  version and name are read before the rest, which may not decode). The
+  responder can't be used to flood: datagrams over 1 KB ignored, small
+  replies, one address answered at most every 0.2 s. `python -m
+  ok_doomer.client --find` lists what it hears. Wi-Fi with AP isolation
+  passes no broadcasts: join by address there.
+- **Full screen, and freezes.** F11 (or Alt+Enter) switches the window's
+  mode in place (`pygame.display.toggle_fullscreen`); rebuilding it
+  (`set_mode` again, vsync requested again) froze on Windows going into
+  full screen, with no message; switching in place fixed it (confirmed on
+  Windows). Rebuilding is kept only as a fallback where switching in
+  place fails. A
+  freeze can't say where it is, so `client/watchdog.py` does: each frame
+  puts a deadline back; none for 10 s and Python's faulthandler writes
+  every thread's stack to `~/.ok-doomer/hang.log` (from a thread of its
+  own: it works while the game's is stuck inside SDL).
+- **The start screen** (`client/menu.py`; `python -m ok_doomer.client`
+  with no map and no `--connect`, which still go straight in): SINGLE
+  PLAYER, HOST GAME (to come), JOIN GAME (the games found, live, and an
+  address to type), NAME (remembered: `client/settings.py`,
+  `~/.ok-doomer/settings.json`), QUIT; keys or the mouse, Esc back a
+  screen. Green 5x7 text, bare (no panels), on flat navy: the title in
+  the middle, the items down the left, a `>` before the selected (the
+  others indented to line up). On the right (main and name screens; the
+  game list wants the width) one of the game's own objects, picked at
+  random, turning once every 12 s (`client/showcase.py`): the Mac SE/30,
+  the boss's PC, a cup of coffee, the water cooler, a desk phone; seen
+  from 20 degrees above (a fixed angle, so a flat phone shows its top,
+  not an edge). Box models, so drawn by the renderer
+  itself, in an empty room from 48 points round: each view rendered with
+  the object and without, the pixels that differ are the object (the room
+  cut away). The camera's distance is guessed from the model's size, then
+  measured and put right so its widest view fills 85% of a 120-pixel
+  square. Baked on a thread (~0.5-1 s), the first view at once. (An 80s
+  office block at night, turning, was tried first: not quite right.) A failed join says why on the
+  menu; leaving a game (Esc twice) comes back to it, closing the window
+  quits. `Menu` is the state and what keys and clicks do, apart from
+  pygame's loop (`run_menu`) and the program (`start`), so it's tested
+  without a window. The window is a `Display` (`client/app.py`), shared
+  by the menu and the game (`play`). The font gained `>` and `_`; a test
+  checks everything the menu writes is in it.
+- **Hosting from the start screen** (`client/hosting.py`, HOST GAME): the
+  game runs the dedicated server (`python -m ok_doomer.server --name
+  "NICK'S GAME" --exit-with-stdin`) as a process of its own and joins it
+  over 127.0.0.1, prediction and all. Not the in-process server
+  single-player uses (it ticks in step with your inputs; hosting must
+  keep real time for everyone) nor a thread of the game's (it would share
+  Python's lock with the renderer: another server in-process was
+  measured taking a frame from 17 to 30 ms). As a process it has its own
+  core, is the server a Pi runs (found on the LAN as "NICK'S GAME"), and
+  can't outlive the game: it stops cleanly, telling everyone, when the
+  pipe from the game closes, however the game ends (a test kills the
+  game outright and sees the server go; without the flag it stays). Port
+  5029 if free, else another (discovery says which); a server whose
+  discovery port is taken plays on, unfound. Its log:
+  `~/.ok-doomer/host.log`; a failure to start says why on the menu. The
+  HUD starts with where others can join ("Hosting: others can join at
+  192.168.1.20:5029", 8 s).
+- **TCP and JSON lines** are fine on a LAN. Their weakness, head-of-line
+  blocking (a lost packet holds up everything behind it until resent),
+  matters on the internet, not here. Framing and encoding stay behind
+  `shared/protocol.py`, so UDP stays possible.
 - Join handshake: client sends protocol version and name; server rejects on
   version mismatch, otherwise sends the map file text and the player id.
   (No map hash check: the server is the source of the map.)
 - Client owns its view angle: turning is instant locally and the angle is sent
   with each input. Movement is server-authoritative.
 - Remote players are interpolated between the last two snapshots.
-- Client-side prediction of own movement only if it still feels laggy.
+- **Client-side prediction of your own movement** [built:
+  `shared/prediction.py`, on by default; `--no-predict` to compare].
+  Built after testing showed "a little pause before I move": measured, a
+  key press took 52-68 ms to show on one machine without it (a tick
+  waiting to send, a tick waiting at the server, drawn a tick behind, a
+  frame), 17 ms (one frame, as single-player) with it. Each tick the
+  input moves a private copy of your player at once (`sim.predict_move`:
+  look, walk, jump, fall, never use or pickups: those change the world
+  and are the server's); each `Update`, the inputs the server has applied
+  (`ack`) are dropped and the rest replayed from where the server has
+  you. The same `step` code both sides, so walking, sliding along walls,
+  jumping and crouching need no corrections at all (tested up to 200 ms
+  each way); a disagreement (a door that opened sooner there, a merged
+  input) goes into a drawn offset that fades over 0.1 s (a glide), more
+  than half a cell snaps.
 - Still to define: mid-game join, disconnect and timeout handling.
 - Later: UDP broadcast so clients find the Pi without typing an IP.
 - **Pickups, dispensers and meters are server state** (GAME.md, Pickups).
@@ -120,6 +408,74 @@ means adding a module and registering it, not editing a dozen files.
     on respawn.
   Build order: the data model now or with networking (so snapshots carry it
   from the start), damage and the HUD meters with weapons (3b).
+
+## Runs [planned]
+
+How a game goes, from the network's side. Nothing here is built yet
+beyond what Networking describes; it shapes the floor generator and
+milestone 3b. Choices still open are marked [open].
+
+- **A run** is one go at the game: the starting floor, then a number of
+  floors generated fresh for the run, then a boss floor; it ends with the
+  boss beaten or the whole team dead. The next go is a new run, new
+  floors (a roguelike's word for it, and its shape).
+- **The server's states.** (Words: *the start floor* is the hand-made
+  first floor, the ground floor; *a lobby* is a floor's lift lobby, where
+  you arrive on it.) *Waiting*: on the start floor, where an idle server
+  sits and anyone joining arrives. *In a run*: from the start floor's
+  lift up to the end. Taking that lift together *is* starting the game
+  (no start button: the lift goes when the team's aboard, as between
+  floors now); floor 1 of a new run is generated as it rises. The run
+  over (won, lost, or everyone gone), the server goes back to waiting on
+  the start floor. A hosted game (HOST GAME) starts there the same way;
+  the dedicated server (the Pi) idles there.
+- **Joining.** The server waiting: you arrive on the start floor, and go
+  with the next lift. A run going on with others in it: you join it, on
+  their floor (below); you never restart it. A run going on with nobody
+  left in it: it's abandoned, the server back on the start floor, so a
+  newcomer to an empty server always starts fresh, after a grace of 30 s
+  (someone whose Wi-Fi dropped can get back in: the rejoin to-do), the
+  server's log counting it down every 5 s while it's empty.
+- **The run's state, on the server** (beside `GameServer`; the current
+  floor's `World` is one part of it): the run's seed, which floor of how
+  many, and what each player carries from floor to floor (health and
+  coffee now; weapons and ammo with 3b). It decides what the lift's next
+  floor is: generated, then the boss's.
+- **Floors generated on the server**, never the clients: from the run's
+  seed, by a generator in `shared` (standard library: the server runs it),
+  following LEVELS.md's rules, each map checked by `validate.py` before
+  it's played; sent as text in `NewFloor`, as hand-made floors are now.
+  So every client has the same floor, and a run is reproducible ("run
+  41327, floor 3" replays exactly: bugs, and a seed of the week to
+  compare). The boss floor can be hand-made, loaded the same way.
+- **Dying, and joining mid-run: one rule** (decided). You're back in the
+  run at the lobby of the floor the team's on (its arrival lift lobby,
+  its `coop_start`: where a newcomer already appears today), with full
+  health and your class's basic weapon. One world a run: the server keeps
+  a single floor's world, as now. A newcomer mid-run (no class yet:
+  classes are chosen on the start floor, below) plays the class from
+  their last run (decided; kept simple: a quick choice on joining may
+  come later). So the client remembers the last class played
+  (`client/settings.py`, as the name) and says it when joining (a field
+  in `Hello`: a protocol version bump); never having played: the Newb,
+  the default class (GAME.md, Player characters).
+- **The lift on generated floors.** Today it goes when *everyone* is in
+  the car: one player far off or idle holds the team. Recommended: once
+  most are aboard, a countdown (~10 s), then it goes, and anyone not
+  aboard is carried along to the next floor anyway. "Most" is a majority:
+  more than half the players on the floor (decided).
+- **What you start a floor with, new to the run:** full health and your
+  class's basic starting weapon (decided; classes and weapons are 3b:
+  GAME.md, Player characters).
+- **Choosing a class on the first floor** [idea, more thought needed]:
+  the start floor as a staging area, where you choose your class by
+  going to different parts of the office and picking up its defining
+  weapon (GAME.md, Game loop).
+- **Order of building**, when it comes: the run state and the start floor
+  (its lift starting a run, back to it at the run's end, a fixed list
+  of hand-made floors standing in for generated ones); then the
+  join/respawn policy and the lift countdown; then the generator (with
+  LEVELS.md); then the boss floor.
 
 ## Coordinates
 
@@ -483,10 +839,10 @@ dm_spawn      1.5   3.5   0
   once every player is in a car that's here, shut, unlocked for the team
   and not just arrived, `World.ride` runs for `RIDE_SECONDS`, the occupied
   cars' `car_floor` climbing a floor (the panel counts), then
-  `LevelComplete(next_floor)`. The client loads that floor
-  (`LocalSession.change_floor`: a new world, the player at its
+  `LevelComplete(next_floor)`. The session then moves the team on
+  (`spawn.arrive_on_floor`: a new world, every player at its
   `coop_start` in a car, health and coffee carried, passes not); the
-  server will do the same for everyone. A floor whose `coop_start` is in a
+  server will do the same, and tell the clients. A floor whose `coop_start` is in a
   car is an arrival: that car starts here and opens after
   `ARRIVE_SECONDS`. The map checker treats it as open, and counts a lift
   as a way out only once the team can unlock it.
@@ -561,7 +917,7 @@ dm_spawn      1.5   3.5   0
   (`Renderer.eye_level_rays`) and the cells it crosses are marked.
   Client-side state.
 - **The map checker** (`shared/validate.py`, `check_floor`; on the command
-  line `python -m doomer.shared.validate maps/*.map`): can a co-op floor
+  line `python -m ok_doomer.shared.validate maps/*.map`): can a co-op floor
   be finished? It floods the space a player can reach from the co-op start
   on a quarter-cell grid of positions, each step tested with the
   simulation's own `move_box` and height rules (steps, a jump onto a desk,
@@ -747,7 +1103,7 @@ surface is still a single lookup.
    under a panel than between; a wall blocks light; a two-storey room is
    dimmer under its panels); a top-down PNG of the map for tuning:
    `client/lighting.py`, `LightingConfig`, `python -m
-   doomer.client.lightmap_png maps/office.map --out out/light.png`. ~0.2 s
+   ok_doomer.client.lightmap_png maps/office.map --out out/light.png`. ~0.2 s
    for the office. Panels also fade smoothly to nothing at the cutoff, so
    there's no ring. First bake: the lobby and offices have pools; the open
    plan (a panel every 2 cells) saturates past 1 everywhere, so phase 3
@@ -818,7 +1174,7 @@ are the fix.
 How decisions get made here, so a new session carries on the same way:
 
 1. **Look before judging.** Render the view in question headless
-   (`doomer.client.headless`, or a script calling `Renderer.render` and
+   (`ok_doomer.client.headless`, or a script calling `Renderer.render` and
    `save_png`), crop and enlarge the problem area, and look at it. Measure
    when it's numeric (frame times with a fixed set of views; shade counts;
    light-map values at points) before saying what's wrong.
@@ -916,16 +1272,113 @@ Noted at the end of a session, to pick up next:
   with a perm, a tie with a collar already holds, variety across a row);
   the cast (`CAST`) stays hand-picked. Until then the templates are the
   bank: every new template multiplies the faces possible.
-- Also outstanding: networking (milestone 3).
+- **Rendering speed** (a laptop ran 45 fps where the desktop ran 90;
+  networking costs the client ~0.1 ms a frame, measured: it's the
+  renderer). A lobby frame on the cloud VM: 17 ms, spread over a dozen
+  stages of 1-2 ms each (box models 2.2, light lookups 1.6, what's in
+  view 1.3, wall texels, floors and ceilings, low blocks...): numpy's
+  overhead per call and its temporary arrays, not one hot spot, and all
+  of it on the CPU. Target: 60 fps on the laptop. In order:
+  1. **Box models first** (measured, a lobby view: building the list of
+     ~590 boxes 0.75 ms, under 4% of a 20 ms frame, so caching the ones
+     that don't move would save ~0.5 ms at most: an early guess said
+     more; drawing them 5.6 ms, 28%: the biggest stage). Compile
+     `_draw_boxes` with numba; cache static placements along the way.
+  2. **Then the other hot stages with numba**, as the ray casting was
+     (`client/fastcast.py`, now 0.25 ms): light lookups, what's in view,
+     sprites, floors and ceilings, a stage at a time, the dearest first,
+     measured each time. Plain loops compiled to machine code: no Python
+     per call, no temporary arrays. Guard: fixed views rendered by the
+     old code and the new must match pixel for pixel. Guess, to be
+     measured: 2-5x a stage, the frame 17 -> 8-10 ms.
+  3. **Later, the graphics card.** First the cheap part: let it do the
+     final nearest-neighbour scale to the window (a CPU cost every frame,
+     worst full screen on a big monitor). Then, maybe, a GPU renderer
+     (OpenGL, e.g. `moderngl`): the world as real 3D triangles drawn at
+     320x200 and scaled up, the palette look kept by a shader, as GZDoom
+     draws Doom's maps; it would lift the ray caster's limits (sloped
+     floors, milestone 6, come free) but is a rewrite of the renderer.
+     The server never draws: the Pi isn't affected either way.
+- **Networking (milestone 3)**: built (Networking above, in build
+  order: spawning in `shared`, snapshots, the protocol, the server core,
+  TCP, bots, the networked client, lag measured and prediction, then
+  single-player on the in-process server, the CPU cut, the lag proxy and
+  F3 stats, who's here and names). To do, in this order:
+  1. **Host from the game, find games on the LAN, a start screen.**
+     [built: finding games, the start screen, hosting (Networking above)] Host
+     = `LocalSession`'s in-process server plus a TCP listener (no Pi or
+     server terminal needed). Servers announce themselves by UDP
+     broadcast about once a second; clients list what they hear (Fedora's
+     firewall needs that port opened too). A start screen in the green
+     terminal style: SINGLE PLAYER / HOST GAME / JOIN GAME (games found,
+     and an address to type as a fallback).
+  2. **Rejoin after a dropout**: back within ~30 s with the same name, you
+     get your player back (where you were, health, coffee), not a respawn.
+  3. **Text chat**: T, type, Enter; a message type of its own, shown in
+     the HUD's stacked messages.
+  4. **Close the milestone**: the Pi over Wi-Fi tested (the lag proxy
+     stands in until then), then a pull request of `claude/networking`
+     into `main`; milestone 3b next (the crouch sprite's head above the
+     body's height waits there: hit boxes).
+  5. **Playing over the internet, safely.** Recommended: no open port
+     at all, but a private encrypted network between the players
+     (Tailscale, or WireGuard / ZeroTier): install it on the Pi and each
+     player's machine, share the Pi, join its address (`--connect
+     100.x.y.z:5029`) as on the LAN. Nothing to scan or flood, only those
+     invited, encrypted, no router setup, and it works behind an ISP's
+     CGNAT (where forwarding a port is impossible). Where the server
+     stands today (reviewed): it never runs or loads anything a client
+     sends (messages only steer a player; maps are the server's own
+     files) and refuses malformed data, but anyone who finds the port
+     can join, traffic isn't encrypted, and floods aren't limited. If a
+     port is ever opened instead, build first: (a) a server password in
+     the hello; (b) TLS (`ssl`, asyncio has it), so the password isn't
+     sent in the clear; (c) flood limits: clients' lines capped at a few
+     KB (only the server sends big ones: maps), connections per address,
+     handshakes pending at once; (d) the server as a systemd service, an
+     unprivileged user, sandboxed (`NoNewPrivileges`, `ProtectSystem`);
+     (e) the router forwards TCP 5029 to the Pi and nothing else (never
+     SSH), the Pi kept updated. (a) and (c) are worth having on a LAN
+     too. Over the internet, prediction keeps your own movement prompt;
+     a lossy link stalls everything behind a lost packet (TCP): the lag
+     proxy's `--loss` shows what that's like.
+  Also, the host leaving (today: the game ends for everyone, as a "listen
+  server" does; fine for now): (a) a warning first, if others are in
+  ("LEAVING ENDS THE GAME FOR 2 OTHERS: LEAVE ANYWAY?"); (b) or keep
+  hosting when the host leaves: the server runs on for the others and
+  stops when the last has gone (still ends if the host's machine
+  crashes or loses power: a dedicated server, the Pi, is the answer for
+  games that mustn't depend on one player; host migration isn't worth
+  its complexity here).
+  Also: `play.bat` for Windows [built] (Setup below). LAN discovery on
+  Windows: a broadcast to 255.255.255.255 can leave by a virtual adapter
+  (WSL, Hyper-V, a VPN), so send to each local network's own broadcast
+  address too (e.g. 192.168.1.255); keep typing an address as the
+  fallback (Wi-Fi with AP isolation blocks broadcasts altogether).
+  Later: server admin (kick, change map); joining mid-ride (you'd arrive
+  on the floor the others are leaving). Debug text (fps, F3 stats) may go
+  back to the system font if the pixel font gets in the way: fine either
+  way.
 
 ## Setup
 
 - Linux: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`,
-  then `.venv/bin/python -m doomer.client` (single-player: the ground floor,
+  then `.venv/bin/python -m ok_doomer.client` (single-player: the ground floor,
   `maps/office.map`; or name a map, e.g. `maps/floor1.map`).
 - Client settings: copy `client.example.toml` to `client.toml` and pass
   `--config client.toml`.
-- Windows: native Python (not WSL), venv, launched from `play.bat` which cds to
-  its own folder, runs the client with `--host`/`--name` and ends with `pause`.
+- Windows: native Python 3.11+ (not WSL) and a venv: `py -m venv .venv;
+  .venv\Scripts\pip install -r requirements.txt`, then `.venv\Scripts\python
+  -m ok_doomer.client` (`--connect HOST:PORT` to join). Hosting: allow
+  Python through Windows Defender Firewall on Private networks when it
+  asks, and the Wi-Fi must be a Private network, not Public. `play.bat`
+  [built]: double-click to play (or a desktop shortcut to it): cds to its
+  own folder, makes the venv on the first run, `git pull --ff-only` (so
+  everyone's on the same version: different ones refuse each other;
+  offline, it plays what it has), `pip install -r requirements.txt`,
+  runs the client, and pauses if anything fails, so the error stays on
+  screen. Windows line endings kept by `.gitattributes`.
 - Use the Pi's IP rather than `.local` names (Windows mDNS is unreliable).
-- Server on the Pi: standard library only, no install step.
+- Server on the Pi: standard library only, no install step:
+  `python3 -m ok_doomer.server` from the checkout (port 5029). Bots:
+  `python3 -m ok_doomer.bot --connect HOST:5029 --count 3`.

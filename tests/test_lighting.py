@@ -1,13 +1,13 @@
-"""The baked light map (doomer/client/lighting.py)."""
+"""The baked light map (ok_doomer/client/lighting.py)."""
 
 import math
 
 import numpy as np
 import pytest
 
-from doomer.client.config import LightingConfig
-from doomer.client.lighting import LightMap, bake_light_map
-from doomer.shared.mapfile import parse_map
+from ok_doomer.client.config import LightingConfig
+from ok_doomer.client.lighting import LightMap, bake_light_map
+from ok_doomer.shared.mapfile import parse_map
 
 CONFIG = LightingConfig(lift=1.0)  # the bake's sums, unbent (lift: its own test)
 
@@ -91,7 +91,7 @@ def test_sampling_at_sample_centres_returns_the_samples() -> None:
 def test_office_bakes_quickly_enough_to_do_at_load() -> None:
     import time
 
-    from doomer.shared.mapfile import load_map
+    from ok_doomer.shared.mapfile import load_map
 
     office = load_map("maps/office.map")
     start = time.perf_counter()
@@ -129,8 +129,8 @@ def _shade(frame: np.ndarray, mask: np.ndarray | None = None) -> float:
 
 
 def test_full_light_everywhere_renders_exactly_as_unlit() -> None:
-    from doomer.client.config import RenderConfig
-    from doomer.client.render import Camera, Renderer, SpriteInstance
+    from ok_doomer.client.config import RenderConfig
+    from ok_doomer.client.render import Camera, Renderer, SpriteInstance
 
     game_map = parse_map(LIT_ROOM.replace("ceiling_light 13.5 2.5 0\n", ""))
     camera = Camera(1.5, 1.5, 0.3)
@@ -142,8 +142,8 @@ def test_full_light_everywhere_renders_exactly_as_unlit() -> None:
 
 
 def test_walls_and_block_faces_near_a_panel_are_brighter() -> None:
-    from doomer.client.config import RenderConfig
-    from doomer.client.render import Camera, Renderer
+    from ok_doomer.client.config import RenderConfig
+    from ok_doomer.client.render import Camera, Renderer
 
     game_map = parse_map(LIT_ROOM)
     lit = Renderer(RenderConfig(), LightingConfig())
@@ -165,8 +165,8 @@ def test_walls_and_block_faces_near_a_panel_are_brighter() -> None:
 
 
 def test_things_are_lit_where_they_stand() -> None:
-    from doomer.client.config import RenderConfig
-    from doomer.client.render import Camera, Renderer, SpriteInstance
+    from ok_doomer.client.config import RenderConfig
+    from ok_doomer.client.render import Camera, Renderer, SpriteInstance
 
     game_map = parse_map(LIT_ROOM)
     lit = Renderer(RenderConfig(), LightingConfig())
@@ -188,9 +188,9 @@ def test_things_are_lit_where_they_stand() -> None:
 def test_full_light_renders_every_surface_of_the_office_exactly_as_unlit() -> None:
     # The office has every kind of surface: high ceilings, desk tops, a
     # balcony, stairs, box models, sprites.
-    from doomer.client.config import RenderConfig
-    from doomer.client.render import Camera, Renderer, sprites_from_things
-    from doomer.shared.mapfile import load_map
+    from ok_doomer.client.config import RenderConfig
+    from ok_doomer.client.render import Camera, Renderer, sprites_from_things
+    from ok_doomer.shared.mapfile import load_map
 
     office = load_map("maps/office.map")
     things = sprites_from_things(office)
@@ -211,8 +211,8 @@ def test_full_light_renders_every_surface_of_the_office_exactly_as_unlit() -> No
 
 
 def test_floor_is_brighter_near_a_panel_and_ceilings_vary_less() -> None:
-    from doomer.client.config import RenderConfig
-    from doomer.client.render import Camera, Renderer
+    from ok_doomer.client.config import RenderConfig
+    from ok_doomer.client.render import Camera, Renderer
 
     game_map = parse_map(LIT_ROOM)
     lit = Renderer(RenderConfig(), LightingConfig())

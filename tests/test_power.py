@@ -5,16 +5,17 @@ import math
 import numpy as np
 import pytest
 
-from doomer.client.config import LightingConfig, RenderConfig
-from doomer.client.lighting import bake_light_map
-from doomer.client.palette import OCHRE
-from doomer.client.render import Camera, Renderer
-from doomer.shared.events import SwitchThrown
-from doomer.shared.mapfile import parse_map
-from doomer.shared.player import PlayerInput
-from doomer.shared.sim import step
-from doomer.shared.switches import POWER
-from doomer.shared.world import drain_events, new_world, spawn_player
+from ok_doomer.client.config import LightingConfig, RenderConfig
+from ok_doomer.client.lighting import bake_light_map
+from ok_doomer.client.palette import OCHRE
+from ok_doomer.client.render import Camera, Renderer
+from ok_doomer.shared.events import SwitchThrown
+from ok_doomer.shared.mapfile import parse_map
+from ok_doomer.shared.player import PlayerInput
+from ok_doomer.shared.sim import step
+from ok_doomer.shared.spawn import spawn_player
+from ok_doomer.shared.switches import POWER
+from ok_doomer.shared.world import drain_events, new_world
 
 SOUTH, NORTH = math.pi / 2, -math.pi / 2
 
@@ -89,7 +90,7 @@ def test_without_power_only_emergency_panels_light_the_floor() -> None:
 
 
 def test_dead_panels_and_mains_signs_go_dark_without_power() -> None:
-    from doomer.client.render import SpriteInstance
+    from ok_doomer.client.render import SpriteInstance
 
     room = parse_map(ROOM.replace("[things]", "[ceiling]\n" + "gggggggggggg\n" * 5 + "\n[things]"))
     r = Renderer(RenderConfig(), LightingConfig())
@@ -106,13 +107,13 @@ def test_dead_panels_and_mains_signs_go_dark_without_power() -> None:
 
 
 def test_hud_says_the_power_is_back() -> None:
-    from doomer.client.hud import message_for
+    from ok_doomer.client.hud import message_for
 
     assert message_for(SwitchThrown(0, 0, 1, POWER)) == "The power is back on"
 
 
 def test_indicator_lamps_blink_and_go_dark_without_mains() -> None:
-    from doomer.client.boxes import Box, lit_now
+    from ok_doomer.client.boxes import Box, lit_now
 
     lamp = Box((0, 0.01), (0, 0.01), (0, 0.01), (0,) * 5, indicator=True, blink=1.0)
     seen = {lit_now(lamp, 0.0, 0.0, t / 10, power=True) for t in range(10)}
@@ -124,8 +125,8 @@ def test_indicator_lamps_blink_and_go_dark_without_mains() -> None:
 def test_the_breaker_blinks_red_until_thrown_then_shows_steady_green() -> None:
     import dataclasses
 
-    from doomer.client.boxes import switch_boxes
-    from doomer.shared.switches import switches_from_map
+    from ok_doomer.client.boxes import switch_boxes
+    from ok_doomer.shared.switches import switches_from_map
 
     (off,) = switches_from_map(parse_map(ROOM))
     on = dataclasses.replace(off, on=True)
@@ -136,7 +137,7 @@ def test_the_breaker_blinks_red_until_thrown_then_shows_steady_green() -> None:
 
 
 def test_server_lamps_blink_out_of_step_and_only_with_power() -> None:
-    from doomer.client.boxes import BOX_MODELS
+    from ok_doomer.client.boxes import BOX_MODELS
 
     for kind in ("tape", "disk"):
         cabinet, *lamps = BOX_MODELS[f"server:{kind}"]
@@ -146,7 +147,7 @@ def test_server_lamps_blink_out_of_step_and_only_with_power() -> None:
 
 
 def test_the_plant_room_breaker_and_servers_stand_on_solid_walls() -> None:
-    from doomer.shared.mapfile import load_map
+    from ok_doomer.shared.mapfile import load_map
 
     office = load_map("maps/office.map")
     for t in office.things_of_type("breaker") + office.things_of_type("server"):
@@ -156,8 +157,8 @@ def test_the_plant_room_breaker_and_servers_stand_on_solid_walls() -> None:
 
 
 def test_screens_are_blank_on_a_dead_circuit_and_lit_on_a_live_one() -> None:
-    from doomer.client.boxes import BOX_MODELS, PlacedBox
-    from doomer.client.render import _powered
+    from ok_doomer.client.boxes import BOX_MODELS, PlacedBox
+    from ok_doomer.client.render import _powered
 
     for name in ("mac", "pc"):
         screen = next(b for b in BOX_MODELS[name] if b.off_faces is not None)
@@ -173,9 +174,9 @@ def test_screens_are_blank_on_a_dead_circuit_and_lit_on_a_live_one() -> None:
 
 
 def test_things_on_the_emergency_circuit_carry_it_to_their_boxes() -> None:
-    from doomer.client.boxes import BOX_MODELS
-    from doomer.client.render import _placed, sprites_from_things
-    from doomer.shared.mapfile import load_map
+    from ok_doomer.client.boxes import BOX_MODELS
+    from ok_doomer.client.render import _placed, sprites_from_things
+    from ok_doomer.shared.mapfile import load_map
 
     office = load_map("maps/office.map")
     reception = [s for s in sprites_from_things(office) if s.name == "mac" and s.emergency]
@@ -184,9 +185,9 @@ def test_things_on_the_emergency_circuit_carry_it_to_their_boxes() -> None:
 
 
 def test_an_exit_sign_over_glazed_doors_hangs_on_the_transom() -> None:
-    from doomer.client.boxes import BOX_MODELS
-    from doomer.client.lighting import panels_in
-    from doomer.shared.mapfile import load_map
+    from ok_doomer.client.boxes import BOX_MODELS
+    from ok_doomer.client.lighting import panels_in
+    from ok_doomer.shared.mapfile import load_map
 
     (door,), (transom,) = BOX_MODELS["exit_sign"], BOX_MODELS["exit_sign:transom"]
     assert transom.z[0] > door.z[1]  # higher: clear of the entrance doors' glass

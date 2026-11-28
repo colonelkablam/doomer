@@ -11,17 +11,18 @@ the [built]/[planned] markers in GAME.md).
 - One branch per milestone, named `claude/<topic>` (e.g. `claude/networking`),
   branched from `main`. Never push to `main`: it changes only by merging a pull
   request, so it always holds the last finished milestone.
-- Active branch: `claude/single-player-foundation` (milestones 0-2b). Work and
+- Active branch: `claude/networking` (milestone 3: server, handshake, snapshots,
+  interpolation, bot client). Work and
   push there, whatever branch name the session was started with. Update this
   line when a new milestone branch starts.
 
 ## Layout
 
-- `doomer/shared/`: world model (maps, player state, collision). Standard library
+- `ok_doomer/shared/`: world model (maps, player state, collision). Standard library
   only, no pygame or numpy. The server imports it unchanged.
-- `doomer/client/`: pygame-ce rendering and input. numpy allowed.
-- `doomer/server/`: asyncio server. Standard library + `doomer.shared` only.
-- `doomer/editor/`: level editor (pygame-ce).
+- `ok_doomer/client/`: pygame-ce rendering and input. numpy allowed.
+- `ok_doomer/server/`: asyncio server. Standard library + `ok_doomer.shared` only.
+- `ok_doomer/editor/`: level editor (pygame-ce).
 - `maps/`: `*.map` files (format in `docs/DESIGN.md`).
 - `tests/`: pytest.
 
@@ -32,7 +33,15 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/mypy && .venv/bin/pytest -q
 ```
 
-All four checks must pass before committing. CI runs them on Linux and Windows.
+All four checks must pass before committing. CI runs them on Linux and Windows,
+so also type-check as Windows sees the code (code for one platform only must
+sit under `if sys.platform ...`, or mypy fails CI's Windows job):
+
+```bash
+.venv/bin/mypy --platform win32
+```
+
+After pushing, check CI's result (GitHub Actions) before building on it.
 
 ## Conventions
 
@@ -44,7 +53,7 @@ All four checks must pass before committing. CI runs them on Linux and Windows.
 
 - The cloud VM is headless: tests set `SDL_VIDEODRIVER=dummy` (see
   `tests/conftest.py`). To check rendering visually, render a frame and save it
-  with `doomer.client.headless.save_png`, then look at the PNG.
+  with `ok_doomer.client.headless.save_png`, then look at the PNG.
 - Angles: radians in code, degrees in map files. `y` increases downward.
 - Pin dependency versions in `requirements*.txt`.
 - British English in docs and user-facing text.

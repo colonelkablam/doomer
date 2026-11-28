@@ -4,20 +4,21 @@ up, and arriving."""
 
 import math
 
-from doomer.shared.building import floor_index
-from doomer.shared.doors import ARRIVE_SECONDS, FLOOR_SECONDS, LIFT, OPEN_SECONDS
-from doomer.shared.events import (
+from ok_doomer.shared.building import floor_index
+from ok_doomer.shared.doors import ARRIVE_SECONDS, FLOOR_SECONDS, LIFT, OPEN_SECONDS
+from ok_doomer.shared.events import (
     DoorLocked,
     LevelComplete,
     LiftCalled,
     LiftDeparting,
     LiftNoPower,
 )
-from doomer.shared.mapfile import parse_map
-from doomer.shared.player import PlayerInput, PlayerState
-from doomer.shared.sim import RIDE_SECONDS, step
-from doomer.shared.switches import POWER
-from doomer.shared.world import World, drain_events, new_world, spawn_player
+from ok_doomer.shared.mapfile import parse_map
+from ok_doomer.shared.player import PlayerInput, PlayerState
+from ok_doomer.shared.sim import RIDE_SECONDS, step
+from ok_doomer.shared.spawn import spawn_player
+from ok_doomer.shared.switches import POWER
+from ok_doomer.shared.world import World, drain_events, new_world
 
 SOUTH, NORTH = math.pi / 2, -math.pi / 2
 G = floor_index("G")
@@ -198,7 +199,7 @@ def test_arriving_the_team_starts_in_the_car_and_it_opens() -> None:
 
 
 def test_hud_messages_for_lifts() -> None:
-    from doomer.client.hud import message_for
+    from ok_doomer.client.hud import message_for
 
     assert message_for(LiftNoPower(0, 0, 1)) == "The lift has no power"
     assert message_for(LiftCalled(0, 0, 1)) == "The lift's on its way"
@@ -206,9 +207,9 @@ def test_hud_messages_for_lifts() -> None:
 
 
 def test_a_lift_has_its_fittings_round_it() -> None:
-    from doomer.client.boxes import door_boxes
-    from doomer.client.render import _powered
-    from doomer.shared.doors import LIFT, Door
+    from ok_doomer.client.boxes import door_boxes
+    from ok_doomer.client.render import _powered
+    from ok_doomer.shared.doors import LIFT, Door
 
     lift = Door(0, LIFT, 2.5, 2.5, -math.pi / 2, called=True)
     boxes = door_boxes([lift])
@@ -226,8 +227,8 @@ def test_a_lift_has_its_fittings_round_it() -> None:
 
 
 def test_the_cars_handrail_stops_short_of_the_doors() -> None:
-    from doomer.client.palette import GREY
-    from doomer.client.textures import RAIL_END, lift_car_side
+    from ok_doomer.client.palette import GREY
+    from ok_doomer.client.textures import RAIL_END, lift_car_side
 
     tex = lift_car_side()
     rail = (tex[39] >> 4 == GREY) & (tex[39] & 15 == 15)  # its lit top edge
@@ -236,11 +237,10 @@ def test_the_cars_handrail_stops_short_of_the_doors() -> None:
 
 
 def test_ride_from_the_ground_floor_to_floor_1() -> None:
-    from doomer.client.session import LocalSession
-    from doomer.shared.building import floor_map_path
-    from doomer.shared.mapfile import load_map
+    from ok_doomer.client.local import LocalSession
+    from ok_doomer.shared.building import floor_map_path
 
-    session = LocalSession(new_world(load_map(floor_map_path("G")), "coop"), "p")
+    session = LocalSession(floor_map_path("G").read_text(), "p")
     world, p = session.world, session.player
     world.flags.add(POWER)  # the breaker's thrown
     p.health = 63
@@ -261,7 +261,7 @@ def test_ride_from_the_ground_floor_to_floor_1() -> None:
     events = tick(SETTLE + RIDE_SECONDS + 0.2, use=True)  # shut the doors; ride up
     (done,) = [e for e in events if isinstance(e, LevelComplete)]
     assert done.next_floor == "1"
-    session.change_floor(done.next_floor)
+    # The session moves on by itself, the same update the ride ended in.
     assert session.game_map.storey == "1" and session.player.health == 63
     assert not session.world.passes  # a floor's passes are its own
     arrival = next(d for d in session.world.doors if d.car_here and d.arrive_in > 0)

@@ -4,7 +4,7 @@ import dataclasses
 
 import numpy as np
 
-from doomer.client.faces import (
+from ok_doomer.client.faces import (
     CAST,
     EARRINGS,
     EYEWEAR,
@@ -18,8 +18,8 @@ from doomer.client.faces import (
     Face,
     draw_portrait,
 )
-from doomer.client.palette import BLUE
-from doomer.client.pixelart import Canvas
+from ok_doomer.client.palette import BLUE
+from ok_doomer.client.pixelart import Canvas
 
 
 def _portrait(face: Face, size: int = 60) -> np.ndarray:
@@ -65,7 +65,7 @@ def test_the_cast_are_all_different_people() -> None:
 
 
 def test_a_tie_comes_with_a_collar_and_no_tie_with_an_open_neck() -> None:
-    from doomer.client.palette import CREAM
+    from ok_doomer.client.palette import CREAM
 
     collar = (CREAM << 4) | 15
     tied = _portrait(Face(tie="red"))
@@ -76,7 +76,7 @@ def test_a_tie_comes_with_a_collar_and_no_tie_with_an_open_neck() -> None:
 
 
 def test_faces_look_straight_ahead() -> None:
-    from doomer.client.faces import FEATURES, HEAD
+    from ok_doomer.client.faces import FEATURES, HEAD
 
     eyes = [col for col, ch in enumerate(FEATURES[6]) if ch == "E"]
     assert eyes == [7, 12]  # five apart
@@ -91,7 +91,7 @@ def test_pixels_are_solid_blocks() -> None:
 
 
 def test_glasses_are_closed_rims_round_each_eye_and_nothing_below() -> None:
-    from doomer.client.faces import EYEWEAR_TEMPLATES, FEATURES
+    from ok_doomer.client.faces import EYEWEAR_TEMPLATES, FEATURES
 
     for name, top, bottom in (("big_glasses", "R", "R"), ("aviators", "F", "K")):
         glasses = EYEWEAR_TEMPLATES[name]
@@ -104,7 +104,7 @@ def test_glasses_are_closed_rims_round_each_eye_and_nothing_below() -> None:
 
 
 def test_the_body_is_square_on() -> None:
-    from doomer.client.faces import BODIES
+    from ok_doomer.client.faces import BODIES
 
     for name, body in BODIES.items():
         for row in body:
@@ -115,7 +115,7 @@ def test_the_body_is_square_on() -> None:
 
 
 def test_hair_is_symmetrical_without_gaps() -> None:
-    from doomer.client.faces import HAIR_BACKS, HAIR_TOPS, PARTING_GAP
+    from ok_doomer.client.faces import HAIR_BACKS, HAIR_TOPS, PARTING_GAP
 
     for name, template in [*HAIR_TOPS.items(), *HAIR_BACKS.items()]:
         for r, row in enumerate(template):
@@ -129,7 +129,7 @@ def test_hair_is_symmetrical_without_gaps() -> None:
 
 
 def test_a_side_parting_has_a_dark_parting_left_of_centre() -> None:
-    from doomer.client.faces import HAIR_TOPS
+    from ok_doomer.client.faces import HAIR_TOPS
 
     parting = [col for row in HAIR_TOPS["side_part"][:3] for col, ch in enumerate(row) if ch == "D"]
     assert parting == [7, 7, 7]  # a line down the crown, left of the middle (9.5)
@@ -138,7 +138,7 @@ def test_a_side_parting_has_a_dark_parting_left_of_centre() -> None:
 
 
 def test_earrings_hang_just_under_the_ears() -> None:
-    from doomer.client.faces import EARRING_TEMPLATES, HEAD
+    from ok_doomer.client.faces import EARRING_TEMPLATES, HEAD
 
     ears = [
         (r, col)

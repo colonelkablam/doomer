@@ -10,12 +10,13 @@ from pathlib import Path
 
 import pytest
 
-PKG = Path(__file__).resolve().parent.parent / "doomer"
-VIEW = {"pygame", "numpy", "doomer.client", "doomer.editor"}
+PKG = Path(__file__).resolve().parent.parent / "ok_doomer"
+VIEW = {"pygame", "numpy", "ok_doomer.client", "ok_doomer.editor"}
 
 RULES: dict[str, set[str]] = {
-    "shared": VIEW | {"doomer.server"},
+    "shared": VIEW | {"ok_doomer.server"},
     "server": VIEW,
+    "bot": VIEW | {"ok_doomer.server"},
 }
 
 

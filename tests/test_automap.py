@@ -4,7 +4,7 @@ import math
 
 import numpy as np
 
-from doomer.client.automap import (
+from ok_doomer.client.automap import (
     BORDER,
     DOOR,
     LOW,
@@ -17,8 +17,8 @@ from doomer.client.automap import (
     Automap,
     floor_image,
 )
-from doomer.client.palette import BRICK
-from doomer.shared.mapfile import parse_map
+from ok_doomer.client.palette import BRICK
+from ok_doomer.shared.mapfile import parse_map
 
 # Two rooms joined by a red-locked doorway at (3, 2); a desk in the north room.
 ROOMS = parse_map(

@@ -5,12 +5,13 @@ import math
 
 import pytest
 
-from doomer.shared.config import MovementConfig
-from doomer.shared.mapfile import parse_map
-from doomer.shared.player import PlayerInput, PlayerState
-from doomer.shared.screens import SCREEN_HALF, SCREEN_HEIGHT, Screen, desk_screens
-from doomer.shared.sim import step
-from doomer.shared.world import World, new_world, spawn_player
+from ok_doomer.shared.config import MovementConfig
+from ok_doomer.shared.mapfile import parse_map
+from ok_doomer.shared.player import PlayerInput, PlayerState
+from ok_doomer.shared.screens import SCREEN_HALF, SCREEN_HEIGHT, Screen, desk_screens
+from ok_doomer.shared.sim import step
+from ok_doomer.shared.spawn import spawn_player
+from ok_doomer.shared.world import World, new_world
 
 MOVE = MovementConfig()
 DESK_TOP = 0.25

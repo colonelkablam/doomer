@@ -1,11 +1,11 @@
-"""The map checker (doomer/shared/validate.py): can a co-op floor be finished?"""
+"""The map checker (ok_doomer/shared/validate.py): can a co-op floor be finished?"""
 
 from pathlib import Path
 
 import pytest
 
-from doomer.shared.mapfile import load_map, parse_map
-from doomer.shared.validate import check_floor
+from ok_doomer.shared.mapfile import load_map, parse_map
+from ok_doomer.shared.validate import check_floor
 
 # Two rooms, north (y 1) and south (y 3), joined by a doorway at (3, 2).
 TWO_ROOMS = """\
@@ -86,7 +86,7 @@ def test_a_desk_can_be_jumped_onto_but_not_a_counter() -> None:
 def test_the_command_line_says_what_is_wrong(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from doomer.shared.validate import main
+    from ok_doomer.shared.validate import main
 
     broken = tmp_path / "broken.map"
     broken.write_text(TWO_ROOMS + "pass_red 1.5 3.5 0\nexit 5.5 3.5 0\n", encoding="utf-8")
