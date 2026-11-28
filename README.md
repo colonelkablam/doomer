@@ -40,6 +40,23 @@ screen), as does `--connect HOST:PORT`; `--mode coop|deathmatch`, `--name`,
 `--config client.toml` (see `client.example.toml`). In a game, Esc releases
 the mouse and Esc again goes back to the start screen.
 
+## Play (Windows)
+
+Install [Python](https://www.python.org/downloads/) 3.11 or newer (3.13
+is fine; the installer's defaults are right) and
+[Git for Windows](https://git-scm.com/download/win), then in PowerShell:
+
+```powershell
+git clone https://github.com/colonelkablam/ok-doomer.git $HOME\ok-doomer
+```
+
+Then double-click `play.bat` in that folder (right-click it, *Send to*,
+*Desktop (create shortcut)* for a desktop icon). The first run sets itself
+up (a minute or two); every run updates the game first, so everyone's on
+the same version. Hosting a game: when Windows Defender Firewall asks,
+allow Python on *Private* networks, and make sure your Wi-Fi is a Private
+network (Settings, Network & internet, its properties), not Public.
+
 ## Server and bots
 
 Run a server, then join it from the game (and add bots to have company):

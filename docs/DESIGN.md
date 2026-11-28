@@ -1340,8 +1340,7 @@ Noted at the end of a session, to pick up next:
   crashes or loses power: a dedicated server, the Pi, is the answer for
   games that mustn't depend on one player; host migration isn't worth
   its complexity here).
-  Also: `play.bat` for Windows (Setup below: double-click to play; once
-  the start screen exists it needs no options). LAN discovery on
+  Also: `play.bat` for Windows [built] (Setup below). LAN discovery on
   Windows: a broadcast to 255.255.255.255 can leave by a virtual adapter
   (WSL, Hyper-V, a VPN), so send to each local network's own broadcast
   address too (e.g. 192.168.1.255); keep typing an address as the
@@ -1362,9 +1361,13 @@ Noted at the end of a session, to pick up next:
   .venv\Scripts\pip install -r requirements.txt`, then `.venv\Scripts\python
   -m ok_doomer.client` (`--connect HOST:PORT` to join). Hosting: allow
   Python through Windows Defender Firewall on Private networks when it
-  asks, and the Wi-Fi must be a Private network, not Public. [planned]
-  `play.bat`: cds to its own folder, runs the client, ends with `pause`
-  (so an error stays on screen).
+  asks, and the Wi-Fi must be a Private network, not Public. `play.bat`
+  [built]: double-click to play (or a desktop shortcut to it): cds to its
+  own folder, makes the venv on the first run, `git pull --ff-only` (so
+  everyone's on the same version: different ones refuse each other;
+  offline, it plays what it has), `pip install -r requirements.txt`,
+  runs the client, and pauses if anything fails, so the error stays on
+  screen. Windows line endings kept by `.gitattributes`.
 - Use the Pi's IP rather than `.local` names (Windows mDNS is unreliable).
 - Server on the Pi: standard library only, no install step:
   `python3 -m ok_doomer.server` from the checkout (port 5029). Bots:
