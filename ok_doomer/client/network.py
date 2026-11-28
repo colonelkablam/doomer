@@ -397,6 +397,9 @@ class NetworkSession:
     def say(self, text: str) -> None:
         self.connection.send(Say(text))
 
+    def solo(self) -> bool:
+        return False
+
     def names(self) -> dict[int, str]:
         return dict(self._names)
 

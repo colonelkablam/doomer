@@ -17,6 +17,7 @@ from ok_doomer.client.config import ClientConfig, RenderConfig
 from ok_doomer.client.console import Console
 from ok_doomer.client.hud import Hud, console_line, draw_name_tags, draw_text, name_tags
 from ok_doomer.client.input import KeyboardMouseInput
+from ok_doomer.client.pause import Leave, PauseMenu, Resume
 from ok_doomer.client.pixelart import FONT_5X7
 from ok_doomer.client.render import MAX_PITCH, Renderer, make_frame_surface
 from ok_doomer.client.session import GameSession
@@ -101,9 +102,10 @@ def play(
 ) -> bool:
     """Play a session in the display's window until it ends: True if the
     player closed the window (quit altogether), False if they left the game
-    (Esc twice) or it ended (back to the start screen). `greeting`: a
-    message to start with (where others can join you, hosting). `hosting`:
-    leaving ends the game for everyone, so the second Esc's warning says so."""
+    (Esc, then leaving, in the pause menu) or it ended (back to the start
+    screen). `greeting`: a message to start with (where others can join
+    you, hosting). `hosting`: leaving ends the game for everyone, so the
+    pause menu says so."""
     rc = config.render
     frame = make_frame_surface(rc)
     renderer = Renderer(rc, config.lighting if config.lighting.enabled else None)
@@ -118,6 +120,7 @@ def play(
     console_font = pygame.font.Font(None, 20)
     controls = KeyboardMouseInput(config.controls, start_angle, MAX_PITCH)
     chat = ChatLine()  # T: type to everyone
+    paused: PauseMenu | None = None  # Esc: resume or leave
     chat_keys = {pygame.key.key_code(k) for k in config.controls.chat}
     controls.set_captured(True)
     clock = pygame.time.Clock()
@@ -135,20 +138,33 @@ def play(
             if event.type == pygame.KEYDOWN and _is_fullscreen_toggle(event):
                 display.toggle_fullscreen()
                 controls.set_captured(controls.captured)  # re-grab in the new window
+            elif paused is not None:  # the pause menu has the keys and the mouse
+                choice = None
+                if event.type == pygame.KEYDOWN:
+                    choice = paused.key(event.key, event.unicode)
+                elif event.type in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN):
+                    index = paused.item_at(display.to_frame(event.pos)[1])
+                    if event.type == pygame.MOUSEMOTION and index is not None:
+                        paused.selected = index
+                    elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                        choice = paused.activate(index)
+                if isinstance(choice, Leave):
+                    return False
+                if isinstance(choice, Resume):
+                    paused = None
+                    controls.set_captured(True)
             elif event.type == pygame.KEYDOWN and chat.open:  # typing: keys are letters
                 if (said := chat.key(event.key, event.unicode)) is not None:
                     session.say(said)
             elif event.type == pygame.KEYDOWN and event.key in chat_keys:
                 chat.start()
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                if not controls.captured:
-                    controls.set_captured(False)
-                    return False
+            elif (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE) or (
+                event.type == pygame.WINDOWFOCUSLOST
+            ):
+                paused = PauseMenu(session.solo(), hosting)
                 controls.set_captured(False)
             elif event.type == pygame.MOUSEBUTTONDOWN and not controls.captured:
                 controls.set_captured(True)
-            elif event.type == pygame.WINDOWFOCUSLOST:
-                controls.set_captured(False)
             elif event.type == pygame.MOUSEWHEEL and event.y:
                 automap.change_zoom(1 if event.y > 0 else -1)
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
@@ -160,10 +176,13 @@ def play(
             elif event.type == pygame.KEYDOWN and event.key in _ZOOM_KEYS:
                 automap.change_zoom(_ZOOM_KEYS[event.key])
 
-        player_input = controls.poll(real_dt, keyboard=not chat.open)
+        player_input = controls.poll(real_dt, keyboard=not chat.open and paused is None)
         now = pygame.time.get_ticks() / 1000.0
         floor = session.game_map
-        events = session.update(real_dt, player_input)
+        if paused is not None and session.solo():
+            events = []  # paused: no inputs sent, so its server doesn't tick
+        else:
+            events = session.update(real_dt, player_input)
         names = session.names()
         hud.handle(events, now, session.me(), names)
         for happened in events:
@@ -201,10 +220,8 @@ def play(
             corner += session.net_stats().lines()
         for i, text in enumerate(corner):  # top left, a line under another
             draw_text(pixels, text, FONT_5X7, 3, 9 + i * 10, centre=False)
-        if not controls.captured:
-            mid = rc.height // 2
-            leaving = leave_warning(hosting, len(session.people()))
-            draw_text(pixels, leaving, FONT_5X7, rc.width / 2, mid + 3)
+        if paused is not None:
+            paused.draw(pixels, others=len(session.people()))
         del pixels  # unlock the surface
         # 8-bit frame -> window format, then nearest-neighbour scale into
         # the picture's place in the window (it may have been resized).
@@ -212,14 +229,6 @@ def play(
         hud.draw(view, session.passes())
         console.draw(view, console_font)
         pygame.display.flip()
-
-
-def leave_warning(hosting: bool, others: int) -> str:
-    """What's shown while the mouse is free: Esc again leaves. Hosting with
-    others in, it ends their game too: say so."""
-    if hosting and others:
-        return f"Esc ends the game for {others} other{'s' if others > 1 else ''} - click to stay"
-    return "Click to play - Esc to leave"
 
 
 # Zoom the automap in (+1) or out (-1).

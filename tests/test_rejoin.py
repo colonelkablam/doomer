@@ -173,8 +173,10 @@ def test_dropped_rejoin_game_is_offered_selected_and_said_then_goes() -> None:
     menu = Menu("ann")
     game = JoinGame("192.168.1.20", 5029)
     menu.offer_rejoin(game, LOST, now=100.0)
-    assert menu.items()[0].label == "REJOIN GAME" and menu.selected == 0
-    assert "rejoin within 30 seconds" in menu.message
+    assert menu.items()[0].label == "REJOIN" and menu.selected == 0
+    assert menu.message == LOST and menu.last_game() == "LAST GAME: 192.168.1.20:5029 - 30 S"
+    menu.expire(112.4)
+    assert menu.last_game().endswith(" - 18 S")
     assert menu.activate() == game
     menu.expire(100.0 + REJOIN_SECONDS - 1)
     assert menu.rejoin == game

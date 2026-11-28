@@ -170,6 +170,7 @@ def name_tags(renderer: Renderer, people: list[tuple[str, float, float]]) -> lis
 
 
 NAME_COLOUR = colour_index(GREEN, 15)  # phosphor green, the brightest the palette has
+DIM_COLOUR = colour_index(GREEN, 9)  # green, not lit up: menu items not selected
 NAME_BACK = colour_index(GREY, 0)  # black: an outline, or a panel behind
 
 

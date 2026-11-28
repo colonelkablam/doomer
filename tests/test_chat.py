@@ -7,7 +7,7 @@ import asyncio
 import numpy as np
 import pygame
 
-from ok_doomer.client.app import Display, leave_warning, play
+from ok_doomer.client.app import Display, play
 from ok_doomer.client.chat import ChatLine
 from ok_doomer.client.config import ClientConfig, RenderConfig
 from ok_doomer.client.hud import CHAT_SECONDS, MESSAGE_SECONDS, NAME_COLOUR, Hud, console_line
@@ -192,9 +192,3 @@ def test_typing_in_the_game_sends_and_doesnt_walk() -> None:
         display.close()
     finally:
         pygame.quit()
-
-
-def test_the_host_is_warned_before_leaving_ends_it_for_others() -> None:
-    assert leave_warning(True, 2) == "Esc ends the game for 2 others - click to stay"
-    assert leave_warning(True, 1) == "Esc ends the game for 1 other - click to stay"
-    assert leave_warning(True, 0) == leave_warning(False, 3) == "Click to play - Esc to leave"

@@ -65,6 +65,10 @@ class GameSession(Protocol):
         Chat event."""
         ...
 
+    def solo(self) -> bool:
+        """Is the game yours alone (single-player)? Then it can pause."""
+        ...
+
     def names(self) -> dict[int, str]:
         """Every player's name by id, including those who've left."""
         ...

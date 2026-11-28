@@ -1324,10 +1324,19 @@ Noted at the end of a session, to pick up next:
      until then, or a new floor. Back before the old connection's timed
      out (a Wi-Fi blip: it's only gone quiet): a join with the name of
      someone silent for 1 s replaces them (`PlayerLeft` "reconnected", not
-     news). The start screen offers REJOIN GAME for the 30 s after a game
-     joined (selected, and why, if you dropped; not after the server shut
-     down). The name is the key: fine on a LAN; over the internet, with
+     news). The start screen offers REJOIN for the 30 s after a game
+     joined, in a block of its own at the top ("LAST GAME: address - 26
+     S", counting down; selected, with why, if you dropped; not after the
+     server shut down). The name is the key: fine on a LAN; over the internet, with
      the password and TLS (5 below), a token from the server instead.
+  - **The pause menu** [built] (`client/pause.py`): Esc in a game, or
+    the window losing focus. Over the game, darkened: RESUME first (Esc
+    twice, or Esc then Enter, and you're back), then leaving, worded for
+    what it does: QUIT TO MENU (single-player), LEAVE GAME (joined: can be
+    rejoined), END GAME / END GAME FOR 2 OTHERS (hosting). Single-player
+    truly pauses (no inputs sent, so its lockstep server doesn't tick); on
+    a server it can't, so it says "THE GAME GOES ON - YOU STAND STILL".
+    The start screen is for what's out of a game: REJOIN, not resume.
   3. **Text chat** [built]: T, type, Enter (Esc drops it); `Say` to the
      server, a `Chat` event to everyone, in the HUD's stacked messages
      as "NAME: text" for 8 s. Keys typed aren't controls meanwhile.
@@ -1359,9 +1368,8 @@ Noted at the end of a session, to pick up next:
      proxy's `--loss` shows what that's like.
   Also, the host leaving (today: the game ends for everyone, as a "listen
   server" does; fine for now): (a) a warning first, if others are in
-  [built: with the mouse freed, the line that says Esc leaves says
-  instead "ESC ENDS THE GAME FOR 2 OTHERS - CLICK TO STAY"; closing the
-  window doesn't warn]; (b) or keep
+  [built: the pause menu's leaving item says "END GAME FOR 2 OTHERS";
+  closing the window doesn't warn]; (b) or keep
   hosting when the host leaves: the server runs on for the others and
   stops when the last has gone (still ends if the host's machine
   crashes or loses power: a dedicated server, the Pi, is the answer for

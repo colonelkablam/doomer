@@ -16,6 +16,7 @@ program: the menu, a game, the menu again.
 
 import contextlib
 import logging
+import math
 from dataclasses import dataclass
 
 import pygame
@@ -24,10 +25,10 @@ from ok_doomer.client.app import Display, _is_fullscreen_toggle, play
 from ok_doomer.client.config import ClientConfig
 from ok_doomer.client.discovery import FoundGame, GameFinder
 from ok_doomer.client.hosting import HostedServer, HostFailed
-from ok_doomer.client.hud import NAME_COLOUR, draw_text, wrap
+from ok_doomer.client.hud import DIM_COLOUR, NAME_COLOUR, draw_text, wrap
 from ok_doomer.client.local import LocalSession
 from ok_doomer.client.network import JoinFailed, NetworkSession
-from ok_doomer.client.palette import BLUE, GREEN, GREY, U8Array, colour_index
+from ok_doomer.client.palette import BLUE, GREY, U8Array, colour_index
 from ok_doomer.client.pixelart import FONT_5X7
 from ok_doomer.client.render import make_frame_surface
 from ok_doomer.client.session import GameSession
@@ -42,13 +43,14 @@ log = logging.getLogger(__name__)
 
 DEFAULT_PORT = 5029
 SEEK_EVERY = 1.0  # seconds between asks, on the join screen
-DIM = colour_index(GREEN, 9)  # items not selected
+DIM = DIM_COLOUR  # items not selected
 OFF = colour_index(GREY, 7)  # items you can't choose
 BACKGROUND = colour_index(BLUE, 1)  # navy: green reads well on it
 LEFT = 14  # where the items start, frame pixels from the left
 OBJECT_AT = (250, 112)  # the turning object's middle
 NAME_CHARS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -'.")
 REJOIN_SECONDS = ServerConfig().rejoin_seconds  # as long as a server keeps you
+INDENT = 12  # REJOIN, under its heading
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,22 +115,22 @@ class Menu:
         self.rejoin: JoinGame | None = None  # the game just left, while it keeps your player
         self.rejoin_until = 0.0
         self._rejoin_message = ""
+        self.now = 0.0  # as of the last expire(): for REJOIN's countdown
 
     def offer_rejoin(self, game: JoinGame, dropped: str | None, now: float) -> None:
         """You've just left `game`: REJOIN GAME, at the top, for a while.
         `dropped`: why, if you didn't choose to (then it's selected, and
         said)."""
-        self.rejoin, self.rejoin_until = game, now + REJOIN_SECONDS
+        self.rejoin, self.rejoin_until, self.now = game, now + REJOIN_SECONDS, now
         self.go("main")
         if dropped:
-            self.message = self._rejoin_message = (
-                f"{dropped} - rejoin within {REJOIN_SECONDS:.0f} seconds to carry on where you were"
-            )
+            self.message = self._rejoin_message = dropped  # the countdown says the rest
         else:
             self.selected = 1  # you left: SINGLE PLAYER, as usual
 
     def expire(self, now: float) -> None:
         """The server's forgotten you by now: no more REJOIN."""
+        self.now = now
         if self.rejoin is not None and now >= self.rejoin_until:
             action = self.items()[self.selected].action
             self.rejoin = None
@@ -140,7 +142,7 @@ class Menu:
 
     def items(self) -> list[Item]:
         if self.screen == "main":
-            rejoin = [Item("REJOIN GAME", "rejoin")] if self.rejoin is not None else []
+            rejoin = [Item("REJOIN", "rejoin")] if self.rejoin is not None else []
             return [
                 *rejoin,
                 Item("SINGLE PLAYER", "single"),
@@ -156,6 +158,12 @@ class Menu:
             return [*found, Item("ENTER AN ADDRESS...", "address"), Item("BACK", "back")]
         label = "ADDRESS" if self.screen == "address" else "NAME"
         return [Item(f"{label}: {self.typing}_", "done"), Item("BACK", "back")]
+
+    def last_game(self) -> str:
+        """REJOIN's heading: where, and how long the server keeps you."""
+        assert self.rejoin is not None
+        left = max(0, math.ceil(self.rejoin_until - self.now))
+        return f"LAST GAME: {self.rejoin.host}:{self.rejoin.port} - {left} S"
 
     def title(self) -> str:
         return {
@@ -311,9 +319,14 @@ class Menu:
             chosen = i == self.selected and item.enabled
             label = f"> {item.label}" if chosen else f"  {item.label}"
             colour = NAME_COLOUR if chosen else DIM if item.enabled else OFF
-            height = text(label, LEFT, row + 7 * scale - 1, scale, centre=False, colour=colour)
+            left = LEFT
+            if item.action == "rejoin":  # a block of its own: the game you were in
+                row += text(self.last_game(), LEFT, row + 6, centre=False, colour=DIM) + 3
+                left += INDENT
+            height = text(label, left, row + 7 * scale - 1, scale, centre=False, colour=colour)
             self.rows.append((row, row + height))
-            row += height + (6 if scale > 1 else 4)
+            gap = 6 if scale > 1 and self.rejoin is None else 4  # REJOIN's block: closer
+            row += height + gap + (4 if item.action == "rejoin" else 0)
         for line in wrap(self.message, FONT_5X7, w - 2 * LEFT):
             row += text(line, LEFT, row + 6, centre=False) + 2
         text("ARROWS AND ENTER, OR THE MOUSE - ESC GOES BACK", w / 2, h - 5, colour=DIM)

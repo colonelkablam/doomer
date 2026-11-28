@@ -39,17 +39,17 @@ the mouse; Esc goes back.
 
 Controls: mouse to look around (including up and down), WASD to move, arrow
 keys also work, Space to jump (you can get onto desks), Ctrl or C to crouch.
-Esc releases the mouse; Esc again quits. Click to recapture. F11 (or Alt+Enter)
+Esc opens the menu: RESUME (or Esc again), or leave the game (single-player
+pauses; on a server the game goes on while you're in the menu). F11 (or Alt+Enter)
 toggles full screen; the window can be resized too. Tab shows the map; F3 the
 network stats; the backquote key (`) a console of everything that happens.
 T to chat: type, Enter sends it to everyone (Esc drops it). Dropped out of
-a game you joined? REJOIN GAME on the start screen, within 30 s, puts you
-back where you were.
+a game you joined, or left it? REJOIN on the start screen, under LAST GAME,
+puts you back where you were, for as long as its countdown runs (30 s).
 
 Options: a map path as the first argument plays it straight away (no start
 screen), as does `--connect HOST:PORT`; `--mode coop|deathmatch`, `--name`,
-`--config client.toml` (see `client.example.toml`). In a game, Esc releases
-the mouse and Esc again goes back to the start screen.
+`--config client.toml` (see `client.example.toml`).
 
 ## Play (Windows)
 

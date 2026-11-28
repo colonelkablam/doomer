@@ -70,6 +70,9 @@ class LocalSession(NetworkSession):
         for message in self.connection.received():  # the first update: you're in the world
             self._take(message)
 
+    def solo(self) -> bool:
+        return True  # nobody else: Esc pauses it (no inputs sent, no ticks)
+
     @property
     def world(self) -> World:
         """The server's world: the real one (the drawn copy is the mirror's)."""
