@@ -1329,6 +1329,12 @@ Noted at the end of a session, to pick up next:
      S", counting down; selected, with why, if you dropped; not after the
      server shut down). The name is the key: fine on a LAN; over the internet, with
      the password and TLS (5 below), a token from the server instead.
+     **Same names**: a name already in the game (whatever its case: it's
+     shown in capitals) is numbered, the first keeping it: BOB, BOB002,
+     BOB003 (cut to fit 16), a number freed used again; the client says
+     "THERE'S A BOB HERE ALREADY: YOU'RE BOB002". A numbered player who
+     drops and joins again asking for BOB gets BOB002 back, state and all;
+     reconnecting replaces a silent BOB002 as it does a silent BOB.
   - **The pause menu** [built] (`client/pause.py`): Esc in a game, or
     the window losing focus. Over the game, darkened: RESUME first (Esc
     twice, or Esc then Enter, and you're back), then leaving, worded for

@@ -239,6 +239,7 @@ class NetworkSession:
         self._people: list[tuple[str, float, float]] = []
         self._greeted = False  # told you who's here (on the first update)
         self._names: dict[int, str] = {}  # everyone seen, by id
+        self.asked_name = ""  # the name joined with (the server may number it)
         self._news: list[Event] = []  # events of our own, for the next update()
         # For the stats (F3): when each input went, round trips, arrivals.
         self._sent_at: dict[int, float] = {}
@@ -251,6 +252,7 @@ class NetworkSession:
         """Connect, join, and wait for the first update (so you're in the
         world before the first frame)."""
         session = cls(Connection.join(host, port, name), predict)
+        session.asked_name = name
         with contextlib.suppress(queue.Empty):
             session._take(session.connection.inbox.get(timeout=CONNECT_SECONDS))
         if session.mirror.player is None:
@@ -399,6 +401,15 @@ class NetworkSession:
 
     def solo(self) -> bool:
         return False
+
+    def renamed(self) -> str | None:
+        """Your name, if it isn't the one you joined with: someone in had
+        it already, so the server numbered yours (BOB002)."""
+        me = self.mirror.player
+        if me is None or not self.asked_name:
+            return None
+        asked = " ".join(self.asked_name.split())
+        return me.name if me.name.casefold() != asked.casefold() else None
 
     def names(self) -> dict[int, str]:
         return dict(self._names)

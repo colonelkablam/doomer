@@ -500,7 +500,10 @@ def start(config: ClientConfig, name: str | None = None, predict: bool = True) -
                     greeting = f"Hosting: others can join at {host.where()}"
                 else:
                     _connecting(display, config, f"JOINING {choice.host}:{choice.port}...")
-                    session = NetworkSession.join(choice.host, choice.port, menu.name, predict)
+                    joined = NetworkSession.join(choice.host, choice.port, menu.name, predict)
+                    if (name := joined.renamed()) is not None:
+                        greeting = f"There's a {menu.name} here already: you're {name}"
+                    session = joined
             except (HostFailed, JoinFailed) as e:
                 if host is not None:
                     host.stop()

@@ -208,6 +208,9 @@ def test_after_a_game_joined_the_menu_offers_rejoin(monkeypatch: pytest.MonkeyPa
         def ended(self) -> str:
             return self.reason
 
+        def renamed(self) -> None:
+            return None
+
         def close(self) -> None:
             pass
 
