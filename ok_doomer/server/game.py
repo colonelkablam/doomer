@@ -71,6 +71,28 @@ class Departed:
     left: int  # GameServer.ticks when they went
 
 
+def numbered(name: str, number: int) -> str:
+    """`name` as the `number`th of that name in the game: "bob002" (cut to
+    fit MAX_NAME); the first is just "bob"."""
+    if number == 1:
+        return name
+    suffix = f"{number:03d}"
+    return name[: MAX_NAME - len(suffix)].rstrip() + suffix
+
+
+def same_name(name: str, asked: str) -> bool:
+    """Is `name` (someone's in the game) the name `asked` for, as it is or
+    as numbered when it was taken ("bob002", for bob)?"""
+    if name.casefold() == asked.casefold():
+        return True
+    number = name[-3:]
+    return (
+        number.isdigit()
+        and int(number) > 1
+        and (name.casefold() == numbered(asked, int(number)).casefold())
+    )
+
+
 def tidy_chat(text: str) -> str:
     """A chat message as everyone sees it: printable ASCII (anything else,
     a control character, an escape sequence for a log's terminal, dropped),
@@ -114,10 +136,11 @@ class GameServer:
         the start), or say why not."""
         if hello.version != PROTOCOL_VERSION:
             return Reject(f"version {hello.version}; this server speaks {PROTOCOL_VERSION}")
+        name = " ".join(hello.name.split())[:MAX_NAME] or f"player {self._next_id}"
+        self._replace_silent(name)  # (first: their old self mustn't make it full)
         if len(self.clients) >= self.config.max_players:
             return Reject(f"the server's full ({self.config.max_players} players)")
-        name = " ".join(hello.name.split())[:MAX_NAME] or f"player {self._next_id}"
-        self._replace_silent(name)
+        name = self._unique(name)
         player_id = self._next_id
         self._next_id += 1  # ids aren't reused: a late message can't reach a newcomer
         back = self._departed(name)
@@ -132,15 +155,28 @@ class GameServer:
         return Welcome(player_id, self.world.mode, self.world.config, self.map_text)
 
     def _replace_silent(self, name: str) -> None:
-        """Someone of this name is still in but silent: it's them on a new
-        connection, the old one not yet timed out. Drop the old one."""
+        """Someone of this name (or numbered from it: they may have been
+        "bob002") is still in but silent: it's them on a new connection, the
+        old one not yet timed out. Drop the old one (the longest silent, if
+        more), and they take its place. Someone playing is never silent
+        that long: their inputs come every tick, menu open or not."""
         silent = round(self.config.reconnect_silent_seconds * self.config.sim.tick_rate)
-        for pid, client in list(self.clients.items()):
-            if (
-                client.name.casefold() == name.casefold()
-                and self.ticks - client.last_heard >= silent
-            ):
-                self.leave(pid, "reconnected")
+        quiet = [
+            c
+            for c in self.clients.values()
+            if same_name(c.name, name) and self.ticks - c.last_heard >= silent
+        ]
+        if quiet:
+            self.leave(min(quiet, key=lambda c: c.last_heard).player_id, "reconnected")
+
+    def _unique(self, name: str) -> str:
+        """`name`, or numbered if someone in has it already: BOB, BOB002 (a
+        name's shown in capitals: Bob and bob are the same name)."""
+        taken = {c.name.casefold() for c in self.clients.values()}
+        number = 1
+        while numbered(name, number).casefold() in taken:
+            number += 1
+        return numbered(name, number)
 
     def _departed(self, name: str) -> Departed | None:
         """Their player, if they left recently enough to have it back."""
