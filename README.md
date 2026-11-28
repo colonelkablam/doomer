@@ -50,10 +50,12 @@ is fine; the installer's defaults are right) and
 git clone https://github.com/colonelkablam/ok-doomer.git $HOME\ok-doomer
 ```
 
-Then double-click `play.bat` in that folder (right-click it, *Send to*,
-*Desktop (create shortcut)* for a desktop icon). The first run sets itself
-up (a minute or two); every run updates the game first, so everyone's on
-the same version. Hosting a game: when Windows Defender Firewall asks,
+Then double-click `play.bat` in that folder. The first run sets itself up
+(a minute or two) and puts an *OK Doomer* shortcut, with the game's icon,
+on the desktop (once: delete `.shortcut-made` to have it made again); every
+run updates the game first, so everyone's on the same version. The icon is
+made from the player sprite: `python -m ok_doomer.client.icon` remakes
+`ok-doomer.ico`. Hosting a game: when Windows Defender Firewall asks,
 allow Python on *Private* networks, and make sure your Wi-Fi is a Private
 network (Settings, Network & internet, its properties), not Public.
 
