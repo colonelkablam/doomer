@@ -308,7 +308,7 @@ class Menu:
     def shows_object(self) -> bool:
         """The turning object beside the menu (main and name screens; the
         lists of games and the address box want the width)."""
-        return self.screen in ("main", "name", "single", "host")
+        return self.screen in ("main", "name")  # (the modes' long labels want the width)
 
     def draw(self, pixels: U8Array) -> None:
         """The screen into the frame: the title in the middle; the items down
