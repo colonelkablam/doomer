@@ -128,8 +128,9 @@ Planned, roughly in order [planned]:
   and pick up a class's defining weapon to become it (the IT Guy's
   floppies in the server room, the Caretaker's mop in the plant room,
   the Tea Trolley in the lounge, say). It changes the ground floor's role
-  (a puzzle today: passes, the breaker); runs start from it by lift and
-  the dead come back to it (DESIGN.md, Runs).
+  (a puzzle today: passes, the breaker); runs start from it by lift
+  (DESIGN.md, Runs). The dead come back at the lift lobby of the floor
+  they're on, not here.
 - **Where you start** (open, revisit): the game starts in the ground-floor
   lobby for now. The basement mailroom (B1 in the floor order below) is
   undecided: maybe added later, e.g. reached by taking the lift down.

@@ -409,18 +409,20 @@ milestone 3b. Choices still open are marked [open].
   floors generated fresh for the run, then a boss floor; it ends with the
   boss beaten or the whole team dead. The next go is a new run, new
   floors (a roguelike's word for it, and its shape).
-- **The server's states.** *Lobby*: the starting floor (the ground floor,
-  hand-made), where an idle server sits and anyone joining arrives.
-  *In a run*: from the lobby's lift up to the end. Taking the lobby's lift
-  together *is* starting the game (no start button: the lift goes when
-  the team's aboard, as between floors now); floor 1 of a new run is
-  generated as it rises. The run over (won, lost, or everyone gone),
-  the server goes back to the lobby. A hosted game (HOST GAME) starts in
-  the lobby the same way; the dedicated server (the Pi) idles there.
-- **Joining.** The server in the lobby: you arrive in the lobby, and go
+- **The server's states.** (Words: *the start floor* is the hand-made
+  first floor, the ground floor; *a lobby* is a floor's lift lobby, where
+  you arrive on it.) *Waiting*: on the start floor, where an idle server
+  sits and anyone joining arrives. *In a run*: from the start floor's
+  lift up to the end. Taking that lift together *is* starting the game
+  (no start button: the lift goes when the team's aboard, as between
+  floors now); floor 1 of a new run is generated as it rises. The run
+  over (won, lost, or everyone gone), the server goes back to waiting on
+  the start floor. A hosted game (HOST GAME) starts there the same way;
+  the dedicated server (the Pi) idles there.
+- **Joining.** The server waiting: you arrive on the start floor, and go
   with the next lift. A run going on with others in it: you join it, on
-  their floor (policy below); you never restart it. A run going on with
-  nobody left in it: it's abandoned, the server back in the lobby, so a
+  their floor (below); you never restart it. A run going on with nobody
+  left in it: it's abandoned, the server back on the start floor, so a
   newcomer to an empty server always starts fresh, after a grace of 30 s
   (someone whose Wi-Fi dropped can get back in: the rejoin to-do), the
   server's log counting it down every 5 s while it's empty.
@@ -436,22 +438,13 @@ milestone 3b. Choices still open are marked [open].
   So every client has the same floor, and a run is reproducible ("run
   41327, floor 3" replays exactly: bugs, and a seed of the week to
   compare). The boss floor can be hand-made, loaded the same way.
-- **Dying: back to the lobby**, out of the run, for now (decided). Later,
-  maybe: you rejoin the team at the next floor if they clear theirs.
-- **Two worlds at once.** With the dead in the lobby while the team plays
-  on, the server runs the lobby's world and the run's floor side by side
-  (`GameServer` holds one world today: this changes it). Each client is
-  in one of them, and gets that one's map and snapshots; moving a player
-  between them is a floor change for that client alone (`NewFloor` to
-  them).
-- **Joining mid-run: where you appear.** Today a newcomer appears at the
-  floor's start (its arrival lift), maybe far from the team, and the lift
-  waits for them. [open] Beside a teammate (a clear spot near one, as
-  spawning finds beside a start; a few seconds' spawn protection); or,
-  suggested since the lobby is where classes are chosen (below) and
-  where the dead go: newcomers start in the lobby too, choose a class,
-  and join the team at its next floor: the dead and the late handled the
-  same way.
+- **Dying, and joining mid-run: one rule** (decided). You're back in the
+  run at the lobby of the floor the team's on (its arrival lift lobby,
+  its `coop_start`: where a newcomer already appears today), with full
+  health and your class's basic weapon. One world a run: the server keeps
+  a single floor's world, as now. [open] A newcomer mid-run has no class
+  yet (classes are chosen on the start floor, below): a default class, a
+  quick choice on joining, or the class from their last run.
 - **The lift on generated floors.** Today it goes when *everyone* is in
   the car: one player far off or idle holds the team. Recommended: once
   most are aboard, a countdown (~10 s), then it goes, and anyone not
@@ -461,11 +454,11 @@ milestone 3b. Choices still open are marked [open].
   class's basic starting weapon (decided; classes and weapons are 3b:
   GAME.md, Player characters).
 - **Choosing a class on the first floor** [idea, more thought needed]:
-  the lobby floor as a staging area, where you choose your class by
+  the start floor as a staging area, where you choose your class by
   going to different parts of the office and picking up its defining
   weapon (GAME.md, Game loop).
-- **Order of building**, when it comes: the run state and the lobby (the
-  lobby lift starting a run, back to the lobby at its end, a fixed list
+- **Order of building**, when it comes: the run state and the start floor
+  (its lift starting a run, back to it at the run's end, a fixed list
   of hand-made floors standing in for generated ones); then the
   join/respawn policy and the lift countdown; then the generator (with
   LEVELS.md); then the boss floor.
