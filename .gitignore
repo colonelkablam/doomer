@@ -4,3 +4,5 @@ __pycache__/
 .pytest_cache/
 out/
 client.toml
+# play.bat: the desktop shortcut has been made once (Windows)
+.shortcut-made
